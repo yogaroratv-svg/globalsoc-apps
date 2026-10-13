@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reading Your Email DNS | Global SOC</title>
+<meta name="description" content="What your MX, SPF, DKIM, DMARC, MTA-STS and TLS-RPT records say about your email setup, how to read them yourself, and what to fix. Uses globalsoc.com.au as the live example.">
+<meta name="author" content="Yogesh">
+<meta property="og:title" content="What your email DNS records say about you">
+<meta property="og:description" content="How to read your own MX, SPF, DKIM and DMARC records, and what each one means.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/read-your-email-dns/">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#06222c,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.88;max-width:620px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px}
+article h2{font-size:27px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px}
+article h3{font-size:19px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:4px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 10px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+pre .c{color:#7f98a6}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav><a href="/blog/">All posts</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">EMAIL SECURITY · HOW IT WORKS</span>
+  <h1>What your email DNS records say about you</h1>
+  <p class="lede">Your domain publishes a public description of how your email works: who receives it, who may send it, and what to do with fakes. Here's how to read your own, what each record means, and what to fix.</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 9 min read</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<div class="toc"><b>In this post</b><ol>
+<li><a href="#why">Why this information is public</a></li>
+<li><a href="#mx">MX: who receives your email</a></li>
+<li><a href="#senders">SPF and DKIM: who may send as you</a></li>
+<li><a href="#dmarc">DMARC: the policy, and who reads the reports</a></li>
+<li><a href="#transport">MTA-STS, TLS-RPT and DANE: protecting email in transit</a></li>
+<li><a href="#limits">What DNS can't tell you</a></li>
+<li><a href="#lab">Check your own domain in two minutes</a></li>
+</ol></div>
+
+<h2 id="why">Why this information is public</h2>
+<p>For email to work between strangers, every mail server in the world needs to find out three things about your domain without asking you: <b>where to deliver your mail</b>, <b>which servers may send it</b>, and <b>what to do when a message fails those checks</b>. DNS is the only shared directory, so you publish the answers there, and anyone can look them up.</p>
+<p>That's by design, and it's useful for you. Reading your own records shows you your email setup as the rest of the internet sees it, including leftovers you forgot about. This post goes through the records worth knowing, using our own domain, globalsoc.com.au, as the example.</p>
+<div class="callout key"><b>Reading records isn't the same as testing security</b>These records show what a domain has <i>published</i>, not what's actually switched on inside the business. Treat them as a checklist for your own domain, not as a verdict on anyone else's.</div>
+
+<h2 id="mx">MX: who receives your email</h2>
+<p><b>MX (Mail eXchanger)</b> records tell the world which servers accept mail for your domain. The host name usually says who runs the mailbox:</p>
+<div class="tw"><table>
+<tr><th>If your MX looks like…</th><th>It means…</th></tr>
+<tr><td><code>*.mail.protection.outlook.com</code></td><td>Mail is delivered straight to <b>Microsoft 365</b> (Exchange Online), with Microsoft's own filtering as the first line.</td></tr>
+<tr><td><code>aspmx.l.google.com</code> and friends</td><td>Mail goes to <b>Google Workspace</b>.</td></tr>
+<tr><td>A security vendor's host name, such as <code>*.mimecast.com</code>, <code>*.pphosted.com</code>, <code>*.iphmx.com</code>, <code>*.barracudanetworks.com</code>, <code>*.hydra.sophos.com</code> or <code>*.tmes.trendmicro.com</code></td><td>The domain sends all inbound mail through a <b>secure email gateway</b> first. The gateway cleans it, then passes it on to the real mailbox behind it.</td></tr>
+<tr><td><code>*.mx.cloudflare.net</code></td><td>The domain uses <b>Cloudflare Email Routing</b>, which forwards mail on to another mailbox. This is what globalsoc.com.au uses.</td></tr>
+<tr><td>Your own host name, such as <code>mail.yourbusiness.com.au</code></td><td>A mail server run by the business or its IT provider.</td></tr>
+</table></div>
+<h3>What to do with this</h3>
+<ul>
+<li><b>Check it matches what you pay for.</b> If you bought a gateway but your MX still points straight at Microsoft, attackers can skip the gateway entirely by delivering to the Microsoft address directly. The fix is to restrict inbound mail at Microsoft to your gateway's addresses.</li>
+<li><b>Look for a dead MX.</b> An old host that no longer exists means mail to you can bounce, and an unregistered domain there could be registered by someone else and receive your email.</li>
+<li><b>If you don't use email on a domain</b>, publish a <i>null MX</i> (<code>MX 0 .</code>) so nothing is delivered.</li>
+</ul>
+
+<h2 id="senders">SPF and DKIM: who may send as you</h2>
+<h3>SPF lists the allowed sending servers</h3>
+<p>Your SPF record is a list of everything permitted to send email as your domain. Each <code>include:</code> is a service the business uses, which makes it a handy inventory of your email-sending tools: accounting, CRM, marketing, helpdesk, HR. Ours is:</p>
+<pre><code>v=spf1 include:_spf.mx.cloudflare.net include:_spf.google.com include:spf.protection.outlook.com -all</code></pre>
+<p>Read it left to right: Cloudflare, Google (our Gmail "Send mail as") and Microsoft (the Azure service that sends our alerts) may send as globalsoc.com.au, and <code>-all</code> means <i>everyone else is rejected</i>.</p>
+<ul>
+<li><b>Remove anything you no longer use.</b> An old marketing tool's <code>include:</code> is an open door. Anyone who gets into that account can send as you.</li>
+<li><b>Mind the 10-lookup limit.</b> Each <code>include:</code>, <code>a</code>, <code>mx</code> and <code>exists:</code> costs one DNS lookup, nested ones included. Over 10 and SPF stops working for all your mail. Our <a href="/dnsaudit/">DNS Audit</a> counts them for you.</li>
+<li><b>End with <code>-all</code> or <code>~all</code></b>, never <code>+all</code> (which allows the whole internet).</li>
+</ul>
+
+<h3>DKIM is a signature, and its selector names the signer</h3>
+<p>DKIM signs each message with a private key. The matching public key sits in DNS under a <b>selector</b>, at <code>selector._domainkey.yourdomain</code>. The selector name usually shows which service does the signing:</p>
+<div class="tw"><table>
+<tr><th>Selector</th><th>Usually means</th></tr>
+<tr><td><code>selector1</code>, <code>selector2</code></td><td>Microsoft 365</td></tr>
+<tr><td><code>google</code></td><td>Google Workspace</td></tr>
+<tr><td><code>k1</code>, <code>k2</code>, <code>k3</code></td><td>Mailchimp</td></tr>
+<tr><td><code>s1</code>, <code>s2</code></td><td>SendGrid (and some other senders)</td></tr>
+<tr><td><code>cf2024-1</code></td><td>Cloudflare</td></tr>
+<tr><td><code>selector1-azurecomm-prod-net</code></td><td>Azure Communication Services (ours)</td></tr>
+</table></div>
+<ul>
+<li><b>Every service that sends as you should have its own DKIM key.</b> A service without one will fail DMARC alignment the moment you enforce a strict policy.</li>
+<li><b>Use 2048-bit keys.</b> 1024-bit keys are still common and are being phased out.</li>
+<li><b>Know that selectors can't be listed.</b> Only the sending service and you know the exact names, so a scan can only guess common ones. That's why "no DKIM found" is a prompt to check an email's headers, not proof it's missing.</li>
+</ul>
+
+<h2 id="dmarc">DMARC: the policy, and who reads the reports</h2>
+<p>DMARC ties SPF and DKIM together and tells receivers what to do with email that fails. Two parts say the most about how seriously a domain treats email fraud. (<a href="/blog/dmarc-explained/">Our earlier post</a> explains how DMARC works in depth.)</p>
+<div class="tw"><table>
+<tr><th>Tag</th><th>What it says</th></tr>
+<tr><td><code>p=</code></td><td>The policy. <b>Missing or <code>none</code></b>: fake emails are still delivered, so invoice fraud and impersonation are easy. <b><code>quarantine</code></b>: fakes go to spam. <b><code>reject</code></b>: fakes are blocked. Ours is currently <code>none</code>, while we collect reports.</td></tr>
+<tr><td><code>rua=</code></td><td>Where daily aggregate reports go. Pointing to a <b>DMARC reporting service</b> (examples: dmarcian, Valimail, Red Sift OnDMARC, EasyDMARC, Proofpoint, Postmark) means someone turns the XML into something readable. Reports going to <b>nowhere or a personal mailbox</b> usually means nobody is reading them.</td></tr>
+<tr><td><code>ruf=</code></td><td>Where individual failure reports go. These can contain parts of real emails, so use a shared security mailbox rather than a person's.</td></tr>
+<tr><td><code>sp=</code>, <code>pct=</code></td><td>The subdomain policy and the percentage of mail the policy applies to. <code>sp=none</code> or a low <code>pct</code> quietly weaken protection.</td></tr>
+</table></div>
+<div class="callout"><b>The path to p=reject</b>Start at <code>p=none</code> with a reporting address. Read the reports for a few weeks and fix every legitimate sender that fails. Then move to <code>quarantine</code>, then <code>reject</code>. Skipping straight to <code>reject</code> is how businesses accidentally block their own invoices.</div>
+
+<h2 id="transport">MTA-STS, TLS-RPT and DANE: protecting email in transit</h2>
+<p>SPF, DKIM and DMARC are about <i>who sent it</i>. These three are about whether the message is encrypted <i>on the way to you</i>. Ordinary email between servers will quietly fall back to plain text if encryption fails, which lets an attacker on the network path read or alter it.</p>
+<div class="tw"><table>
+<tr><th>Record</th><th>What it does</th></tr>
+<tr><td><b>MTA-STS</b><br><code>_mta-sts.</code> TXT, plus a policy file on your website</td><td>Tells senders: "only deliver to my listed mail servers, and only over verified TLS". Start in <code>mode: testing</code>, then switch to <code>enforce</code>.</td></tr>
+<tr><td><b>TLS-RPT</b><br><code>_smtp._tls.</code> TXT</td><td>Asks senders to email you a daily report of encryption failures, so you can see problems before you enforce MTA-STS.</td></tr>
+<tr><td><b>DANE (TLSA)</b></td><td>Pins your mail server's certificate in DNS. Needs DNSSEC. Microsoft 365 and some national providers support it.</td></tr>
+</table></div>
+<p>Few small businesses use any of these yet, so having them is a sign of a careful email setup, and adding them is cheap.</p>
+
+<h2 id="limits">What DNS can't tell you</h2>
+<ul>
+<li><b>Published isn't deployed.</b> A gateway in the MX record doesn't prove it's configured well, or that Microsoft's front door is locked behind it.</li>
+<li><b>It can't show internal controls</b> such as multi-factor authentication, patching, backups or staff training. Those matter more than any DNS record.</li>
+<li><b>Records go stale.</b> Leftover includes and verification records often outlive the services they were for. That's a cleanup list, not a failure.</li>
+<li><b>It says nothing about intent or quality.</b> A missing record might be an oversight, or a deliberate choice for a domain that sends no email.</li>
+</ul>
+<p>That's why we only ever present DNS findings as a checklist for the domain owner, and never as a score for someone else's business.</p>
+
+<h2 id="lab">Check your own domain in two minutes</h2>
+<p>These commands work on any Windows laptop. Replace the domain with your own:</p>
+<pre><code>Resolve-DnsName globalsoc.com.au -Type MX                                  <span class="c"># who receives mail</span>
+Resolve-DnsName globalsoc.com.au -Type TXT | Select -Expand Strings        <span class="c"># SPF, verification records</span>
+Resolve-DnsName _dmarc.globalsoc.com.au -Type TXT | Select -Expand Strings <span class="c"># DMARC policy and reports</span>
+Resolve-DnsName _mta-sts.globalsoc.com.au -Type TXT                        <span class="c"># MTA-STS</span>
+Resolve-DnsName _smtp._tls.globalsoc.com.au -Type TXT                      <span class="c"># TLS-RPT</span></code></pre>
+<p>Or skip the commands: our free <a href="/dnsaudit/">DNS Audit</a> checks all of the above and 40 more settings in about 10 seconds, explains each finding in plain English and gives you the exact records to paste. It only works on domains you type in; it never contacts anyone's systems beyond the standard, lightweight checks described on the page.</p>
+
+<div class="cta"><h3>Want your email setup checked and fixed?</h3><p>We'll review your own records, tidy up SPF and DKIM, and walk you to DMARC enforcement without breaking your email.</p><a href="/dnsaudit/">Run a free DNS Audit →</a><a href="/#contact">Talk to Yogesh</a></div>
+
+<div class="author"><div class="av">Y</div><div><b style="color:var(--ink)">Yogesh</b> runs Global SOC, a security-first app and IT studio in Glen Waverley, Melbourne, helping small businesses build software and keep it secure.</div></div>
+</article></main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+</body>
+</html>
