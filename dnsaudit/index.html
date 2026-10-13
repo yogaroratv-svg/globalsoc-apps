@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DNS Audit | Global SOC</title>
+<meta name="description" content="Free DNS security audit for any domain: DNSSEC, SPF, DMARC, DKIM, CAA, MTA-STS, name servers, registrar lock, expiry and subdomain takeover, with clear fixes.">
+<meta property="og:title" content="DNS Audit by Global SOC">
+<meta property="og:description" content="Check any domain's DNS security in seconds, with prioritised recommendations.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b3b4a'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%233fd0b3' stroke-width='5'/%3E%3Cpath d='M32 15v17l12 8' stroke='%23fff' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f7f9;--card:#fff;--ink:#0f1a24;--muted:#5b6976;--line:#e1e7ec;--brand:#0b3b4a;--brand2:#12806f;--accent:#13a68e;--soft:#e3f4f0;--on:#fff;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88;--codebg:#eef2f5;--hero1:#06222c;--hero2:#0b3b4a}
+@media (prefers-color-scheme:dark){:root{--bg:#0a0f14;--card:#121b23;--ink:#e7eef3;--muted:#93a2ae;--line:#223039;--brand:#3fd0b3;--brand2:#3fd0b3;--accent:#3fd0b3;--soft:#0f2a2a;--on:#03201a;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;--codebg:#0c141b;--hero1:#04161c;--hero2:#082a35;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+code,.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;text-decoration:none;letter-spacing:-.01em}
+.logo i{width:32px;height:32px;border-radius:9px;background:#0b3b4a;color:#3fd0b3;display:grid;place-items:center;font-style:normal;font-size:13px}
+.logo small{font-weight:600;color:var(--muted);font-size:13px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 20px;border-radius:12px;border:0;cursor:pointer;font-family:inherit;white-space:nowrap}
+@media (prefers-color-scheme:dark){.btn{color:#03201a}}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.sm{padding:8px 13px;font-size:13.5px;border-radius:10px}
+.btn:disabled{opacity:.6;cursor:wait}
+/* hero */
+.hero{background:radial-gradient(60% 80% at 80% 30%,rgba(63,208,179,.18),transparent 70%),linear-gradient(160deg,var(--hero1),var(--hero2));color:#e8f3f1;overflow:hidden}
+.hgrid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:64px 20px 56px}
+.eyebrow{display:inline-block;font-size:13px;font-weight:700;color:#3fd0b3;background:rgba(63,208,179,.12);padding:6px 12px;border-radius:999px}
+h1{font-size:clamp(34px,5.2vw,56px);line-height:1.05;letter-spacing:-.035em;margin-top:18px;color:#fff}
+h1 span{background:linear-gradient(90deg,#3fd0b3,#9ef0de,#3fd0b3);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 4s linear infinite}
+@keyframes shine{to{background-position:200% center}}
+.lead{font-size:17.5px;color:#b8cfcb;margin-top:16px;max-width:540px}
+.search{margin-top:26px;display:flex;gap:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);padding:8px;border-radius:16px;max-width:560px}
+.search input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff;font:600 17px Inter,system-ui,sans-serif;padding:8px 10px}
+.search input::placeholder{color:#8fb0aa}
+.search .btn{background:#3fd0b3;color:#03201a}
+.err{color:#ffb4a8;font-size:14px;margin-top:10px;min-height:20px}
+.ex{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:13px;color:#8fb0aa;align-items:center}
+.ex button{font:600 13px Inter,sans-serif;color:#d5ece7;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:5px 11px;cursor:pointer}
+.ex button:hover{background:rgba(255,255,255,.16)}
+.privacy{font-size:13px;color:#8fb0aa;margin-top:18px;max-width:540px}
+.radar{position:relative;aspect-ratio:1;max-width:440px;width:100%;margin:0 auto}
+.radar canvas{width:100%;height:100%;display:block}
+.radar .rl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.radar .rl b{display:block;font-size:34px;color:#fff;letter-spacing:-.02em}
+.radar .rl span{font-size:12px;color:#8fb0aa;font-weight:600;text-transform:uppercase;letter-spacing:.1em}
+@media (max-width:900px){.hgrid{grid-template-columns:1fr;padding-top:40px}.radar{max-width:320px}}
+.checks{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.checks span{font-size:12.5px;font-weight:600;color:#cfe6e1;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:4px 10px}
+/* scan */
+.scan{display:none;margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.06)}
+.scan.on{display:block}
+.prog{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:12px}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--brand2),var(--accent));transition:width .3s}
+.stagerow{display:flex;justify-content:space-between;gap:12px;font-weight:700;flex-wrap:wrap}
+.stagerow span{color:var(--muted);font-weight:600;font-size:14px}
+.term{margin-top:14px;background:#06161c;color:#9fe9d9;border-radius:14px;padding:12px 14px;height:180px;overflow:auto;font:12.5px/1.6 "JetBrains Mono",ui-monospace,Consolas,monospace}
+.term div{white-space:nowrap}
+.term .nx{color:#ffcf7a}.term .sf{color:#ff8a7a}.term .dim{color:#5d8b82}
+/* results */
+#results{display:none;padding:32px 0 60px}
+#results.on{display:block}
+.top{display:grid;grid-template-columns:300px 1fr;gap:18px}
+@media (max-width:900px){.top{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px}
+.gradebox{display:flex;flex-direction:column;align-items:center;text-align:center}
+.ring{position:relative;width:180px;height:180px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .v{position:absolute;inset:0;display:grid;place-items:center;align-content:center}
+.ring .v b{font-size:54px;line-height:1;letter-spacing:-.04em}
+.ring .v span{font-size:13px;color:var(--muted);font-weight:600}
+.dom{font-weight:800;font-size:19px;margin-top:12px;word-break:break-all}
+.meta{font-size:12.5px;color:var(--muted);margin-top:4px}
+.counts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;width:100%}
+.counts div{border-radius:12px;padding:8px 4px;background:var(--bg)}
+.counts b{display:block;font-size:20px}
+.counts span{font-size:11.5px;color:var(--muted);font-weight:600}
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}
+@media (max-width:620px){.cats{grid-template-columns:1fr}}
+.cat{display:grid;grid-template-columns:24px 1fr 40px;gap:10px;align-items:center;font-size:14px;font-weight:600;cursor:pointer;padding:6px;border-radius:10px}
+.cat:hover{background:var(--bg)}
+.cat .bar{grid-column:2/4;height:7px;border-radius:9px;background:var(--line);overflow:hidden;margin-top:-4px}
+.cat .bar i{display:block;height:100%;width:0;border-radius:9px;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.cat em{font-style:normal;text-align:right;font-size:13px;color:var(--muted)}
+.ph2{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.ph2 h2{font-size:18px;letter-spacing:-.01em}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tabs{display:flex;gap:6px;margin:26px 0 16px;overflow-x:auto;scrollbar-width:none}
+.tabs button{font:700 14px Inter,sans-serif;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pane{display:none}.pane.on{display:block}
+.rec{display:grid;grid-template-columns:auto 1fr;gap:14px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c,var(--line));border-radius:16px;padding:16px 18px;margin-bottom:12px}
+.rec h3{font-size:16px;letter-spacing:-.01em}
+.rec p{color:var(--muted);font-size:14.5px;margin-top:4px;white-space:pre-line}
+.rec .fix{color:var(--ink);margin-top:8px;font-size:14.5px}
+.rec .fix b{color:var(--accent)}
+.badge{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:2px}
+.st{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;color:#fff;flex:none}
+.st.pass{background:var(--pass)}.st.warn{background:var(--warn)}.st.fail{background:var(--fail)}.st.info{background:var(--info)}
+.snip{position:relative;margin-top:10px;background:var(--codebg);border-radius:10px;padding:10px 12px;padding-right:62px;font:12.5px/1.6 "JetBrains Mono",ui-monospace,monospace;white-space:pre-wrap;word-break:break-all}
+.snip button{position:absolute;right:8px;top:8px;font:700 11.5px Inter,sans-serif;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:3px 8px;cursor:pointer}
+.group{margin-bottom:12px}
+.group summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;font-weight:700}
+.group summary::-webkit-details-marker{display:none}
+.group[open] summary{border-radius:16px 16px 0 0}
+.group summary .sc{margin-left:auto;font-size:13px;color:var(--muted);display:flex;gap:6px}
+.dot{display:inline-flex;align-items:center;gap:3px}
+.dot:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+.items{border:1px solid var(--line);border-top:0;border-radius:0 0 16px 16px;background:var(--card)}
+.item{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px 16px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item h4{font-size:15px}
+.item p{color:var(--muted);font-size:14px;white-space:pre-line;margin-top:2px;word-break:break-word}
+.item .fix{color:var(--ink);margin-top:6px}
+.mapwrap{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:10px;overflow-x:auto}
+.mapwrap svg{display:block;width:100%;min-width:640px;height:auto}
+.edge{fill:none;stroke-width:1.5;stroke-dasharray:600;stroke-dashoffset:600;animation:draw 1.2s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.node{opacity:0;animation:pop .5s ease forwards}
+@keyframes pop{to{opacity:1}}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px;padding:0 6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
+.tblwrap{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:6px 8px;overflow-x:auto}
+.cta{margin-top:28px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:22px;padding:26px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.cta h3{font-size:20px}.cta p{opacity:.85;font-size:14.5px}
+.cta .btn{background:#fff;color:#0b3b4a}
+.how{padding:56px 0}
+.how h2{font-size:clamp(24px,3vw,32px);letter-spacing:-.02em}
+.how .g{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+@media (max-width:820px){.how .g{grid-template-columns:1fr}}
+.how .g div{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+.how h3{font-size:16px;margin-bottom:6px}
+.how p{color:var(--muted);font-size:14.5px}
+.recent{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:#8fb0aa;align-items:center}
+footer{border-top:1px solid var(--line);padding:26px 0 40px;font-size:13px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;transition:transform .25s;z-index:50}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.empty{color:var(--muted);text-align:center;padding:30px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.edge{stroke-dashoffset:0}.node{opacity:1}}
+@media print{header,.hero,.tabs,.tools,.cta,.how,footer,.scan{display:none!important}.pane{display:block!important}#results{display:block!important;padding:0}.mapwrap{display:none}.group{break-inside:avoid}body{background:#fff}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav">
+  <a class="logo" href="/dnsaudit/"><i>◎</i>DNS Audit <small>by Global SOC</small></a>
+  <a class="btn ghost sm" href="/#work">← All apps</a>
+</div></header>
+
+<section class="hero"><div class="wrap hgrid">
+  <div>
+    <span class="eyebrow">Free DNS security audit</span>
+    <h1>Is your domain's DNS <span>secure</span>?</h1>
+    <p class="lead">Enter any domain. We check over 40 DNS security settings, from DNSSEC and email spoofing protection to dangling records an attacker could take over, and tell you exactly what to fix.</p>
+    <form class="search" id="f" autocomplete="off">
+      <input id="d" type="text" inputmode="url" spellcheck="false" autocapitalize="off" placeholder="example.com.au" aria-label="Domain name">
+      <button class="btn" id="go" type="submit">Audit →</button>
+    </form>
+    <div class="err" id="err" role="alert"></div>
+    <div class="ex">Try: <button data-d="globalsoc.com.au">globalsoc.com.au</button><button data-d="github.com">github.com</button><button data-d="cloudflare.com">cloudflare.com</button><button data-d="paypal.com">paypal.com</button></div>
+    <div class="recent" id="recent"></div>
+    <p class="privacy">🔒 Runs in your browser using encrypted DNS-over-HTTPS (Google and Cloudflare public resolvers). Nothing is sent to or stored by Global SOC. Passive, read-only checks: no scanning of your servers.</p>
+  </div>
+  <div class="radar"><canvas id="radar" aria-hidden="true"></canvas><div class="rl"><b id="qc">0</b><span>DNS queries</span></div></div>
+</div>
+<div class="wrap" style="padding-bottom:40px">
+  <div class="checks"><span>DNSSEC</span><span>SPF</span><span>DMARC</span><span>DKIM</span><span>MTA-STS</span><span>TLS-RPT</span><span>DANE</span><span>CAA</span><span>Name servers</span><span>SOA</span><span>Registrar lock</span><span>Expiry</span><span>Subdomain takeover</span><span>Wildcards</span><span>Exposed records</span></div>
+</div>
+</section>
+
+<main class="wrap">
+  <div class="scan" id="scan">
+    <div class="stagerow"><div id="stage">Starting…</div><span id="pct">0%</span></div>
+    <div class="prog"><i id="bar"></i></div>
+    <div class="term" id="term" aria-live="off"></div>
+  </div>
+
+  <div id="results">
+    <div class="top">
+      <div class="panel gradebox">
+        <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" style="transition:stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1),stroke .3s"/></svg>
+          <div class="v"><b id="grade">–</b><span id="score">0 / 100</span></div></div>
+        <div class="dom" id="rdom"></div>
+        <div class="meta" id="rmeta"></div>
+        <div class="counts" id="counts"></div>
+      </div>
+      <div class="panel">
+        <div class="ph2"><h2>Score by area</h2>
+          <div class="tools"><button class="btn ghost sm" id="share">🔗 Share</button><button class="btn ghost sm" id="copy">📋 Copy report</button><button class="btn ghost sm" id="json">⬇ JSON</button><button class="btn ghost sm" onclick="print()">🖨 PDF</button></div></div>
+        <div class="cats" id="cats"></div>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="on" data-p="recs">Recommendations</button><button data-p="all">All checks</button><button data-p="map">DNS map</button><button data-p="raw">Raw records</button>
+    </div>
+    <div class="pane on" id="p-recs"></div>
+    <div class="pane" id="p-all"></div>
+    <div class="pane" id="p-map"><div class="mapwrap" id="map"></div><div class="legend"><span class="dot" style="--c:var(--pass)">Good</span><span class="dot" style="--c:var(--warn)">Improve</span><span class="dot" style="--c:var(--fail)">Fix now</span><span class="dot" style="--c:var(--info)">Info</span></div></div>
+    <div class="pane" id="p-raw"><div class="tblwrap" id="raw"></div></div>
+
+    <div class="cta"><div><h3>Want these fixed for you?</h3><p>Global SOC is a security-first studio in Glen Waverley, Melbourne. We can harden your DNS and email in a day.</p></div><a class="btn" href="/#contact">Talk to us →</a></div>
+  </div>
+
+  <div class="how">
+    <h2>What the audit looks at</h2>
+    <div class="g">
+      <div><h3>📧 Email spoofing</h3><p>SPF, DMARC and DKIM decide whether criminals can send email that looks like it came from you. We check that each exists, is valid, and actually enforces.</p></div>
+      <div><h3>🔏 Integrity & certificates</h3><p>DNSSEC stops forged DNS answers. CAA limits which certificate authorities can issue HTTPS certificates for your domain.</p></div>
+      <div><h3>🧩 Takeover & exposure</h3><p>Dangling CNAMEs, dead name servers, internal IPs, wildcards and leftover verification records are common footholds for attackers.</p></div>
+      <div><h3>🧭 Resilience</h3><p>Name server count, network diversity and SOA timers determine whether your domain stays up when one server or provider fails.</p></div>
+      <div><h3>🏷️ Registration</h3><p>An expiring domain or a missing transfer lock can lose you your website and email overnight. We read public RDAP data where the registry publishes it.</p></div>
+      <div><h3>⚠️ Limits</h3><p>Browsers can't do zone transfers or query your name servers directly, so those tests are listed with the commands to run yourself. This is not a penetration test.</p></div>
+    </div>
+  </div>
+</main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · ABN 46 646 550 094 · Glen Waverley, Melbourne VIC</span><span><a href="/">globalsoc.com.au</a> · <a href="/#contact">Contact</a></span></div></footer>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const T={A:1,NS:2,CNAME:5,SOA:6,MX:15,TXT:16,AAAA:28,DS:43,DNSKEY:48,TLSA:52,HTTPS:65,CAA:257};
+const TN=Object.fromEntries(Object.entries(T).map(([k,v])=>[v,k]));
+const RC={0:'NOERROR',1:'FORMERR',2:'SERVFAIL',3:'NXDOMAIN',5:'REFUSED','-1':'ERROR'};
+const CATS={reg:['Registration','🏷️'],ns:['Name servers','🧭'],soa:['SOA & zone','📜'],dnssec:['DNSSEC','🔏'],web:['Web & certificates','🌐'],mx:['Mail servers','📮'],spf:['SPF','✉️'],dmarc:['DMARC','🛡️'],dkim:['DKIM & mail transport','🔑'],sub:['Subdomains & takeover','🧩'],hyg:['Hygiene & exposure','🧹']};
+const W={fail:{high:15,med:8,low:4},warn:{high:8,med:4,low:2}};
+const ORDER={fail:0,warn:1,pass:2,info:3};
+const SEVO={high:0,med:1,low:2};
+const ICON={pass:'✓',warn:'!',fail:'✕',info:'i'};
+
+let cache,QN=0,CK=[],RAW=[],MAP,running=false,LAST=null;
+const pulses=[];
+
+/* ---------- DNS over HTTPS ---------- */
+function fetchT(url,opt={},ms=9000){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(url,{...opt,signal:c.signal}).finally(()=>clearTimeout(t))}
+let active=0;const waitQ=[];
+async function slot(){while(active>=12)await new Promise(r=>waitQ.push(r));active++}
+function release(){active--;const n=waitQ.shift();if(n)n()}
+async function doh(name,type,cd){
+  const t=T[type]||type,qs=`name=${encodeURIComponent(name)}&type=${t}&do=1${cd?'&cd=1':''}`;
+  try{const r=await fetchT('https://dns.google/resolve?'+qs);if(!r.ok)throw new Error('HTTP '+r.status);return {...await r.json(),via:'Google'}}
+  catch(e){const r=await fetchT('https://cloudflare-dns.com/dns-query?'+qs,{headers:{accept:'application/dns-json'}});if(!r.ok)throw new Error('HTTP '+r.status);return {...await r.json(),via:'Cloudflare'}}
+}
+function dq(name,type,cd=false){
+  name=name.toLowerCase().replace(/\.$/,'');const key=name+'|'+type+(cd?'|cd':'');
+  if(cache.has(key))return cache.get(key);
+  const p=(async()=>{await slot();const t0=performance.now();let res;
+    try{const j=await doh(name,type,cd);res={ok:true,status:j.Status,ad:!!j.AD,ans:j.Answer||[],auth:j.Authority||[],via:j.via}}
+    catch(e){res={ok:false,status:-1,ad:false,ans:[],auth:[],err:String(e.message||e)}}
+    finally{release()}
+    res.ms=Math.round(performance.now()-t0);QN++;$('#qc').textContent=QN;
+    log(name,type,res);
+    if(!cd)RAW.push({name,type,status:res.status,ans:res.ans.filter(a=>a.type!==46)});
+    return res})();
+  cache.set(key,p);return p;
+}
+const R=(res,type)=>res.ans.filter(a=>a.type===T[type]).map(a=>String(a.data));
+const nd=s=>String(s||'').replace(/\.$/,'').toLowerCase();
+function txt(s){s=String(s).trim();if(s[0]!=='"')return s;let o='',m;const re=/"((?:[^"\\]|\\.)*)"/g;while((m=re.exec(s)))o+=m[1];return o.replace(/\\"/g,'"')}
+function parseCAA(s){s=String(s).trim();
+  if(s.startsWith('\\#')){const b=(s.split(/\s+/).slice(2).join('').match(/../g)||[]).map(h=>parseInt(h,16));const tl=b[1]||0;return {flags:b[0],tag:String.fromCharCode(...b.slice(2,2+tl)).toLowerCase(),value:String.fromCharCode(...b.slice(2+tl))}}
+  const m=s.match(/^(\d+)\s+(\S+)\s+"?(.*?)"?$/);return m?{flags:+m[1],tag:m[2].toLowerCase(),value:m[3]}:{flags:0,tag:'?',value:s}}
+function isPriv(ip){ip=ip.toLowerCase();
+  if(ip.includes(':'))return ip==='::1'||/^f[cd]/.test(ip)||/^fe[89ab]/.test(ip);
+  const [a,b]=ip.split('.').map(Number);return a===10||a===127||a===0||(a===172&&b>=16&&b<=31)||(a===192&&b===168)||(a===169&&b===254)||(a===100&&b>=64&&b<=127)}
+const SL2=new Set('com.au net.au org.au edu.au gov.au asn.au id.au co.uk org.uk ac.uk gov.uk me.uk ltd.uk plc.uk co.nz org.nz net.nz govt.nz ac.nz co.in net.in org.in gov.in com.sg edu.sg gov.sg com.my com.cn com.hk com.tw co.jp ne.jp or.jp co.kr co.za com.br com.mx com.ar com.tr com.sa com.pk com.bd com.lk com.np co.th com.ph com.vn co.id com.eg com.ng co.ke'.split(' '));
+function orgDomain(h){const p=h.split('.');if(p.length<=2)return h;return SL2.has(p.slice(-2).join('.'))?p.slice(-3).join('.'):p.slice(-2).join('.')}
+function normalize(v){v=String(v||'').trim().toLowerCase();if(!v)return '';
+  v=v.replace(/^[a-z][a-z0-9+.-]*:\/\//,'').replace(/^[^@\/]*@/,'').split(/[\/?#:\s]/)[0].replace(/\.$/,'');
+  try{v=new URL('http://'+v).hostname}catch(e){return ''}
+  return /^(?=.{1,253}$)([a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/.test(v)?v:''}
+
+const NSPROV=[[/cloudflare\.com$/,'Cloudflare'],[/awsdns/,'AWS Route 53'],[/azure-dns/,'Azure DNS'],[/googledomains\.com$|ns-cloud-.*google/,'Google Cloud DNS'],[/nsone\.net$/,'NS1'],[/ultradns/,'UltraDNS'],[/akam\.net$|akamaiedge/,'Akamai'],[/dnsmadeeasy/,'DNS Made Easy'],[/dynect\.net$/,'Dyn/Oracle'],[/domaincontrol\.com$/,'GoDaddy'],[/registrar-servers\.com$/,'Namecheap'],[/vercel-dns/,'Vercel'],[/nsone|netlify/,'Netlify'],[/digitalocean\.com$/,'DigitalOcean'],[/he\.net$/,'Hurricane Electric'],[/wixdns\.net$/,'Wix'],[/squarespacedns|squarespace\.com$/,'Squarespace'],[/nameserver\.net\.au$|ventraip|syrahost/,'VentraIP'],[/crazydomains/,'Crazy Domains'],[/netregistry|zone\.net\.au$/,'Netregistry'],[/hostgator/,'HostGator'],[/bluehost/,'Bluehost'],[/linode\.com$/,'Linode'],[/hetzner/,'Hetzner'],[/ovh\.net$/,'OVH'],[/microsoftonline|msft\.net$/,'Microsoft'],[/google\.com$/,'Google']];
+const ANYCAST=new Set(['Cloudflare','AWS Route 53','Azure DNS','Google Cloud DNS','NS1','UltraDNS','Akamai','DNS Made Easy','Dyn/Oracle','GoDaddy','Namecheap','Vercel','Netlify','DigitalOcean','Hurricane Electric','Microsoft','Google']);
+const provider=n=>(NSPROV.find(([r])=>r.test(n))||[0,n.split('.').slice(-2).join('.')])[1];
+const MAILPROV=[[/google\.com$|googlemail/,'Google Workspace'],[/outlook\.com$/,'Microsoft 365'],[/mimecast/,'Mimecast'],[/pphosted\.com$/,'Proofpoint'],[/messagelabs|symantec/,'Broadcom Email Security'],[/barracudanetworks/,'Barracuda'],[/zoho/,'Zoho Mail'],[/protonmail|proton\.ch/,'Proton Mail'],[/mailgun/,'Mailgun'],[/sendgrid/,'SendGrid'],[/amazonaws\.com$/,'Amazon SES/WorkMail'],[/icloud\.com$/,'iCloud Mail'],[/fastmail|messagingengine/,'Fastmail'],[/secureserver\.net$/,'GoDaddy Email'],[/mx\.cloudflare\.net$/,'Cloudflare Email Routing'],[/mailchannels|mxroute|improvmx|forwardemail|cloudflare/,'Mail forwarding service'],[/ventraip|syrahost|mailhost/,'VentraIP / cPanel host']];
+const mailProv=h=>(MAILPROV.find(([r])=>r.test(h))||[0,h.split('.').slice(-2).join('.')])[1];
+const TAKEOVER=[[/\.github\.io$/,'GitHub Pages'],[/herokuapp\.com$|herokudns\.com$/,'Heroku'],[/azurewebsites\.net$|cloudapp\.net$|cloudapp\.azure\.com$|trafficmanager\.net$|blob\.core\.windows\.net$|azureedge\.net$|azurefd\.net$|azurestaticapps\.net$/,'Microsoft Azure'],[/s3[.-].*amazonaws\.com$|s3\.amazonaws\.com$|s3-website/,'AWS S3'],[/elasticbeanstalk\.com$/,'AWS Elastic Beanstalk'],[/cloudfront\.net$/,'AWS CloudFront'],[/bitbucket\.io$/,'Bitbucket'],[/ghost\.io$/,'Ghost'],[/myshopify\.com$/,'Shopify'],[/surge\.sh$/,'Surge'],[/netlify\.(app|com)$/,'Netlify'],[/vercel\.app$|vercel-dns\.com$|now\.sh$/,'Vercel'],[/pantheonsite\.io$/,'Pantheon'],[/readthedocs\.io$/,'Read the Docs'],[/wordpress\.com$/,'WordPress.com'],[/zendesk\.com$/,'Zendesk'],[/freshdesk\.com$/,'Freshdesk'],[/helpscoutdocs\.com$/,'Help Scout'],[/uservoice\.com$/,'UserVoice'],[/unbouncepages\.com$/,'Unbounce'],[/fastly\.net$/,'Fastly'],[/webflow\.io$|proxy-ssl\.webflow\.com$/,'Webflow'],[/wpengine\.com$/,'WP Engine'],[/fly\.dev$/,'Fly.io'],[/statuspage\.io$/,'Statuspage'],[/tumblr\.com$/,'Tumblr'],[/ngrok\.io$/,'ngrok'],[/strikinglydns\.com$/,'Strikingly'],[/tilda\.ws$/,'Tilda'],[/helpjuice\.com$/,'Helpjuice'],[/intercom\.help$/,'Intercom'],[/gitbook\.io$/,'GitBook'],[/firebaseapp\.com$|web\.app$/,'Firebase'],[/onrender\.com$/,'Render'],[/cargocollective\.com$/,'Cargo'],[/hubspot|hs-sites\.com$/,'HubSpot']];
+const takeSvc=chain=>{for(const h of chain){const m=TAKEOVER.find(([r])=>r.test(h));if(m)return m[1]}return null};
+const SUBS='www mail webmail smtp imap pop autodiscover owa remote vpn rdp citrix sso portal admin cpanel whm ftp api app dev test staging stage uat qa beta old backup blog shop store cdn static assets media docs help support status git gitlab jenkins grafana kibana db internal intranet m mobile crm hr jira confluence wiki files cloud ns1 ns2 mx mta-sts'.split(' ');
+const SENSITIVE=new Set('dev test staging stage uat qa beta old backup admin jenkins git gitlab grafana kibana db internal intranet cpanel whm vpn remote rdp citrix'.split(' '));
+const SEL='default google selector1 selector2 k1 k2 k3 s1 s2 mail dkim smtp mx email sig1 fm1 fm2 fm3 zoho zmail mandrill mailjet everlytickey1 everlytickey2 dk mxvault protonmail protonmail2 protonmail3 sendgrid smtpapi pm amazonses cm hs1 hs2 key1 key2 ctct1 ctct2 mailchimp sendinblue brevo resend postmark dkim1 m1 s1024 s2048 mta krs 20230601 20221208 20210112'.split(' ');
+const ALG={1:'RSAMD5',3:'DSA',5:'RSASHA1',6:'DSA-NSEC3-SHA1',7:'RSASHA1-NSEC3-SHA1',8:'RSASHA256',10:'RSASHA512',12:'ECC-GOST',13:'ECDSAP256SHA256',14:'ECDSAP384SHA384',15:'ED25519',16:'ED448'};
+
+/* ---------- checks ---------- */
+function add(cat,status,title,detail,o={}){CK.push({cat,status,title,detail:detail||'',sev:o.sev||'low',fix:o.fix||'',snip:o.snip||'',node:o.node||''})}
+let D,H,ctx;
+
+async function chkReg(){
+  let rd;try{const r=await fetchT('https://rdap.org/domain/'+D,{},12000);rd=r.ok?await r.json():{err:r.status}}catch(e){rd={err:'blocked'}}
+  if(rd.err){add('reg','info','Registration data unavailable',`The registry for .${D.split('.').pop()} didn't return public RDAP data to the browser. Check expiry date, auto-renew and transfer lock at your registrar.`);return}
+  const ev=a=>((rd.events||[]).find(e=>e.eventAction===a)||{}).eventDate;
+  const exp=ev('expiration'),reg=ev('registration');
+  const status=(rd.status||[]).map(s=>String(s).toLowerCase());
+  let registrar='';const re=(rd.entities||[]).find(e=>(e.roles||[]).includes('registrar'));
+  if(re){const fn=((re.vcardArray||[])[1]||[]).find(x=>x[0]==='fn');registrar=fn?fn[3]:(re.handle||'')}
+  const fd=s=>new Date(s).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
+  add('reg','info','Registrar',(registrar||'Not published')+(reg?`\nRegistered ${fd(reg)}`:''));
+  if(exp){const days=Math.round((new Date(exp)-Date.now())/864e5);
+    if(days<0)add('reg','fail','Domain has expired',`Expiry date ${fd(exp)}.`,{sev:'high',fix:'Renew immediately. Once released, anyone can register it and receive your email.'});
+    else if(days<30)add('reg','fail',`Domain expires in ${days} days`,`Expiry date ${fd(exp)}.`,{sev:'high',fix:'Renew now and turn on auto-renew. An expired domain can be registered by someone else, along with your email.'});
+    else if(days<60)add('reg','warn',`Domain expires in ${days} days`,`Expiry date ${fd(exp)}.`,{sev:'med',fix:'Renew soon and turn on auto-renew with a current payment card.'});
+    else add('reg','pass','Expiry is not close',`Expires ${fd(exp)} (${days} days).`)}
+  else add('reg','info','Expiry date not published','This registry hides expiry dates in RDAP. Confirm auto-renew at your registrar.');
+  if(status.length){
+    if(status.some(s=>/hold|pending delete|redemption/.test(s)))add('reg','fail','Domain is on hold or pending deletion',status.join(', '),{sev:'high',fix:'Contact your registrar now: the domain may stop resolving or be released.'});
+    if(status.some(s=>/transfer prohibited/.test(s)))add('reg','pass','Transfer lock enabled','Registry status: '+status.join(', '));
+    else if(!status.some(s=>/^client|^ok$|^active$/.test(s)))add('reg','info','Transfer lock not shown','Registry status: '+status.join(', ')+'\nThis registry doesn\'t publish registrar locks. Keep your domain password (auth code) private and turn on 2FA at your registrar.');
+    else add('reg','warn','No transfer lock','Registry status: '+status.join(', ')+'\nWithout a transfer lock, a compromised registrar account or a social-engineering attack can move your domain away.',{sev:'med',fix:'Turn on "Registrar Lock" / "Transfer Lock" at your registrar, and enable 2FA on the registrar account.'});
+  }
+  if(reg){const age=Math.round((Date.now()-new Date(reg))/864e5);if(age<90)add('reg','info','Newly registered domain',`Registered ${age} days ago. Many corporate web filters and email gateways block or flag domains younger than 30–90 days.`)}
+}
+
+async function chkNS(c){
+  const nss=[...new Set(R(c.ns,'NS').map(nd))];
+  if(!nss.length){add('ns','fail','No NS records found','The zone did not return any name servers.',{sev:'high',fix:'Set at least two authoritative name servers at your registrar.'});return}
+  if(nss.length<2)add('ns','fail','Only one name server',`${nss[0]} is a single point of failure.`,{sev:'high',fix:'Use at least two name servers on separate networks (RFC 1034). Most DNS providers give you two to four.'});
+  else add('ns','pass',`${nss.length} name servers`,nss.join('\n'));
+  const res=await Promise.all(nss.map(async n=>{const [a4,a6]=await Promise.all([dq(n,'A'),dq(n,'AAAA')]);return {n,v4:R(a4,'A'),v6:R(a6,'AAAA'),nx:a4.status===3}}));
+  res.forEach(r=>MAP.ns.push({label:r.n,status:r.v4.length||r.v6.length?'pass':'fail'}));
+  const dead=res.filter(r=>!r.v4.length&&!r.v6.length);
+  if(dead.length)add('ns','fail','Name server does not resolve',`${dead.map(d=>d.n+(d.nx?' (NXDOMAIN)':'')).join(', ')} has no address. ${dead.some(d=>d.nx)?'If that name server\'s own domain is unregistered, an attacker could register it and answer DNS for your domain.':'Resolvers that pick this server will time out.'}`,{sev:'high',fix:'Remove the dead name server from the NS list at your registrar, or fix its address records.'});
+  else add('ns','pass','All name servers resolve',res.map(r=>`${r.n} → ${r.v4.concat(r.v6).slice(0,2).join(', ')}`).join('\n'));
+  const prov=[...new Set(nss.map(provider))],any=prov.some(p=>ANYCAST.has(p));
+  const ips=res.flatMap(r=>r.v4),nets=new Set(ips.map(ip=>ip.split('.').slice(0,3).join('.')));
+  if(ips.length>1&&nets.size<2&&!any)add('ns','warn','Name servers share one network',`All IPv4 addresses are in ${[...nets][0]}.0/24, so one network outage takes your domain offline.`,{sev:'med',fix:'Use name servers on different networks, or move to an anycast DNS provider.'});
+  else if(ips.length>1)add('ns','pass','Network diversity',`${nets.size} separate /24 networks${any?' on an anycast provider':''}.`);
+  add('ns','info','DNS provider',prov.join(', ')+(prov.length===1?'\nOne provider is normal, but its outage is your outage. Business-critical domains can add a secondary DNS provider.':'\nMultiple providers give extra resilience.'));
+  if(!res.some(r=>r.v6.length))add('ns','info','No IPv6 on name servers','IPv6-only resolvers cannot reach your name servers. Low risk today.');
+  ctx.ns=nss;
+}
+
+function chkSOA(c){
+  const s=R(c.soa,'SOA')[0];
+  if(!s){add('soa','fail','No SOA record','The zone has no start-of-authority record, which usually means it is misconfigured.',{sev:'med',fix:'Check the zone at your DNS provider.'});return}
+  const f=s.split(/\s+/),mname=nd(f[0]),rname=nd(f[1]),[serial,refresh,retry,expire,minimum]=f.slice(2).map(Number);
+  add('soa','info','Primary server and contact',`Primary: ${mname}\nContact: ${rname.replace(/^([^.]+)\./,'$1@')}\nSerial: ${serial}`);
+  const iss=[];
+  if(!(refresh>=900&&refresh<=86400))iss.push(`refresh ${refresh}s (recommended 900–86400)`);
+  if(!(retry>=120&&retry<refresh))iss.push(`retry ${retry}s (should be lower than refresh)`);
+  if(!(expire>=604800&&expire<=2419200))iss.push(`expire ${expire}s (recommended 1–4 weeks)`);
+  if(!(minimum>=60&&minimum<=86400))iss.push(`negative-cache TTL ${minimum}s (recommended 300–86400)`);
+  if(iss.length)add('soa','warn','SOA timers outside recommended ranges',iss.join('\n'),{sev:'low',fix:'Adjust the SOA values at your DNS provider (RFC 1912 §2.2). This matters most for self-hosted zones with secondary servers.'});
+  else add('soa','pass','SOA timers healthy',`refresh ${refresh}s · retry ${retry}s · expire ${expire}s · negative TTL ${minimum}s`);
+}
+
+function chkDNSSEC(c){
+  const N={node:'DNSSEC'};
+  if(ctx.broken){add('dnssec','fail','DNSSEC validation fails','Validating resolvers (Google, Cloudflare and most ISPs) return SERVFAIL for this domain, so it looks offline to many users. This is usually a stale DS record left at the registrar after changing DNS provider.',{sev:'high',fix:'Publish the correct DS record from your current DNS provider at your registrar, or remove the DS record to switch DNSSEC off cleanly. Diagnose at dnsviz.net.',...N});return}
+  const ds=R(c.ds,'DS'),keys=R(c.dnskey,'DNSKEY'),ad=c.soa.ad||c.a.ad;
+  if(!ds.length&&!keys.length){add('dnssec','warn','DNSSEC not enabled','Resolvers cannot verify that answers really came from your zone, which leaves room for cache poisoning and forged answers on hostile networks.',{sev:'med',fix:'Turn on DNSSEC at your DNS provider (often one click, e.g. Cloudflare → DNS → Settings), then add the DS record it shows at your registrar.',...N});return}
+  if(keys.length&&!ds.length){add('dnssec','warn','Zone signed but no DS at the registrar','DNSKEY records exist, but the parent zone has no DS record, so the chain of trust is incomplete and nothing is validated.',{sev:'med',fix:'Copy the DS record from your DNS provider into your registrar\'s DNSSEC settings.',...N});return}
+  if(ad)add('dnssec','pass','DNSSEC validated','The chain of trust validates from the root (the resolver set the Authenticated Data flag).',N);
+  else add('dnssec','fail','DS present but answers are not validated','A DS record exists, but the resolver did not mark answers as authenticated. Keys or signatures may not match.',{sev:'high',fix:'Check that the DS at your registrar matches your current DNSKEY. Use dnsviz.net to diagnose.',...N});
+  let algs=[...new Set(keys.map(k=>+k.split(/\s+/)[2]).filter(Boolean))];
+  if(!algs.length)algs=[...new Set(ds.map(d=>+d.split(/\s+/)[1]).filter(Boolean))];
+  const weak=algs.filter(a=>[1,3,5,6,7,12].includes(a));
+  if(weak.length)add('dnssec','warn','Deprecated DNSSEC algorithm',`In use: ${weak.map(a=>ALG[a]||a).join(', ')}. SHA-1 based algorithms are being phased out by validators.`,{sev:'med',fix:'Do an algorithm rollover to 13 (ECDSAP256SHA256) or 15 (Ed25519).',...N});
+  else if(algs.length)add('dnssec','pass','Modern signing algorithm',algs.map(a=>`${a} (${ALG[a]||'?'})`).join(', '),N);
+  const dig=[...new Set(ds.map(d=>+d.split(/\s+/)[2]))];
+  if(dig.length&&dig.every(x=>x===1))add('dnssec','warn','DS uses only a SHA-1 digest','Digest type 1 is deprecated.',{sev:'low',fix:'Publish a SHA-256 (digest type 2) DS record at your registrar.',...N});
+}
+
+function chkWeb(c){
+  const cn=R(c.cname,'CNAME');
+  if(cn.length)add('web','fail','CNAME at the zone apex',`${D} is a CNAME to ${nd(cn[0])}. A CNAME can't coexist with SOA, NS and MX records, so this breaks email and other records.`,{sev:'med',fix:'Replace it with A/AAAA records, or use your provider\'s ALIAS / ANAME / CNAME-flattening feature.'});
+  const v4=R(c.a,'A'),v6=R(c.aaaa,'AAAA'),all=[...v4,...v6];
+  all.slice(0,6).forEach(ip=>MAP.ip.push({label:ip,status:isPriv(ip)?'warn':'pass'}));
+  if(!all.length)add('web','info','No web address on the apex',`${D} has no A/AAAA record, so https://${D} won't load. Fine if that's intended.`);
+  else add('web','pass','Apex resolves',all.join('\n'));
+  const priv=all.filter(isPriv);
+  if(priv.length)add('web','warn','Private IP address in public DNS',priv.join(', ')+' are internal addresses. They reveal your internal network layout and can be abused for DNS-rebinding attacks.',{sev:'med',fix:'Remove internal addresses from public DNS and use split-horizon (internal) DNS instead.'});
+  if(v4.length&&!v6.length)add('web','info','No IPv6 (AAAA) on the apex','Not a security issue. IPv6 improves reach on mobile networks.');
+  const www=c.www;add('web',www.status===0&&www.ans.length?'pass':'info',www.status===0&&www.ans.length?'www resolves':'www does not resolve',www.status===0&&www.ans.length?`www.${D} → ${www.ans.map(a=>nd(a.data)).slice(-2).join(', ')}`:`Visitors who type www.${D} will get an error.`);
+  const caas=R(c.caa,'CAA').map(parseCAA),C={node:'CAA'};
+  if(!caas.length)add('web','warn','No CAA record','Any of the hundreds of public certificate authorities may issue HTTPS certificates for your domain. CAA restricts issuance to the CAs you actually use.',{sev:'med',fix:'Add CAA records for the certificate authorities you use, plus an iodef contact.',snip:`${D}. CAA 0 issue "letsencrypt.org"\n${D}. CAA 0 issue "digicert.com"\n${D}. CAA 0 iodef "mailto:security@${D}"`,...C});
+  else{
+    const iss=caas.filter(x=>x.tag==='issue').map(x=>x.value||';');
+    add('web','pass','CAA restricts certificate issuance','Allowed CAs: '+(iss.join(', ')||'(issuewild only)'),C);
+    if(!caas.some(x=>x.tag==='iodef'))add('web','info','No CAA iodef contact','Add iodef so a CA can tell you when someone requests a certificate it refuses.',{snip:`${D}. CAA 0 iodef "mailto:security@${D}"`,...C});
+    if(!caas.some(x=>x.tag==='issuewild'))add('web','info','Wildcard issuance follows the issue rule','If you never use wildcard certificates, forbid them explicitly.',{snip:`${D}. CAA 0 issuewild ";"`,...C});
+  }
+  if(R(c.https,'HTTPS').length||c.https.ans.some(a=>a.type===65))add('web','pass','HTTPS (SVCB) record published','Browsers can discover HTTPS, HTTP/3 and Encrypted Client Hello settings directly from DNS.');
+}
+
+async function chkMX(c){
+  const mxs=R(c.mx,'MX').map(x=>{const [p,h]=x.split(/\s+/);return {p:+p,h:nd(h||'')}}).sort((a,b)=>a.p-b.p);
+  ctx.nullmx=mxs.length===1&&(mxs[0].h===''||mxs[0].h==='.');ctx.mail=mxs.length>0&&!ctx.nullmx;
+  if(ctx.nullmx){add('mx','pass','Null MX published','This domain explicitly declares that it accepts no email (RFC 7505).');return}
+  if(!mxs.length){add('mx','warn','No MX record',`Mail sent to ${D} falls back to its A record. If this domain doesn't use email, say so explicitly.`,{sev:'low',fix:'Publish a null MX so other servers reject mail for this domain immediately.',snip:`${D}. MX 0 .`});return}
+  add('mx','pass',`${mxs.length} mail server${mxs.length>1?'s':''}`,mxs.map(m=>`${m.p}  ${m.h}`).join('\n'));
+  add('mx','info','Mail provider',[...new Set(mxs.map(m=>mailProv(m.h)))].join(', '));
+  const chk=await Promise.all(mxs.slice(0,6).map(async m=>{
+    if(/^\d+\.\d+\.\d+\.\d+$/.test(m.h))return {...m,ip:true};
+    const [r4,r6,rc]=await Promise.all([dq(m.h,'A'),dq(m.h,'AAAA'),dq(m.h,'CNAME')]);
+    return {...m,ok:R(r4,'A').length+R(r6,'AAAA').length>0,cn:R(rc,'CNAME').length>0,nx:r4.status===3}}));
+  chk.forEach(m=>MAP.mx.push({label:m.h,status:m.ip||!m.ok?'fail':m.cn?'warn':'pass'}));
+  const ip=chk.filter(m=>m.ip),dead=chk.filter(m=>!m.ip&&!m.ok),cn=chk.filter(m=>m.cn);
+  if(ip.length)add('mx','fail','MX points to an IP address',ip.map(m=>m.h).join(', ')+' — MX must name a host (RFC 5321). Many senders will not deliver.',{sev:'med',fix:'Create an A record such as mail.'+D+' and point the MX at that name.'});
+  if(dead.length)add('mx','fail','Mail server does not resolve',dead.map(m=>m.h+(m.nx?' (NXDOMAIN)':'')).join(', ')+'. Mail to this server bounces. If its domain is unregistered, an attacker could register it and receive your email.',{sev:'high',fix:'Remove or correct the MX record.'});
+  if(cn.length)add('mx','warn','MX points to a CNAME',cn.map(m=>m.h).join(', ')+' is an alias. RFC 2181 forbids this and some senders refuse it.',{sev:'low',fix:'Point the MX at the final host name instead.'});
+  if(!ip.length&&!dead.length)add('mx','pass','All mail servers resolve',chk.map(m=>m.h).join('\n'));
+  ctx.mx=mxs;
+  if(mxs[0].h){const t=await dq('_25._tcp.'+mxs[0].h,'TLSA');
+    if(R(t,'TLSA').length)add('dkim','pass','DANE (TLSA) on primary mail server','Senders that support DANE will insist on a verified, encrypted connection.',{node:'MTA-STS'});
+    else add('dkim','info','No DANE for mail','DANE (needs DNSSEC) or MTA-STS forces senders to use verified TLS. Microsoft 365 and many hosts now support DANE.')}
+}
+
+async function spfWalk(d,depth,st){
+  if(depth>8||st.seen.has(d))return;st.seen.add(d);
+  const r=await dq(d,'TXT');const s=R(r,'TXT').map(txt).find(x=>/^v=spf1(\s|$)/i.test(x));
+  if(!s){if(depth>0)st.voids.push(d);return}
+  const kids=[];
+  for(const term of s.split(/\s+/).slice(1)){
+    const m=term.match(/^[+\-~?]?(include|a|mx|ptr|exists|redirect|ip4|ip6)(?:[:=]([^\/]*))?(?:\/(\d+))?/i);if(!m)continue;
+    const mech=m[1].toLowerCase(),val=m[2],cidr=m[3];
+    if(['include','a','mx','ptr','exists','redirect'].includes(mech))st.count++;
+    if(mech==='ptr')st.ptr=true;
+    if((mech==='include'||mech==='redirect')&&val&&!val.includes('%'))kids.push(val.toLowerCase());
+    if(depth===0&&mech==='ip4'&&cidr&&+cidr<16)st.wide.push(term);
+    if(depth===0&&mech==='ip6'&&cidr&&+cidr<32)st.wide.push(term);
+  }
+  st.tree.push('  '.repeat(depth)+(depth?'↳ ':'')+d);
+  for(const k of kids)await spfWalk(k,depth+1,st);
+}
+async function chkSPF(c){
+  const sp=R(c.txt,'TXT').map(txt).filter(x=>/^v=spf1(\s|$)/i.test(x)),N={node:'SPF'};
+  if(!sp.length){add('spf','fail','No SPF record',ctx.mail?'Receiving servers cannot tell which servers may send email for this domain, which makes spoofing easy.':'Anyone can send email pretending to be this domain. Domains that never send email should still publish SPF.',{sev:'high',fix:ctx.mail?'Publish one SPF record listing every service that sends your email, ending in -all (or ~all while testing).':'Publish an SPF record that authorises nobody.',snip:ctx.mail?`${D}. TXT "v=spf1 include:<your-mail-provider> -all"`:`${D}. TXT "v=spf1 -all"`,...N});return}
+  if(sp.length>1)add('spf','fail','Multiple SPF records',`Found ${sp.length}. RFC 7208 makes this a permanent error, so SPF fails for all your email.`,{sev:'high',fix:'Merge them into a single TXT record that starts with v=spf1.',...N});
+  const rec=sp[0];add('spf','info','SPF record',rec,N);
+  const st={count:0,seen:new Set(),voids:[],tree:[],ptr:false,wide:[]};await spfWalk(D,0,st);
+  const am=rec.match(/(?:^|\s)([+\-~?]?)all(?:\s|$)/i),q=am?(am[1]||'+'):null,redir=/redirect=/i.test(rec);
+  if(q==='+')add('spf','fail','SPF allows anyone to send (+all)','"+all" authorises every server on the internet to send as your domain.',{sev:'high',fix:'Replace +all with -all (or ~all).',...N});
+  else if(q==='?')add('spf','warn','SPF ends in ?all (neutral)','Neutral gives receivers no guidance, so spoofed mail is treated like normal mail.',{sev:'med',fix:'End the record with -all, or ~all while you confirm every sender is listed.',...N});
+  else if(!q&&!redir)add('spf','warn','SPF has no "all" mechanism','Servers that aren\'t listed get a neutral result.',{sev:'med',fix:'End the record with -all (or ~all).',...N});
+  else if(q==='~')add('spf','pass','SPF soft-fail (~all)','Unlisted servers soft-fail. This is fine with an enforcing DMARC policy; switch to -all once you\'re sure every sender is listed.',N);
+  else add('spf','pass',redir?'SPF uses redirect':'SPF hard-fail (-all)',redir?'Policy is delegated with redirect=.':'Unlisted servers fail SPF.',N);
+  if(st.count>10)add('spf','fail',`SPF needs ${st.count} DNS lookups (limit is 10)`,'Receivers return a permanent error, so SPF fails for all your email.\n'+st.tree.join('\n'),{sev:'high',fix:'Remove includes for services you no longer use, replace a and mx with ip4/ip6 ranges, or use an SPF-flattening service.',...N});
+  else add('spf',st.count>=9?'warn':'pass',`${st.count} of 10 DNS lookups used`,st.tree.join('\n'),st.count>=9?{sev:'low',fix:'You are close to the limit. Adding one more service will break SPF.',...N}:N);
+  if(st.ptr)add('spf','warn','Deprecated ptr mechanism','ptr is slow, unreliable and deprecated by RFC 7208.',{sev:'low',fix:'Replace ptr with explicit ip4/ip6 or include mechanisms.',...N});
+  if(st.voids.length)add('spf','warn','SPF include has no SPF record',st.voids.join(', ')+' returned no SPF record. Too many empty lookups make SPF fail.',{sev:'med',fix:'Remove includes that no longer exist.',...N});
+  if(st.wide.length)add('spf','warn','SPF authorises a very large IP range',st.wide.join(', ')+'. Anyone on those networks can send as you.',{sev:'med',fix:'Narrow the ranges to the servers you actually use.',...N});
+}
+
+function chkDMARC(c){
+  const dm=R(c.dmarc,'TXT').map(txt).filter(x=>/^v=DMARC1/i.test(x)),N={node:'DMARC'};
+  const snip=p=>`_dmarc.${D}. TXT "v=DMARC1; p=${p}; rua=mailto:dmarc-reports@${D}; adkim=s; aspf=s"`;
+  if(!dm.length){add('dmarc','fail','No DMARC record','Without DMARC, receivers have no instruction to reject email that fakes your domain, and you get no reports of who is sending as you.',{sev:'high',fix:ctx.mail?'Start with p=none to collect reports, check every legitimate sender passes, then move to p=quarantine and finally p=reject.':'This domain doesn\'t receive email, so go straight to p=reject.',snip:snip(ctx.mail?'none':'reject'),...N});return}
+  if(dm.length>1)add('dmarc','fail','Multiple DMARC records','Receivers ignore DMARC entirely when there is more than one record.',{sev:'high',fix:'Keep a single _dmarc TXT record.',...N});
+  const tags={};dm[0].split(';').forEach(kv=>{const i=kv.indexOf('=');if(i>0)tags[kv.slice(0,i).trim().toLowerCase()]=kv.slice(i+1).trim()});
+  add('dmarc','info','DMARC record',dm[0],N);
+  const p=(tags.p||'').toLowerCase();
+  if(!['none','quarantine','reject'].includes(p))add('dmarc','fail','DMARC policy (p=) missing or invalid',`p=${tags.p||'(missing)'}`,{sev:'high',fix:'Set p=none, p=quarantine or p=reject.',snip:snip('quarantine'),...N});
+  else if(p==='none')add('dmarc','warn','DMARC is monitor-only (p=none)','Spoofed email is still delivered. p=none only collects reports.',{sev:'high',fix:'Review your aggregate reports, make sure every legitimate sender passes SPF or DKIM, then move to p=quarantine and then p=reject.',snip:snip('quarantine'),...N});
+  else if(p==='quarantine')add('dmarc','pass','DMARC enforcing (p=quarantine)','Spoofed email goes to spam. Move to p=reject for full protection when you\'re confident.',N);
+  else add('dmarc','pass','DMARC enforcing (p=reject)','Spoofed email is rejected outright.',N);
+  const pct=tags.pct?+tags.pct:100;
+  if(p!=='none'&&pct<100)add('dmarc','warn',`Policy applies to only ${pct}% of email`,'The rest of the spoofed mail is treated as p=none.',{sev:'low',fix:'Raise pct to 100 (or remove it).',...N});
+  if((tags.sp||'').toLowerCase()==='none'&&p!=='none')add('dmarc','warn','Subdomains not protected (sp=none)',`Attackers can spoof any subdomain, e.g. billing.${D}.`,{sev:'med',fix:'Remove sp=none or set sp=reject.',...N});
+  if(!tags.rua)add('dmarc','warn','No DMARC reports (rua)','You can\'t see who is sending email as your domain, or whether your own senders pass.',{sev:'low',fix:'Add a rua address. Free report viewers include Cloudflare DMARC Management and Postmark.',snip:snip(p||'none'),...N});
+  else add('dmarc','info','Aggregate reports go to',tags.rua,N);
+}
+
+async function chkDKIM(c){
+  const N={node:'DKIM'},found=[];
+  await Promise.all(SEL.map(async s=>{const r=await dq(`${s}._domainkey.${D}`,'TXT');const t=R(r,'TXT').map(txt).find(x=>/(^|;)\s*(v=DKIM1|k=|p=)/i.test(x));if(t)found.push({s,t})}));
+  if(!found.length){
+    if(ctx.mail)add('dkim','warn','No DKIM key found on common selectors','DKIM selectors can have any name, so this scan may miss yours. To check, open an email you sent and find the s= value in its DKIM-Signature header.',{sev:'low',fix:'Turn on DKIM signing in your mail provider (e.g. Microsoft 365 Defender → DKIM, or Google Admin → Authenticate email) and publish the keys it gives you.',...N});
+    else add('dkim','info','No DKIM keys found','Expected for a domain that doesn\'t send email.',N);
+  }else{
+    const rows=[];let weak=[],bad=[],test=[];
+    found.sort((a,b)=>a.s.localeCompare(b.s)).forEach(({s,t})=>{
+      const p=((t.match(/(?:^|;)\s*p=([^;]*)/i)||[])[1]||'').replace(/\s/g,''),k=((t.match(/(?:^|;)\s*k=([^;]*)/i)||[])[1]||'rsa').trim().toLowerCase();
+      if(/(?:^|;)\s*t=[^;]*y/i.test(t))test.push(s);
+      if(!p){rows.push(`${s}: revoked (empty key)`);return}
+      let bits;if(k==='ed25519')bits='Ed25519';else{const by=Math.floor(p.length*3/4);bits=by<100?512:by<200?1024:by<350?2048:by<600?4096:8192;if(bits<=512)bad.push(s);else if(bits===1024)weak.push(s);bits+='-bit RSA'}
+      rows.push(`${s}: ${bits}`)});
+    add('dkim','pass',`DKIM keys found (${found.length})`,rows.join('\n'),N);
+    if(bad.length)add('dkim','fail','DKIM key too short to be safe',bad.join(', ')+' uses a 512-bit key, which can be cracked cheaply.',{sev:'high',fix:'Rotate to a 2048-bit key and remove the old one.',...N});
+    if(weak.length)add('dkim','warn','1024-bit DKIM key',weak.join(', ')+' uses 1024-bit RSA. Current guidance is 2048-bit.',{sev:'med',fix:'Rotate to a 2048-bit key in your mail provider.',...N});
+    if(test.length)add('dkim','warn','DKIM in testing mode (t=y)',test.join(', ')+' tells receivers to ignore failures.',{sev:'low',fix:'Remove t=y once DKIM is working.',...N});
+  }
+  if(ctx.mail){
+    const sts=R(c.sts,'TXT').map(txt).find(x=>/^v=STSv1/i.test(x)),M={node:'MTA-STS'};
+    if(sts){const h=await dq('mta-sts.'+D,'A');
+      if(R(h,'A').length||h.ans.length)add('dkim','pass','MTA-STS published',`${sts}\nPolicy host mta-sts.${D} resolves. Make sure the policy uses mode: enforce.`,M);
+      else add('dkim','fail','MTA-STS policy host missing',`The TXT record exists but mta-sts.${D} doesn't resolve, so senders can't fetch your policy.`,{sev:'med',fix:`Host the policy at https://mta-sts.${D}/.well-known/mta-sts.txt.`,...M})}
+    else add('dkim','warn','No MTA-STS','Without MTA-STS (or DANE), an attacker on the network path can downgrade email sent to you to unencrypted delivery.',{sev:'low',fix:`Publish a TXT record, then host a policy file at https://mta-sts.${D}/.well-known/mta-sts.txt (start with mode: testing).`,snip:`_mta-sts.${D}. TXT "v=STSv1; id=${new Date().toISOString().slice(0,10).replace(/-/g,'')}"\n\n# mta-sts.txt\nversion: STSv1\nmode: testing\n${(ctx.mx||[]).filter(m=>m.h).map(m=>'mx: '+m.h).join('\n')}\nmax_age: 604800`,...M});
+    const tr=R(c.tlsrpt,'TXT').map(txt).find(x=>/^v=TLSRPTv1/i.test(x));
+    if(tr)add('dkim','pass','TLS reporting (TLS-RPT) enabled',tr);
+    else add('dkim','info','No TLS-RPT','TLS-RPT sends you daily reports of encryption failures delivering mail to you.',{snip:`_smtp._tls.${D}. TXT "v=TLSRPTv1; rua=mailto:tls-reports@${D}"`});
+  }
+  const bimi=R(c.bimi,'TXT').map(txt).find(x=>/^v=BIMI1/i.test(x));
+  if(bimi)add('dkim','pass','BIMI brand logo published',bimi);
+}
+
+async function crt(d){
+  try{const r=await fetchT(`https://crt.sh/?q=%25.${encodeURIComponent(d)}&output=json`,{},12000);if(!r.ok)return [];const j=await r.json();
+    const s=new Set();j.forEach(x=>String(x.name_value||'').split('\n').forEach(n=>{n=n.trim().toLowerCase().replace(/^\*\./,'');if(n.endsWith('.'+d)&&/^[a-z0-9._-]+$/.test(n))s.add(n)}));return [...s]}catch(e){return []}
+}
+async function chkSub(c){
+  const wild=R(c.wild,'A'),wildcard=wild.length>0||c.wild.ans.some(a=>a.type===5);
+  if(wildcard)add('hyg','warn','Wildcard DNS record',`Random names like ${ctx.rnd}.${D} resolve. Wildcards make typo and phishing subdomains look legitimate, and can hide takeovers.`,{sev:'low',fix:'Remove the wildcard (*) record unless you need it, and create explicit records instead.'});
+  let names=SUBS.map(s=>s+'.'+D);
+  const ct=await crt(D);
+  if(ct.length){names=[...new Set([...names,...ct.slice(0,120)])];add('sub','info','Certificate transparency',`${ct.length} host names appear in public certificate logs. Anyone can list these, so treat them as public.`)}
+  if(H!==D&&!names.includes(H))names.unshift(H);
+  const wkey=wild.slice().sort().join(',');
+  const res=await Promise.all(names.map(async n=>{const r=await dq(n,'A');const cn=r.ans.filter(a=>a.type===5).map(a=>nd(a.data));const ips=R(r,'A');let v6=[];
+    if(r.status===0&&!ips.length&&cn.length)v6=R(await dq(n,'AAAA'),'AAAA');return {n,status:r.status,cn,ips,v6}}));
+  const live=res.filter(x=>x.status===0&&(x.ips.length||x.v6.length||x.cn.length)&&!(wildcard&&!x.cn.length&&x.ips.slice().sort().join(',')===wkey));
+  const dang=res.filter(x=>x.cn.length&&(x.status===3||(x.status===0&&!x.ips.length&&!x.v6.length)));
+  await Promise.all(dang.map(async x=>{const tgt=x.cn[x.cn.length-1],svc=takeSvc(x.cn),fix=`Delete the CNAME for ${x.n}, or re-create the resource it points to.`;
+    if(x.status!==3){add('sub','warn',`CNAME target has no address: ${x.n}`,`Points to ${tgt}, which exists but has no A/AAAA record.${svc?` It is hosted on ${svc}; check the resource still exists.`:''}`,{sev:svc?'med':'low',fix});return}
+    if(svc){add('sub','fail',`Possible subdomain takeover: ${x.n}`,`Points to ${tgt} on ${svc}, which no longer exists (NXDOMAIN). An attacker may be able to claim that resource and serve content or steal cookies on your subdomain.`,{sev:'high',fix});return}
+    const od=orgDomain(tgt),o=await dq(od,'SOA');
+    if(o.status===3)add('sub','fail',`Possible subdomain takeover: ${x.n}`,`Points to ${tgt}, and ${od} is not registered. Anyone can register it and take over ${x.n}.`,{sev:'high',fix});
+    else add('sub','warn',`Broken CNAME: ${x.n}`,`Points to ${tgt}, which does not exist (NXDOMAIN). ${od} is registered, so takeover is unlikely, but the record is stale.`,{sev:'low',fix})}));
+  if(!dang.length)add('sub','pass','No dangling CNAMEs found',`Checked ${names.length} names.`);
+  const hosted=live.filter(x=>x.cn.length&&takeSvc(x.cn)&&!dang.includes(x));
+  if(hosted.length)add('sub','info','Subdomains on third-party platforms',hosted.map(x=>`${x.n} → ${takeSvc(x.cn)}`).join('\n')+'\nIf you ever cancel one of these services, delete its DNS record first. Leftover records are the main cause of subdomain takeover.');
+  const priv=live.filter(x=>x.ips.concat(x.v6).some(isPriv));
+  if(priv.length)add('sub','warn','Internal IP addresses exposed',priv.map(x=>`${x.n} → ${x.ips.concat(x.v6).filter(isPriv).join(', ')}`).join('\n'),{sev:'med',fix:'Move internal host names to internal-only DNS.'});
+  const sens=live.filter(x=>SENSITIVE.has(x.n.slice(0,-(D.length+1)).split('.')[0]));
+  if(sens.length)add('sub','info','Sensitive-sounding hosts are public',sens.map(x=>x.n).join('\n')+'\nAttackers look for these first. Make sure each one is behind SSO, a VPN or an IP allow-list, or remove it.');
+  add('sub','info',`${live.length} subdomains found`,live.slice(0,40).map(x=>`${x.n} → ${(x.cn.length?x.cn[x.cn.length-1]:x.ips.concat(x.v6).slice(0,2).join(', '))}`).join('\n')+(live.length>40?`\n…and ${live.length-40} more`:''));
+  live.filter(x=>x.n!==D).slice(0,16).forEach(x=>MAP.sub.push({label:x.n.slice(0,-(D.length+1)),status:x.ips.concat(x.v6).some(isPriv)?'warn':'pass'}));
+  dang.slice(0,6).forEach(x=>MAP.sub.push({label:x.n.slice(0,-(D.length+1)),status:'fail'}));
+}
+
+function chkHyg(c){
+  const tx=R(c.txt,'TXT').map(txt);
+  const ver=tx.filter(x=>!/^v=(spf1|DMARC1)/i.test(x)&&/(verif|^ms=|^[a-z0-9-]+=|docusign|atlassian|TAILSCALE)/i.test(x));
+  if(ver.length)add('hyg','info',`${ver.length} verification / third-party TXT records`,[...new Set(ver.map(x=>x.split(/[=:]/)[0]))].join(', ')+'\nThese reveal which SaaS services you use, which helps attackers craft convincing phishing. Remove records for services you no longer use.');
+  const sec=tx.filter(x=>!/^v=(spf1|DKIM1|DMARC1)/i.test(x)&&/(passw|secret|api[_-]?key|private[_-]?key|BEGIN [A-Z ]*KEY)/i.test(x));
+  if(sec.length)add('hyg','warn','TXT record may contain a secret',sec.map(x=>x.slice(0,80)+(x.length>80?'…':'')).join('\n'),{sev:'med',fix:'DNS is public. Remove the record and rotate the secret.'});
+  if(H!==D)add('hyg','info','Audited the parent zone',`You entered ${H}. Zone-level checks ran on ${D}, and ${H} was included in the subdomain checks.`);
+  const ns=(ctx.ns||[])[0]||'ns1.'+D;
+  add('hyg','info','Not testable from a browser','Zone transfers (AXFR), open recursion and version disclosure need direct queries to your name servers. Run these from a terminal:',{snip:`dig axfr ${D} @${ns}            # should fail / be refused\ndig version.bind chaos txt @${ns} # should not reveal software version\ndig example.org @${ns}            # should be REFUSED (no open recursion)`});
+}
+
+/* ---------- run ---------- */
+const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web & CAA','Mail servers','SPF','DMARC','DKIM & transport','Subdomains & takeover','Hygiene'];
+let done=0;
+function stage(name){$('#stage').textContent=name+'…'}
+function progress(){done++;const p=Math.round(done/STAGES.length*100);$('#bar').style.width=p+'%';$('#pct').textContent=p+'%'}
+async function step(name,fn){stage(name);try{await fn()}catch(e){console.error(e);add('hyg','info',`${name}: check could not finish`,String(e.message||e))}progress()}
+function log(name,type,res){
+  const t=$('#term');if(!t)return;
+  const cls=res.status===3?'nx':res.status===0?'':'sf';
+  const n=res.ans.filter(a=>a.type===T[type]).length;
+  const d=document.createElement('div');d.className=cls;
+  d.innerHTML=`<span class="dim">${String(QN).padStart(3,'0')}</span> ${esc(type.padEnd(6,' ')).replace(/ /g,'&nbsp;')} ${esc(name)} <span class="dim">→</span> ${RC[res.status]||res.status} <span class="dim">${n} ans · ${res.ms}ms${res.via?' · '+res.via:''}</span>`;
+  t.appendChild(d);while(t.children.length>220)t.firstChild.remove();t.scrollTop=t.scrollHeight;
+  pulses.push({a:Math.random()*Math.PI*2,r:.25+Math.random()*.7,t:performance.now(),c:cls==='nx'?'#ffcf7a':cls==='sf'?'#ff8a7a':'#3fd0b3'});
+}
+async function run(input){
+  if(running)return;
+  const host=normalize(input);
+  if(!host){$('#err').textContent='Enter a domain name like example.com.au';return}
+  $('#err').textContent='';$('#d').value=host;running=true;$('#go').disabled=true;$('#go').textContent='Auditing…';
+  try{history.replaceState(null,'','#'+host)}catch(e){}
+  H=host;D=orgDomain(host);cache=new Map();CK=[];RAW=[];QN=0;done=0;MAP={ns:[],mx:[],ip:[],sub:[]};
+  ctx={rnd:'gs'+Math.random().toString(36).slice(2,9)};
+  $('#results').classList.remove('on');$('#scan').classList.add('on');$('#term').innerHTML='';$('#bar').style.width='0';$('#pct').textContent='0%';
+  $('#scan').scrollIntoView({behavior:'smooth',block:'start'});
+  const t0=performance.now();
+  const list=[['soa',D,'SOA'],['ns',D,'NS'],['a',D,'A'],['aaaa',D,'AAAA'],['cname',D,'CNAME'],['mx',D,'MX'],['txt',D,'TXT'],['caa',D,'CAA'],['ds',D,'DS'],['dnskey',D,'DNSKEY'],['https',D,'HTTPS'],['dmarc','_dmarc.'+D,'TXT'],['sts','_mta-sts.'+D,'TXT'],['tlsrpt','_smtp._tls.'+D,'TXT'],['bimi','default._bimi.'+D,'TXT'],['wild',ctx.rnd+'.'+D,'A'],['www','www.'+D,'A']];
+  const core=async cd=>Object.fromEntries(await Promise.all(list.map(async([k,n,t])=>[k,await dq(n,t,cd)])));
+  stage('Core records');
+  let c=await core(false);
+  if(!c.soa.ok&&!c.ns.ok){fail('Couldn\'t reach the DNS-over-HTTPS resolvers (dns.google / cloudflare-dns.com). Your network may block them; try another network.');return}
+  if(c.soa.status===3&&c.ns.status===3){fail(`${D} doesn't exist in DNS (NXDOMAIN). Check the spelling.`);return}
+  if(c.soa.status===2){const s2=await dq(D,'SOA',true);if(s2.status===0){ctx.broken=true;c=await core(true)}}
+  progress();
+  await Promise.all([step('Registration',chkReg),step('Name servers',()=>chkNS(c)),step('SOA',()=>chkSOA(c)),step('DNSSEC',()=>chkDNSSEC(c)),step('Web & CAA',()=>chkWeb(c))]);
+  await step('Mail servers',()=>chkMX(c));
+  await Promise.all([step('SPF',()=>chkSPF(c)),step('DMARC',()=>chkDMARC(c)),step('DKIM & transport',()=>chkDKIM(c)),step('Subdomains & takeover',()=>chkSub(c))]);
+  await step('Hygiene',()=>chkHyg(c));
+  LAST={domain:D,entered:H,date:new Date().toISOString(),queries:QN,seconds:+((performance.now()-t0)/1000).toFixed(1)};
+  render();saveRecent(D);
+  running=false;$('#go').disabled=false;$('#go').textContent='Audit →';
+  setTimeout(()=>$('#scan').classList.remove('on'),600);
+}
+function fail(msg){$('#err').textContent=msg;$('#scan').classList.remove('on');running=false;$('#go').disabled=false;$('#go').textContent='Audit →';$('#d').scrollIntoView({behavior:'smooth',block:'center'})}
+
+/* ---------- scoring & render ---------- */
+const ded=c=>(W[c.status]||{})[c.sev]||0;
+function scoreOf(list,mult=1){return Math.max(0,Math.round(100-list.reduce((s,c)=>s+ded(c),0)*mult))}
+const gradeOf=s=>s>=90?'A':s>=80?'B':s>=70?'C':s>=55?'D':'F';
+const colOf=s=>s>=80?'var(--pass)':s>=60?'var(--warn)':'var(--fail)';
+const worst=list=>list.reduce((w,c)=>ORDER[c.status]<ORDER[w]?c.status:w,'info');
+function render(){
+  const score=scoreOf(CK),g=gradeOf(score);
+  $('#results').classList.add('on');
+  $('#grade').textContent=g;$('#grade').style.color=colOf(score);$('#score').textContent=score+' / 100';
+  const arc=$('#arc');arc.style.stroke=colOf(score);arc.style.strokeDashoffset=326.7;requestAnimationFrame(()=>requestAnimationFrame(()=>arc.style.strokeDashoffset=326.7*(1-score/100)));
+  $('#rdom').textContent=D;
+  $('#rmeta').textContent=`${new Date(LAST.date).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})} · ${LAST.queries} queries · ${LAST.seconds}s`;
+  const n=s=>CK.filter(c=>c.status===s).length;
+  $('#counts').innerHTML=[['fail','Fix now'],['warn','Improve'],['pass','Good'],['info','Info']].map(([s,l])=>`<div><b style="color:var(--${s})">${n(s)}</b><span>${l}</span></div>`).join('');
+  $('#cats').innerHTML=Object.entries(CATS).filter(([k])=>CK.some(c=>c.cat===k)).map(([k,[l,ic]])=>{const s=scoreOf(CK.filter(c=>c.cat===k),3);return `<div class="cat" data-cat="${k}"><span>${ic}</span><span>${l}</span><em>${s}</em><div class="bar"><i style="background:${colOf(s)}" data-w="${s}"></i></div></div>`}).join('');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll('.cat .bar i').forEach(i=>i.style.width=i.dataset.w+'%')));
+  document.querySelectorAll('.cat').forEach(el=>el.onclick=()=>{tab('all');const g=document.getElementById('g-'+el.dataset.cat);if(g){g.open=true;g.scrollIntoView({behavior:'smooth',block:'start'})}});
+  const recs=CK.filter(c=>c.status==='fail'||c.status==='warn').sort((a,b)=>ORDER[a.status]-ORDER[b.status]||SEVO[a.sev]-SEVO[b.sev]);
+  $('#p-recs').innerHTML=recs.length?recs.map((c,i)=>`<div class="rec" style="--c:var(--${c.status})"><div class="st ${c.status}">${i+1}</div><div><h3>${esc(c.title)}<span class="badge" style="background:color-mix(in srgb,var(--${c.status}) 16%,transparent);color:var(--${c.status})">${c.status==='fail'?'Fix now':'Improve'} · ${c.sev==='med'?'medium':c.sev}</span></h3><p>${esc(c.detail)}</p>${c.fix?`<p class="fix"><b>Fix:</b> ${esc(c.fix)}</p>`:''}${snip(c.snip)}<p style="font-size:12.5px;margin-top:8px">${CATS[c.cat][1]} ${CATS[c.cat][0]}</p></div></div>`).join(''):`<div class="panel empty">🎉 No issues found. This domain's DNS is in great shape.</div>`;
+  $('#p-all').innerHTML=Object.entries(CATS).filter(([k])=>CK.some(c=>c.cat===k)).map(([k,[l,ic]])=>{const L=CK.filter(c=>c.cat===k).sort((a,b)=>ORDER[a.status]-ORDER[b.status]);const cnt=['fail','warn','pass','info'].map(s=>{const m=L.filter(c=>c.status===s).length;return m?`<span class="dot" style="--c:var(--${s})">${m}</span>`:''}).join('');
+    return `<details class="group" id="g-${k}" ${L.some(c=>c.status==='fail')?'open':''}><summary>${ic} ${l}<span class="sc">${cnt}</span></summary><div class="items">${L.map(c=>`<div class="item"><div class="st ${c.status}">${ICON[c.status]}</div><div><h4>${esc(c.title)}</h4><p>${esc(c.detail)}</p>${c.fix?`<p class="fix"><b style="color:var(--accent)">Fix:</b> ${esc(c.fix)}</p>`:''}${snip(c.snip)}</div></div>`).join('')}</div></details>`}).join('');
+  $('#raw').innerHTML=`<table><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Data</th></tr></thead><tbody>${RAW.filter(r=>r.ans.length||r.status!==3).sort((a,b)=>a.name.localeCompare(b.name)||a.type.localeCompare(b.type)).map(r=>`<tr><td class="d">${esc(r.name)}</td><td>${esc(r.type)}</td><td>${esc(RC[r.status]||r.status)}</td><td class="d">${r.ans.map(a=>`${esc(TN[a.type]||a.type)} ${esc(a.data)} <span style="color:var(--muted)">TTL ${a.TTL}</span>`).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`;
+  drawMap();
+  document.querySelectorAll('.snip button').forEach(b=>b.onclick=()=>copyText(b.parentElement.querySelector('code').textContent));
+  tab('recs');
+  setTimeout(()=>$('#results').scrollIntoView({behavior:'smooth',block:'start'}),200);
+}
+const snip=s=>s?`<div class="snip"><code>${esc(s)}</code><button type="button">Copy</button></div>`:'';
+function tab(p){document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on',x.id==='p-'+p))}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.p));
+
+function drawMap(){
+  const W2=920,H2=600,cx=W2/2,cy=H2/2;
+  const st=n=>{const L=CK.filter(c=>c.node===n);return L.length?worst(L):'info'};
+  const auth=['SPF','DMARC','DKIM','DNSSEC','CAA','MTA-STS'].filter(n=>CK.some(c=>c.node===n)).map(n=>({label:n,status:st(n)}));
+  const groups=[['Name servers',MAP.ns],['Web',MAP.ip],['Mail',MAP.mx],['Security',auth],['Subdomains',MAP.sub]].filter(g=>g[1].length);
+  const total=groups.reduce((s,g)=>s+Math.max(g[1].length,2),0);
+  let ang=-Math.PI/2,out='',labels='',i=0;
+  const col=s=>`var(--${s})`;
+  groups.forEach(([gname,nodes])=>{
+    const span=Math.PI*2*Math.max(nodes.length,2)/total,start=ang+span*.08,end=ang+span*.92;
+    const mid=(start+end)/2;
+    labels+=`<g class="node" style="animation-delay:${.2}s"><text x="${cx+Math.cos(mid)*125}" y="${cy+Math.sin(mid)*92}" text-anchor="middle" dominant-baseline="middle" font-size="12.5" font-weight="800" fill="var(--muted)" letter-spacing=".06em">${esc(gname.toUpperCase())}</text></g>`;
+    nodes.forEach((nd2,k)=>{
+      const a=nodes.length===1?mid:start+(end-start)*k/(nodes.length-1);
+      const rx=gname==='Subdomains'?330:300,ry=gname==='Subdomains'?240:215;
+      const x=cx+Math.cos(a)*rx,y=cy+Math.sin(a)*ry,mx=cx+Math.cos(a)*rx*.45,my=cy+Math.sin(a)*ry*.45;
+      const right=Math.cos(a)>=0,lab=nd2.label.length>28?nd2.label.slice(0,26)+'…':nd2.label;
+      out+=`<path class="edge" d="M${cx},${cy} Q${mx+Math.sin(a)*30},${my-Math.cos(a)*30} ${x},${y}" stroke="${col(nd2.status)}" stroke-opacity=".55" style="animation-delay:${i*.04}s"/>`;
+      out+=`<g class="node" style="animation-delay:${.3+i*.04}s"><circle cx="${x}" cy="${y}" r="8" fill="${col(nd2.status)}"/><circle cx="${x}" cy="${y}" r="14" fill="${col(nd2.status)}" opacity=".15"/><text x="${x+(right?18:-18)}" y="${y+4}" text-anchor="${right?'start':'end'}" font-size="13" font-weight="600" fill="var(--ink)" font-family="Inter,sans-serif">${esc(lab)}<title>${esc(nd2.label)}</title></text></g>`;
+      i++});
+    ang+=span});
+  const score=scoreOf(CK);
+  $('#map').innerHTML=`<svg viewBox="0 0 ${W2} ${H2}" role="img" aria-label="DNS map of ${esc(D)}"><defs><radialGradient id="cg"><stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient></defs>
+  <ellipse cx="${cx}" cy="${cy}" rx="300" ry="215" fill="none" stroke="var(--line)" stroke-dasharray="3 6"/><ellipse cx="${cx}" cy="${cy}" rx="150" ry="108" fill="none" stroke="var(--line)" stroke-dasharray="3 6"/>
+  ${out}${labels}<circle cx="${cx}" cy="${cy}" r="90" fill="url(#cg)"/><circle cx="${cx}" cy="${cy}" r="46" fill="var(--card)" stroke="${colOf(score)}" stroke-width="4"/><text x="${cx}" y="${cy+2}" text-anchor="middle" font-size="26" font-weight="800" fill="${colOf(score)}" font-family="Inter,sans-serif">${gradeOf(score)}</text><text x="${cx}" y="${cy+66}" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)" font-family="Inter,sans-serif">${esc(D)}</text></svg>`;
+}
+
+/* ---------- export ---------- */
+function report(){
+  const s=scoreOf(CK);let o=`DNS security audit: ${D}\nGrade ${gradeOf(s)} (${s}/100) · ${new Date(LAST.date).toLocaleString('en-AU')}\nBy Global SOC DNS Audit · https://globalsoc.com.au/dnsaudit/#${D}\n`;
+  Object.entries(CATS).forEach(([k,[l]])=>{const L=CK.filter(c=>c.cat===k);if(!L.length)return;o+=`\n== ${l} ==\n`;L.sort((a,b)=>ORDER[a.status]-ORDER[b.status]).forEach(c=>{o+=`[${c.status.toUpperCase()}] ${c.title}\n  ${c.detail.replace(/\n/g,'\n  ')}\n`;if(c.fix)o+=`  Fix: ${c.fix}\n`;if(c.snip)o+=`  ${c.snip.replace(/\n/g,'\n  ')}\n`})});
+  return o}
+function copyText(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Copied'),()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');toast('Copied')}catch(e){toast('Copy failed')}a.remove()})}
+$('#copy').onclick=()=>copyText(report());
+$('#share').onclick=()=>{const u=location.origin+location.pathname+'#'+D;if(navigator.share)navigator.share({title:'DNS audit: '+D,url:u}).catch(()=>{});else copyText(u)};
+$('#json').onclick=()=>{const b=new Blob([JSON.stringify({...LAST,score:scoreOf(CK),grade:gradeOf(scoreOf(CK)),checks:CK,records:RAW},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`dns-audit-${D}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800)}
+
+/* ---------- recent ---------- */
+function getRecent(){try{return JSON.parse(localStorage.getItem('dnsaudit-recent')||'[]')}catch(e){return []}}
+function saveRecent(d){try{const r=[d,...getRecent().filter(x=>x!==d)].slice(0,5);localStorage.setItem('dnsaudit-recent',JSON.stringify(r))}catch(e){}showRecent()}
+function showRecent(){const r=getRecent();$('#recent').innerHTML=r.length?'Recent: '+r.map(d=>`<span class="ex" style="margin:0"><button data-d="${esc(d)}">${esc(d)}</button></span>`).join(''):'';$('#recent').querySelectorAll('button').forEach(b=>b.onclick=()=>run(b.dataset.d))}
+
+/* ---------- radar ---------- */
+(function(){const cv=$('#radar'),g=cv.getContext('2d');const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;let w,h,dpr;
+  function size(){dpr=Math.min(devicePixelRatio||1,2);const r=cv.getBoundingClientRect();w=r.width;h=r.height;cv.width=w*dpr;cv.height=h*dpr;g.setTransform(dpr,0,0,dpr,0,0)}
+  size();addEventListener('resize',size);
+  let a=0;const amb=[...Array(14)].map(()=>({a:Math.random()*Math.PI*2,r:.2+Math.random()*.75}));
+  function frame(t){const cx=w/2,cy=h/2,R0=Math.min(w,h)/2-6;g.clearRect(0,0,w,h);
+    g.strokeStyle='rgba(63,208,179,.18)';g.lineWidth=1;for(let k=1;k<=4;k++){g.beginPath();g.arc(cx,cy,R0*k/4,0,7);g.stroke()}
+    g.beginPath();g.moveTo(cx-R0,cy);g.lineTo(cx+R0,cy);g.moveTo(cx,cy-R0);g.lineTo(cx,cy+R0);g.stroke();
+    a+=running?.06:.018;
+    const grd=g.createConicGradient?g.createConicGradient(a-1.1,cx,cy):null;
+    if(grd){grd.addColorStop(0,'rgba(63,208,179,0)');grd.addColorStop(.17,'rgba(63,208,179,.32)');grd.addColorStop(.175,'rgba(63,208,179,0)');g.fillStyle=grd;g.beginPath();g.arc(cx,cy,R0,0,7);g.fill()}
+    g.strokeStyle='rgba(158,240,222,.8)';g.lineWidth=2;g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+Math.cos(a)*R0,cy+Math.sin(a)*R0);g.stroke();
+    amb.forEach(p=>{const d=((a-p.a)%(Math.PI*2)+Math.PI*2)%(Math.PI*2),al=Math.max(0,1-d/2.5)*.7;if(al>0){g.fillStyle=`rgba(63,208,179,${al})`;g.beginPath();g.arc(cx+Math.cos(p.a)*p.r*R0,cy+Math.sin(p.a)*p.r*R0,2.5,0,7);g.fill()}});
+    const now=performance.now();while(pulses.length&&now-pulses[0].t>2600)pulses.shift();
+    pulses.forEach(p=>{const age=(now-p.t)/2600,x=cx+Math.cos(p.a)*p.r*R0,y=cy+Math.sin(p.a)*p.r*R0;g.globalAlpha=1-age;g.fillStyle=p.c;g.beginPath();g.arc(x,y,3.5,0,7);g.fill();g.strokeStyle=p.c;g.lineWidth=1.5;g.beginPath();g.arc(x,y,3.5+age*16,0,7);g.stroke();g.globalAlpha=1});
+    if(!reduce)requestAnimationFrame(frame)}
+  requestAnimationFrame(frame)})();
+
+/* ---------- wire up ---------- */
+$('#f').onsubmit=e=>{e.preventDefault();run($('#d').value)};
+document.querySelectorAll('.ex > button').forEach(b=>b.onclick=()=>run(b.dataset.d));
+showRecent();
+const hd=decodeURIComponent(location.hash.slice(1));if(hd){$('#d').value=hd;run(hd)}
+</script>
+</body>
+</html>
