@@ -1,0 +1,875 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Boxshare</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e3e8ed; --phone:#f5f7f9; --card:#ffffff; --ink:#14212b; --muted:#66737f; --line:#e1e6eb;
+  --brand:#0e4d6e; --brand-2:#1b6f97; --brand-soft:#e2eef5; --on-brand:#ffffff; --accent:#e9771a; --accent-soft:#fdeedd;
+  --chip:#e9eef2; --shadow:0 1px 2px rgba(15,30,45,.06),0 6px 18px rgba(15,30,45,.07);
+  --land:#e6e9df; --water:#cde2ee; --ok:#1f8a5b; --ok-soft:#dff3e8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1015; --phone:#121920; --card:#1a232c; --ink:#e9eff4; --muted:#93a1ad; --line:#26313b;
+    --brand:#5fb3dd; --brand-2:#8ccbe9; --brand-soft:#16303f; --on-brand:#06202d; --accent:#ffa04a; --accent-soft:#3a2614;
+    --chip:#212c36; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.35);
+    --land:#26323c; --water:#0f2230; --ok:#4fd197; --ok-soft:#163528; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1015; --phone:#121920; --card:#1a232c; --ink:#e9eff4; --muted:#93a1ad; --line:#26313b;
+  --brand:#5fb3dd; --brand-2:#8ccbe9; --brand-soft:#16303f; --on-brand:#06202d; --accent:#ffa04a; --accent-soft:#3a2614;
+  --chip:#212c36; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.35);
+  --land:#26323c; --water:#0f2230; --ok:#4fd197; --ok-soft:#163528; color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+.stage{min-height:100%;display:flex;align-items:center;justify-content:center;gap:48px;padding:32px 16px}
+.aside{max-width:300px}
+.aside h1{font-size:30px;letter-spacing:-.02em;line-height:1.1}
+.aside p{color:var(--muted);margin-top:12px;line-height:1.5;font-size:14px}
+.aside .warn{margin-top:18px;background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45}
+.phone{position:relative;width:390px;height:844px;background:var(--phone);border-radius:52px;overflow:hidden;
+  box-shadow:0 0 0 11px #111,0 0 0 12px #333,0 30px 80px rgba(0,0,0,.35);flex:none}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#000;border-radius:20px;z-index:60}
+.status{position:absolute;top:0;left:0;right:0;height:50px;display:flex;justify-content:space-between;align-items:center;padding:6px 32px 0;font-weight:600;font-size:15px;z-index:55;pointer-events:none}
+.status .icons{display:flex;gap:6px;align-items:center}
+@media (max-width:760px){
+  .aside{display:none}
+  .stage{padding:0;height:100%;min-height:0}
+  .phone{width:100vw;height:100%;border-radius:0;box-shadow:none}
+  .island,.status{display:none}
+}
+.view{position:absolute;inset:0;overflow-y:auto;padding:56px 0 100px;scrollbar-width:none}
+.view::-webkit-scrollbar{display:none}
+@media (max-width:760px){.view{padding-top:max(14px,env(safe-area-inset-top))}}
+.pad{padding:0 18px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:84px;background:color-mix(in srgb,var(--phone) 88%,transparent);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-top:8px;z-index:40}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--muted);width:70px}
+.tab svg{width:24px;height:24px}
+.tab.on{color:var(--brand)}
+.badge-dot{position:relative}
+.badge-dot b{position:absolute;top:-4px;right:-9px;background:var(--accent);color:#fff;font-size:10px;border-radius:9px;padding:1px 5px}
+
+/* header */
+.seg{display:flex;background:var(--chip);border-radius:12px;padding:3px;margin:4px 18px 0}
+.seg button{flex:1;padding:8px 6px;border-radius:9px;font-size:13px;font-weight:700;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.hello{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.loc{font-size:12px;color:var(--muted);font-weight:600}
+.title{font-size:27px;font-weight:800;letter-spacing:-.03em;margin-top:2px}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-weight:700;flex:none}
+.avatar svg{width:20px;height:20px}
+.demo-strip{margin:12px 18px 0;font-size:11.5px;background:var(--accent-soft);border-radius:10px;padding:8px 10px;line-height:1.4}
+.search{margin:12px 18px 0;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow)}
+.search input{border:0;outline:0;background:none;flex:1;font-size:15px;min-width:0}
+.search svg{width:18px;height:18px;color:var(--muted);flex:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 18px 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 13px;border-radius:999px;background:var(--chip);font-size:13px;font-weight:600;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--phone)}
+.wrapchips{display:flex;flex-wrap:wrap;gap:7px}
+.section-h{display:flex;justify-content:space-between;align-items:baseline;margin:20px 18px 10px}
+.section-h h2{font-size:18px;letter-spacing:-.01em}
+.section-h span{font-size:12.5px;color:var(--muted)}
+.mapbox{margin:14px 18px 0;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);position:relative;background:var(--water)}
+.mapbox svg{display:block;width:100%}
+.mapbox .cap{position:absolute;left:10px;bottom:8px;font-size:11px;font-weight:700;background:var(--card);border-radius:8px;padding:4px 8px;box-shadow:var(--shadow)}
+.need{margin:12px 18px 0;display:flex;align-items:center;gap:10px;background:var(--brand-soft);border-radius:14px;padding:10px 12px;font-size:13px}
+.need .t{flex:1}
+.need .t b{font-size:15px}
+.need a{color:var(--brand);font-weight:700;text-decoration:none;font-size:12.5px}
+.step{display:inline-flex;align-items:center;gap:8px}
+.step button{width:30px;height:30px;border-radius:50%;background:var(--card);font-weight:800;font-size:16px;box-shadow:var(--shadow)}
+.step b{min-width:44px;text-align:center}
+
+/* container card */
+.card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);margin:0 18px 12px;padding:14px;cursor:pointer;transition:transform .15s}
+.card:active{transform:scale(.985)}
+.card.short{opacity:.6}
+.ctop{display:flex;gap:10px;align-items:center}
+.cc{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-weight:800;font-size:12px;flex:none;letter-spacing:.03em}
+.route{flex:1;min-width:0}
+.route b{font-size:15.5px;display:block}
+.route small{font-size:12px;color:var(--muted)}
+.ppc{text-align:right}
+.ppc b{font-size:17px;display:block}
+.ppc small{font-size:11px;color:var(--muted)}
+.fill{height:9px;border-radius:6px;background:repeating-linear-gradient(45deg,var(--chip),var(--chip) 4px,var(--card) 4px,var(--card) 8px);border:1px solid var(--line);margin-top:12px;overflow:hidden}
+.fill i{display:block;height:100%;background:var(--brand)}
+.frow{display:flex;justify-content:space-between;font-size:12.5px;margin-top:6px;color:var(--muted);gap:8px}
+.frow b{color:var(--ink)}
+.frow .warn{color:var(--accent);font-weight:700}
+.hrow{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.hav{width:28px;height:28px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+.hn{flex:1;font-size:13px;font-weight:600;min-width:0}
+.hn small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.bdg{font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:999px;background:var(--ok-soft);color:var(--ok);white-space:nowrap}
+.bdg.lic{background:var(--brand-soft);color:var(--brand)}
+.bdg.warn{background:var(--accent-soft);color:var(--accent)}
+.post{margin:4px 18px 14px;border:1.5px dashed var(--line);border-radius:18px;padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer}
+.post .t{flex:1;font-size:13px;color:var(--muted)}
+.post .t b{display:block;color:var(--ink);font-size:14.5px}
+.post .go{background:var(--brand);color:var(--on-brand);border-radius:10px;padding:8px 12px;font-weight:700;font-size:13px}
+.empty{margin:30px 18px;text-align:center;color:var(--muted);font-size:14px}
+
+/* sheets */
+.sheet{position:absolute;inset:0;z-index:70;background:var(--phone);transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);overflow-y:auto;scrollbar-width:none}
+.sheet::-webkit-scrollbar{display:none}
+.sheet.open{transform:none}
+.back{width:38px;height:38px;border-radius:50%;background:var(--chip);display:grid;place-items:center;flex:none}
+.back svg{width:20px;height:20px}
+.plain-head{display:flex;align-items:center;gap:10px;padding:56px 16px 4px}
+@media (max-width:760px){.plain-head{padding-top:max(14px,env(safe-area-inset-top))}}
+.plain-head h2{font-size:19px;line-height:1.2}
+.plain-head h2 small{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.block{background:var(--card);border-radius:18px;box-shadow:var(--shadow);margin:12px 16px;padding:14px}
+.block.flush{padding:0;overflow:hidden}
+.block h3{font-size:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.block h3 span{font-weight:500;color:var(--muted);font-size:12px}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}
+.vgrid div{background:var(--chip);border-radius:12px;padding:8px 11px;line-height:1.3}
+.vgrid small{display:block;color:var(--muted);font-size:11px}
+.opt{display:flex;align-items:center;gap:12px;padding:11px 2px;border-top:1px solid var(--line);cursor:pointer}
+.opt:first-of-type{border-top:0}
+.radio,.box{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center}
+.box{border-radius:6px}
+.opt.on .radio{border-color:var(--brand)}
+.opt.on .radio:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--brand)}
+.opt.on .box{border-color:var(--brand);background:var(--brand);color:var(--on-brand);font-size:13px;font-weight:800}
+.opt.on .box:after{content:"✓"}
+.opt .n{flex:1;font-size:14px;font-weight:600}
+.opt .n small{display:block;font-weight:500;color:var(--muted);font-size:12px;line-height:1.35}
+.opt.off{opacity:.45;pointer-events:none}
+.field{display:block;margin-top:10px}
+.field:first-of-type{margin-top:0}
+.field span{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.field input,.field select{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--phone);outline:0;font-size:15px}
+.field input:focus,.field select:focus{border-color:var(--brand)}
+.row{display:flex;gap:10px}
+.row>*{flex:1;min-width:0}
+.line{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;gap:10px}
+.line small{color:var(--muted);font-size:12px;display:block}
+.line.total{font-weight:800;font-size:17px;border-top:1px solid var(--line);margin-top:6px;padding-top:11px}
+.note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.45}
+.notice{font-size:12.5px;line-height:1.45;border-radius:12px;padding:10px 12px;background:var(--accent-soft);margin-top:10px}
+.notice.ok{background:var(--ok-soft)}
+.notice.info{background:var(--brand-soft)}
+.cta-bar{position:sticky;bottom:0;padding:12px 16px 28px;background:linear-gradient(transparent,var(--phone) 30%);margin-top:4px}
+.cta{width:100%;background:var(--brand);color:var(--on-brand);border-radius:16px;padding:15px 16px;font-weight:700;font-size:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cta.center{justify-content:center}
+.cta:disabled{opacity:.45;cursor:not-allowed}
+.cta.black{background:#000;color:#fff;justify-content:center;gap:6px}
+.cta.ghost{background:var(--chip);color:var(--ink)}
+.cta.small{padding:10px 12px;font-size:14px;border-radius:12px;justify-content:center}
+.pm .logo{width:44px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+.toggle{width:46px;height:28px;border-radius:999px;background:var(--line);position:relative;flex:none;transition:.2s}
+.toggle:after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.2s}
+.toggle.on{background:var(--ok)}
+.toggle.on:after{left:21px}
+input[type=range]{width:100%;accent-color:var(--brand)}
+
+/* calculator */
+.item{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item .n{flex:1;font-size:14px;font-weight:600}
+.item .n small{display:block;color:var(--muted);font-weight:500;font-size:11.5px}
+.item .v{font-size:12px;color:var(--muted);width:52px;text-align:right}
+.item .step button{width:28px;height:28px;background:var(--chip);box-shadow:none}
+.item .step b{min-width:20px}
+.calc-sum{margin:14px 16px 0;border-radius:20px;padding:16px;background:var(--brand);color:var(--on-brand)}
+.calc-sum .big{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.calc-sum .big small{font-size:16px;font-weight:700}
+.calc-sum p{font-size:12.5px;opacity:.85;margin-top:6px;line-height:1.4}
+.calc-sum button{margin-top:12px;background:var(--on-brand);color:var(--brand);border-radius:12px;padding:10px 14px;font-weight:700;font-size:14px;width:100%}
+
+/* tracking */
+.tl{position:relative;padding-left:4px}
+.tl .s{display:flex;gap:12px;position:relative;padding-bottom:14px}
+.tl .s:last-child{padding-bottom:0}
+.tl .s:before{content:"";position:absolute;left:9px;top:20px;bottom:0;width:2px;background:var(--line)}
+.tl .s:last-child:before{display:none}
+.tl .s.done:before{background:var(--ok)}
+.tl .dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);background:var(--card);flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;z-index:1}
+.tl .done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.tl .cur .dot{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.tl .t{font-size:14px;font-weight:600;line-height:1.25}
+.tl .t small{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.tl .s:not(.done):not(.cur) .t{color:var(--muted)}
+.bubbles{display:flex;flex-direction:column;gap:6px}
+.bub{max-width:80%;padding:8px 11px;border-radius:16px;font-size:13.5px;line-height:1.35;background:var(--chip);align-self:flex-start}
+.bub.me{align-self:flex-end;background:var(--brand);color:var(--on-brand)}
+.chatin{display:flex;gap:8px;margin-top:10px}
+.chatin input{flex:1;border:1.5px solid var(--line);border-radius:999px;padding:9px 14px;background:var(--phone);outline:0;min-width:0}
+.chatin button{background:var(--brand);color:var(--on-brand);border-radius:999px;padding:0 16px;font-weight:700}
+.check{width:64px;height:64px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;margin:8px auto 0;font-size:30px}
+.stars{display:flex;gap:6px;justify-content:center;margin-top:6px}
+.stars button{font-size:30px;color:var(--line)}
+.stars button.on{color:#f5b301}
+.shiprow{display:flex;gap:12px;align-items:center}
+.pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--chip);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.acc{background:var(--accent-soft);color:var(--accent)}
+.pill.br{background:var(--brand-soft);color:var(--brand)}
+.prog{height:6px;border-radius:4px;background:var(--chip);margin-top:10px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ok)}
+
+/* host */
+.req{background:var(--card);border-radius:18px;box-shadow:var(--shadow);margin:0 16px 12px;padding:14px}
+.req .top{display:flex;gap:10px;align-items:center}
+.req .top .n{flex:1;font-weight:700;font-size:15px}
+.req .top .n small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.req .cbm{font-size:20px;font-weight:800;text-align:right;line-height:1}
+.req .cbm small{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.req .items{font-size:13px;margin-top:8px;line-height:1.4}
+.req .acts{display:flex;gap:8px;margin-top:12px}
+.req .acts button{flex:1;border-radius:12px;padding:9px;font-weight:700;font-size:13.5px;background:var(--chip)}
+.req .acts .yes{background:var(--brand);color:var(--on-brand)}
+.req .acts button:disabled{opacity:.4;cursor:not-allowed}
+.legend{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+.legend:first-of-type{border-top:0}
+.legend i{width:14px;height:14px;border-radius:4px;flex:none}
+.legend .n{flex:1}
+.legend .n small{display:block;color:var(--muted);font-size:11.5px}
+.earn{margin:14px 16px 0;border-radius:20px;padding:16px;background:linear-gradient(135deg,#0e4d6e,#1b6f97 60%,#e9771a);color:#fff}
+.earn .big{font-size:36px;font-weight:800;letter-spacing:-.03em}
+.earn p{font-size:12.5px;opacity:.9;margin-top:4px}
+.list-item{display:flex;align-items:center;gap:12px;padding:12px 2px;border-top:1px solid var(--line);font-size:14.5px;cursor:pointer}
+.list-item:first-of-type{border-top:0}
+.list-item .n{flex:1}
+.list-item .n small{display:block;color:var(--muted);font-size:12px}
+.list-item .ic{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;flex:none;font-size:16px}
+.list-item .ic svg{width:18px;height:18px}
+.chev{color:var(--muted)}
+.prose{font-size:13.5px;line-height:1.5}
+.prose p+p{margin-top:8px}
+.prose ul{margin:6px 0 0 18px}
+.prose li{margin-top:4px}
+.prose a{color:var(--brand);font-weight:600}
+.review{border-top:1px solid var(--line);padding:10px 0 2px;font-size:13px;line-height:1.4}
+.review:first-of-type{border-top:0;padding-top:0}
+.review b{font-size:12.5px}
+.review span{color:#f5b301;font-size:12px;margin-left:4px}
+
+/* apple pay mock */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:90;opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.open{opacity:1;pointer-events:auto}
+.applesheet{position:absolute;left:8px;right:8px;bottom:8px;background:#f2f2f7;color:#000;border-radius:34px;padding:18px 20px 26px;z-index:91;transform:translateY(110%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.applesheet.open{transform:none}
+.applesheet .r{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #d8d8de;font-size:14px}
+.applesheet .side-btn{text-align:center;margin-top:18px;font-size:13px;color:#555}
+.applesheet .face{width:56px;height:56px;margin:14px auto 0;border-radius:14px;border:3px solid #0a84ff;display:grid;place-items:center;color:#0a84ff;font-size:24px}
+.toast{position:absolute;left:50%;bottom:100px;transform:translate(-50%,20px);background:var(--ink);color:var(--phone);padding:10px 16px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;transition:.25s;z-index:99;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+<div class="stage">
+  <div class="aside">
+    <h1>Boxshare</h1>
+    <p>Clickable iOS prototype: share spare space in shipping containers coming to Melbourne. People with room in their container list the free CBM. People who need to send goods find a container, book space and pay into escrow.</p>
+    <p><b>Try "I need space":</b> work out your volume in the CBM calculator → pick a container → request space → pay → track the shipment.<br><b>Try "I have space":</b> set up your container → accept requests → watch the load plan fill → check earnings.</p>
+    <div class="warn"><b>Demo only.</b> Every host, forwarder, broker, price and booking is fictional. No payment is taken. The customs and biosecurity notes are a simplified summary, not advice.</div>
+  </div>
+
+  <div class="phone" id="phone">
+    <div class="island"></div>
+    <div class="status"><span id="clock">9:41</span><span class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>
+      <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><rect x="24" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".4"/></svg></span></div>
+    <div class="view" id="view"></div>
+    <nav class="tabbar" id="tabbar"></nav>
+    <div class="sheet" id="sheet"></div>
+    <div class="sheet" id="sheet2"></div>
+    <div class="scrim" id="scrim"></div>
+    <div class="applesheet" id="applesheet"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => "$" + n.toLocaleString("en-AU",{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});
+const money2 = n => "$" + n.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2});
+const r1 = n => Math.round(n*10)/10;
+const TODAY = (()=>{ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); })();
+const D = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const add = (s,n) => { const d=D(s); d.setDate(d.getDate()+n); return iso(d); };
+const fmt = s => D(s).toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});
+const fmtS = s => D(s).toLocaleDateString("en-AU",{day:"numeric",month:"short"});
+const CAP = {20:33, 40:67};
+
+/* ---------- Data (all hosts, forwarders and prices are fictional) ---------- */
+const MELB = {lat:-37.82, lng:144.92};
+const PORTS = {
+  mumbai:{city:"Mumbai",country:"India",cc:"IN",port:"Nhava Sheva (JNPT)",lat:18.95,lng:72.95,days:24,reg:"South Asia"},
+  chennai:{city:"Chennai",country:"India",cc:"IN",port:"Chennai Port",lat:13.08,lng:80.29,days:22,reg:"South Asia"},
+  colombo:{city:"Colombo",country:"Sri Lanka",cc:"LK",port:"Port of Colombo",lat:6.94,lng:79.84,days:20,reg:"South Asia"},
+  shanghai:{city:"Shanghai",country:"China",cc:"CN",port:"Yangshan",lat:31.23,lng:121.47,days:18,reg:"East & SE Asia"},
+  hcmc:{city:"Ho Chi Minh City",country:"Vietnam",cc:"VN",port:"Cat Lai",lat:10.76,lng:106.79,days:16,reg:"East & SE Asia"},
+  manila:{city:"Manila",country:"Philippines",cc:"PH",port:"Manila Intl Container Terminal",lat:14.6,lng:120.96,days:14,reg:"East & SE Asia"},
+  singapore:{city:"Singapore",country:"Singapore",cc:"SG",port:"Pasir Panjang",lat:1.27,lng:103.78,days:12,reg:"East & SE Asia"},
+  dubai:{city:"Dubai",country:"UAE",cc:"AE",port:"Jebel Ali",lat:25.01,lng:55.06,days:26,reg:"Middle East"},
+  southampton:{city:"Southampton",country:"United Kingdom",cc:"GB",port:"Port of Southampton",lat:50.9,lng:-1.4,days:42,reg:"Europe"},
+  la:{city:"Los Angeles",country:"USA",cc:"US",port:"Port of Los Angeles",lat:33.74,lng:-118.27,days:24,reg:"Americas"},
+  auckland:{city:"Auckland",country:"New Zealand",cc:"NZ",port:"Ports of Auckland",lat:-36.84,lng:174.77,days:6,reg:"NZ & interstate"},
+  sydney:{city:"Sydney",country:"NSW",cc:"AU",port:"Road freight (Hume Hwy)",lat:-33.87,lng:151.2,days:2,reg:"NZ & interstate",road:true},
+};
+const REGIONS = ["All","South Asia","East & SE Asia","Middle East","Europe","Americas","NZ & interstate"];
+const CONTAINERS = [
+  {id:"c1",port:"mumbai",host:"Priya & Arjun",type:"Individual",lic:false,rating:4.9,rev:12,size:20,used:23.6,price:145,ship:"2026-11-06",pickup:true,dropoff:true,
+   note:"We're moving to Point Cook. After our furniture, about 9 CBM of our 20ft container is free. We can collect within Mumbai and Navi Mumbai."},
+  {id:"c2",port:"chennai",host:"Kaveri Freight Co.",type:"Forwarder",lic:true,rating:4.8,rev:214,size:40,used:41,price:120,ship:"2026-10-29",pickup:true,dropoff:true,
+   note:"Weekly LCL consolidation to Melbourne. Customs clearance and delivery to anywhere in metro Melbourne are included."},
+  {id:"c3",port:"shanghai",host:"Wei Chen",type:"Individual",lic:false,rating:4.7,rev:5,size:40,used:52,price:110,ship:"2026-11-14",pickup:false,dropoff:true,
+   note:"Shipping my family's household goods. Drop-off at our place in Pudong only."},
+  {id:"c4",port:"hcmc",host:"Saigon Lane Logistics",type:"Forwarder",lic:true,rating:4.6,rev:88,size:20,used:18,price:125,ship:"2026-10-24",pickup:true,dropoff:true,
+   note:"Shared 20ft to Melbourne. We handle export paperwork and fumigation certificates."},
+  {id:"c5",port:"manila",host:"Marisol Reyes",type:"Individual",lic:false,rating:5.0,rev:3,size:20,used:26,price:135,ship:"2026-11-20",pickup:true,dropoff:false,
+   note:"Moving to Werribee. Space is good for boxes (balikbayan size is fine). No furniture, please."},
+  {id:"c6",port:"colombo",host:"Lanka Bay Movers",type:"Forwarder",lic:true,rating:4.8,rev:131,size:40,used:30,price:130,ship:"2026-11-02",pickup:true,dropoff:true,
+   note:"Door-to-door consolidation, with a pickup anywhere in the Western Province."},
+  {id:"c7",port:"auckland",host:"Tom & Aroha Parata",type:"Individual",lic:false,rating:4.9,rev:9,size:20,used:21,price:160,ship:"2026-10-30",pickup:true,dropoff:true,
+   note:"Moving across the ditch to Geelong. Happy to take bikes and boxed items."},
+  {id:"c8",port:"southampton",host:"Hartley Removals",type:"Forwarder",lic:true,rating:4.7,rev:342,size:40,used:49,price:240,ship:"2026-11-10",pickup:true,dropoff:true,
+   note:"UK-wide collection into our Southampton depot. Sailing via Singapore."},
+  {id:"c9",port:"la",host:"Jake Morrison",type:"Individual",lic:false,rating:4.6,rev:7,size:40,used:55,price:260,ship:"2026-12-01",pickup:false,dropoff:true,
+   note:"Relocating for work. I have spare space for boxes and small furniture. Drop-off in Long Beach."},
+  {id:"c10",port:"dubai",host:"Desert Star Cargo",type:"Forwarder",lic:true,rating:4.5,rev:61,size:20,used:15,price:150,ship:"2026-11-08",pickup:true,dropoff:true,
+   note:"Sea freight from Jebel Ali, with pickups across Dubai and Sharjah."},
+  {id:"c11",port:"singapore",host:"Lion City Consol",type:"Forwarder",lic:true,rating:4.9,rev:276,size:40,used:38,price:95,ship:"2026-10-22",pickup:true,dropoff:true,
+   note:"Our fastest sailing to Melbourne. All of Singapore is covered for pickup."},
+  {id:"c12",port:"sydney",host:"Bec Nguyen",type:"Individual",lic:false,rating:4.8,rev:15,size:20,used:25,price:90,ship:"2026-10-19",pickup:true,dropoff:true,
+   note:"Moving Sydney to Brunswick by road. No customs on this one. Pickup in the inner west."},
+];
+const REVIEWS = [["Sanjay M.",5,"Everything arrived in Tarneit in one piece. The host sent photos at loading."],
+  ["Lucy T.",5,"Cheaper than a removalist quote and super clear updates."],["Hamid R.",4,"Biosecurity took two extra days, but the host kept me posted."]];
+const CATS = ["Boxes","Clothes","Furniture","Appliances","Books","Kitchenware","Bikes","Electronics"];
+const PROHIBITED = ["Food, seeds, plants or soil","Weapons and ammunition","Drugs and medicines without a prescription","Untreated timber or bamboo items","Dangerous goods: gas bottles, aerosols, paint, loose lithium batteries","Cash, gold and counterfeit goods"];
+const ITEMS = [["sbox","Small box","45×30×30 cm",0.04],["mbox","Medium box","50×40×40 cm",0.08],["lbox","Large box","60×45×45 cm",0.12],
+  ["case","Large suitcase","Check-in size",0.12],["sofa","3-seat sofa","Wrapped",1.8],["arm","Armchair","Wrapped",0.7],["bed","Queen bed + mattress","Base flat-packed",1.3],
+  ["ward","Wardrobe","Flat-packed",0.8],["table","Dining table (6)","Legs off",0.9],["chair","Dining chair","Each",0.2],["fridge","Fridge","Upright, medium",0.9],
+  ["wash","Washing machine","Front loader",0.5],["tv","TV, 55\" boxed","",0.25],["bike","Bicycle","Boxed",0.4]];
+const REQUESTS = [
+  {id:"r0",name:"Neha V.",cbm:3.1,offer:145,items:"Dining table, 6 chairs, 14 boxes",to:"Tarneit",when:"Flexible",rating:4.9},
+  {id:"r1",name:"Ananya S.",cbm:1.8,offer:145,items:"12 medium boxes and 2 suitcases",to:"Point Cook",when:"Before Dec",rating:5.0},
+  {id:"r2",name:"Rohit K.",cbm:3.2,offer:140,items:"3-seat sofa and 6 large boxes",to:"Craigieburn",when:"Before Jan",rating:4.7},
+  {id:"r3",name:"Meera & Sam",cbm:0.9,offer:150,items:"6 boxes of books and kitchenware",to:"Glen Waverley",when:"Any sailing",rating:4.8},
+  {id:"r4",name:"Farhan A.",cbm:2.5,offer:130,items:"Fridge, washing machine and 5 boxes",to:"Truganina",when:"Before Dec",rating:4.6},
+  {id:"r5",name:"Joseph D.",cbm:4.0,offer:145,items:"Queen bed, flat-packed wardrobe and 8 boxes",to:"Clyde North",when:"Flexible",rating:4.9},
+  {id:"r6",name:"Lakshmi P.",cbm:1.2,offer:145,items:"Pooja items (declared), clothes and 4 boxes",to:"Wyndham Vale",when:"Before Dec",rating:5.0},
+  {id:"r7",name:"Divya R.",cbm:0.6,offer:155,items:"2 suitcases and 2 small boxes",to:"Cranbourne",when:"Any sailing",rating:4.8},
+  {id:"r8",name:"Imran Q.",cbm:5.5,offer:140,items:"Full 1-bedroom: sofa, bed, fridge and boxes",to:"Dandenong",when:"Before Jan",rating:4.5},
+];
+const SEG_COLS = ["#e9771a","#21a38a","#8f6ad8","#e2557a","#3d8bfd","#c9a227","#5aa05a","#d0703c","#4bb3c7"];
+const STEPS = ["Booked & paid into escrow","Collected / dropped off","Loaded & container sealed","Sailed","Arrived Port of Melbourne","Cleared customs & biosecurity","Delivered"];
+const STEPS_ROAD = ["Booked & paid into escrow","Collected / dropped off","Loaded & truck sealed","On the road","Arrived Melbourne depot","Unloaded at depot","Delivered"];
+
+/* ---------- State ---------- */
+const seedBooking = {id:"BX-7Q2K",port:"singapore",host:"Lion City Consol",cbm:1.5,total:418.35,method:"card",ship:"2026-10-05",days:12,booked:"2026-09-21",status:3,rated:0,
+  chat:[{me:false,t:"Hi! Your 9 boxes are loaded and the container sailed on 5 Oct 🚢"},{me:true,t:"Amazing, thanks!"},{me:false,t:"ETA Melbourne is 17 Oct. I'll message you when it clears biosecurity."}]};
+const DEFAULT = {role:"sender",tab:"find",region:"All",month:"Any",q:"",need:2.0,items:{sbox:0,mbox:10,lbox:4,case:2},custom:[],
+  bookings:[seedBooking],posts:[],pay:"apple",
+  host:{port:"mumbai",size:20,own:20.5,price:145,date:"2026-11-06",pickup:true,dropoff:true,allow:["Boxes","Clothes","Furniture","Appliances","Books","Kitchenware"],
+        rs:{r0:"accepted"},chk:[true,false,false,false,true],published:true}};
+let S = JSON.parse(JSON.stringify(DEFAULT));
+try { const raw = localStorage.getItem("boxshare"); if (raw) { const o = JSON.parse(raw); S = Object.assign(S, o, {host:Object.assign(S.host, o.host||{})}); } } catch(e) {}
+S.q=""; S.cur=null; S.req=null;
+function save(){ try { const {cur,req,q,...keep}=S; localStorage.setItem("boxshare", JSON.stringify(keep)); } catch(e) {} }
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),2000); }
+
+const C = id => CONTAINERS.find(c=>c.id===id);
+const free = c => r1(CAP[c.size]-c.used);
+const eta = c => add(c.ship, PORTS[c.port].days);
+const initials = n => n.replace(/&/g,"").split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+
+const ICON = {
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  cube:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>',
+  ship:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 15h20l-2.5 5h-15z"/><path d="M5 15v-4h14v4"/><path d="M8 11V7h5v4"/><path d="M10.5 7V4"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="1"/><path d="M6 6v12M10 6v12M14 6v12M18 6v12"/></svg>',
+  inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 13h5l1 3h6l1-3h5"/><path d="M5.5 5h13L21 13v6H3v-6z"/></svg>',
+  layers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
+  wallet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.2"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 5-7 7 7 7"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  ban:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>',
+};
+
+/* ---------- World map (simplified outlines, Pacific-centred) ---------- */
+const LAND = [
+  [[-165,65],[-140,70],[-95,72],[-75,62],[-55,50],[-70,43],[-80,32],[-82,25],[-97,26],[-97,18],[-88,15],[-80,8],[-90,14],[-105,20],[-117,32],[-124,40],[-125,49],[-135,57],[-150,60],[-165,60]],
+  [[-80,8],[-60,10],[-50,0],[-35,-7],[-40,-22],[-58,-38],[-68,-55],[-75,-45],[-72,-20],[-81,-5]],
+  [[-10,36],[-9,44],[0,49],[5,53],[8,57],[5,62],[15,69],[30,71],[60,70],[80,73],[110,76],[140,72],[170,68],[180,65],[160,60],[142,52],[135,43],[128,38],[122,30],[120,23],[110,20],[108,12],[103,10],[104,1],[100,7],[98,16],[92,22],[88,22],[80,15],[77,8],[73,17],[67,25],[57,25],[56,22],[52,17],[44,13],[35,28],[34,31],[30,31],[27,37],[22,37],[15,38],[12,44],[8,44],[3,42],[-5,36]],
+  [[-5,50],[1,51],[2,53],[-2,56],[-5,58],[-6,55]],
+  [[-17,21],[-10,30],[-6,35],[10,37],[20,32],[32,31],[35,28],[44,12],[51,12],[40,-2],[40,-15],[35,-25],[20,-35],[17,-29],[12,-17],[13,-5],[9,4],[-8,4],[-17,14]],
+  [[44,-13],[50,-15],[47,-25],[44,-22]],
+  [[114,-22],[122,-17],[130,-12],[137,-12],[142,-11],[146,-19],[153,-26],[151,-33],[147,-38],[141,-38],[135,-35],[130,-32],[115,-34]],
+  [[145,-41],[148,-41],[147,-43.5],[145.5,-43]],
+  [[172.5,-34.5],[178,-38],[175,-41.5],[173,-40]],[[172,-41],[174,-41.5],[171,-44.5],[167,-46],[168,-44]],
+  [[95,5],[106,-6],[103,-5],[98,0]],[[106,-6],[114,-7.5],[115,-8.5],[106,-7.2]],
+  [[109,1],[117,7],[119,1],[116,-4],[110,-3]],[[119,-1],[125,1],[121,-5]],
+  [[131,-1],[141,-3],[150,-10],[141,-9],[134,-4]],
+  [[130,31],[136,34],[141,36],[142,43],[140,41],[133,34.5]],
+  [[120,18],[122,13],[125.5,7],[124,6.5],[121,12]],
+  [[80,9.5],[82,7],[80,6]],[[120,22],[121.8,25],[120.5,24.5]],
+];
+const px = (lng,lat) => [lng < -25 ? lng+360 : lng, 72-lat];
+const LAND_D = LAND.map(p=>"M"+p.map(q=>px(q[0],q[1]).map(n=>n.toFixed(1)).join(",")).join("L")+"Z").join("");
+function route(k){
+  const P=PORTS[k], a=px(P.lng,P.lat), b=px(MELB.lng,MELB.lat);
+  const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2, dx=b[0]-a[0], dy=b[1]-a[1];
+  const c=[mx-dy*.2, my+dx*.2];
+  const at=t=>[(1-t)*(1-t)*a[0]+2*(1-t)*t*c[0]+t*t*b[0], (1-t)*(1-t)*a[1]+2*(1-t)*t*c[1]+t*t*b[1]];
+  return {k,a,b,c,at,d:`M${a[0].toFixed(1)},${a[1].toFixed(1)} Q${c[0].toFixed(1)},${c[1].toFixed(1)} ${b[0].toFixed(1)},${b[1].toFixed(1)}`};
+}
+function worldSVG(o){
+  let vb=[-20,6,350,116], rs=(o.all||[]).map(route);
+  if (o.focus){
+    const r=route(o.focus); rs=[r];
+    const xs=[r.a[0],r.b[0],r.c[0]], ys=[r.a[1],r.b[1],r.c[1]];
+    let x0=Math.min(...xs)-16, y0=Math.min(...ys)-10, w=Math.max(...xs)+16-x0, h=Math.max(...ys)+10-y0;
+    const R=2.2; if (w/h<R){ const nw=h*R; x0-=(nw-w)/2; w=nw; } else { const nh=w/R; y0-=(nh-h)/2; h=nh; }
+    vb=[x0,y0,w,h];
+  }
+  const u=vb[2]/354, M=px(MELB.lng,MELB.lat);
+  const lines = rs.map(r=>`<path d="${r.d}" fill="none" stroke="var(--accent)" stroke-width="${o.focus?2:1.2}" stroke-dasharray="${o.focus?"5 4":""}" opacity="${o.focus?1:.75}" vector-effect="non-scaling-stroke"/>
+     <circle cx="${r.a[0]}" cy="${r.a[1]}" r="${(o.focus?4:2.6)*u}" fill="var(--brand)" stroke="var(--card)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+     ${o.focus?`<text x="${r.a[0]}" y="${r.a[1]-7*u}" text-anchor="middle" font-size="${11*u}" font-weight="700" fill="var(--ink)">${PORTS[r.k].city}</text>`:""}`).join("");
+  let ship="";
+  if (o.focus && o.prog!=null){ const p=rs[0].at(o.prog);
+    ship=`<circle cx="${p[0]}" cy="${p[1]}" r="${9*u}" fill="var(--accent)" opacity=".25"/><circle cx="${p[0]}" cy="${p[1]}" r="${5*u}" fill="var(--accent)" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke"/>`; }
+  return `<svg viewBox="${vb.map(n=>n.toFixed(1)).join(" ")}" preserveAspectRatio="xMidYMid slice" style="aspect-ratio:${o.focus?2.2:350/116}" role="img" aria-label="Map of sea routes to Melbourne">
+    <rect x="-80" y="-60" width="520" height="260" fill="var(--water)"/>
+    <path d="${LAND_D}" fill="var(--land)"/>
+    ${lines}${ship}
+    <circle cx="${M[0]}" cy="${M[1]}" r="${5*u}" fill="var(--accent)" stroke="var(--card)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    <text x="${M[0]+(o.focus?0:6*u)}" y="${M[1]+(o.focus?15*u:3*u)}" text-anchor="${o.focus?"middle":"start"}" font-size="${11*u}" font-weight="800" fill="var(--ink)">Melbourne</text>
+  </svg>`;
+}
+
+/* ---------- Container graphic ---------- */
+function containerSVG(size, segs){
+  const cap=CAP[size], X=8, Y=22, W=304, H=76; let x=X, used=0;
+  const rects = segs.map(s=>{ const w=W*Math.min(s.cbm,cap-used)/cap; used+=s.cbm;
+    const r=`<rect x="${x}" y="${Y}" width="${Math.max(0,w)}" height="${H}" fill="${s.col}"/>${w>30?`<text x="${x+w/2}" y="${Y+H/2+4}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">${r1(s.cbm)}</text>`:""}`;
+    x+=w; return r; }).join("");
+  const fr=r1(Math.max(0,cap-used));
+  let ribs=""; for(let i=X+10;i<X+W;i+=10) ribs+=`<line x1="${i}" y1="${Y+3}" x2="${i}" y2="${Y+H-3}" stroke="#000" stroke-opacity=".08"/>`;
+  return `<svg viewBox="0 0 320 112" style="width:100%;display:block" role="img" aria-label="${size}ft container, ${fr} CBM free">
+    <defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="var(--chip)"/><line x1="0" y1="0" x2="0" y2="7" stroke="var(--line)" stroke-width="3"/></pattern></defs>
+    <text x="${X}" y="13" font-size="11" font-weight="700" fill="var(--muted)">${size}FT CONTAINER · ${cap} CBM</text>
+    <text x="${X+W}" y="13" font-size="11" font-weight="800" fill="var(--ok)" text-anchor="end">${fr} CBM FREE</text>
+    <rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="url(#hatch)"/>
+    ${rects}${ribs}
+    <rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="none" stroke="var(--ink)" stroke-width="2.5" rx="2"/>
+    <line x1="${X+W-1}" y1="${Y+10}" x2="${X+W-1}" y2="${Y+H-10}" stroke="var(--ink)" stroke-width="5"/>
+    ${[[X,Y],[X+W-8,Y],[X,Y+H-8],[X+W-8,Y+H-8]].map(p=>`<rect x="${p[0]}" y="${p[1]}" width="8" height="8" fill="var(--ink)"/>`).join("")}
+    <text x="${X+W/2}" y="${Y+H+13}" text-anchor="middle" font-size="10" fill="var(--muted)">doors →</text>
+  </svg>`;
+}
+
+/* ---------- Shell ---------- */
+const TABS = {
+  sender:[["find","Find space","search"],["calc","CBM calc","cube"],["ships","Shipments","ship"],["acct","Account","user"]],
+  host:[["listing","Container","box"],["reqs","Requests","inbox"],["load","Load plan","layers"],["earn","Earnings","wallet"],["acct","Account","user"]],
+};
+function renderTabs(){
+  const open = REQUESTS.filter(r=>!S.host.rs[r.id]).length, live=S.bookings.filter(b=>b.status<6).length;
+  $("#tabbar").innerHTML = TABS[S.role].map(([id,l,ic])=>{ const n = id==="reqs"?open : id==="ships"?live : 0;
+    return `<button class="tab ${S.tab===id?"on":""}" onclick="go('${id}')"><span class="badge-dot">${ICON[ic]}${n?`<b>${n}</b>`:""}</span>${l}</button>`; }).join("");
+}
+function go(t){ S.tab=t; save(); render(); }
+function setRole(r){ if(S.role===r) return; S.role=r; S.tab=r==="sender"?"find":"listing"; save(); render(); toast(r==="sender"?"Switched to: I need space":"Switched to: I have space"); }
+function head(title, sub){
+  return `<div class="seg"><button class="${S.role==="sender"?"on":""}" onclick="setRole('sender')">I need space</button><button class="${S.role==="host"?"on":""}" onclick="setRole('host')">I have space</button></div>
+  <div class="hello pad"><div><div class="loc">${sub}</div><div class="title">${title}</div></div><button class="avatar" onclick="go('acct')" aria-label="Account">${ICON.user}</button></div>`;
+}
+function openSheet(sel){ $(sel).scrollTop=0; $(sel).classList.add("open"); }
+function closeSheet(sel){ $(sel).classList.remove("open"); }
+const backBtn = (sel, extra="") => `<button class="back" onclick="closeSheet('${sel}');${extra}" aria-label="Back">${ICON.back}</button>`;
+
+/* ---------- Sender: Find ---------- */
+function visible(){
+  const q=S.q.trim().toLowerCase();
+  return CONTAINERS.filter(c=>{ const P=PORTS[c.port];
+    return (S.region==="All"||P.reg===S.region) && (S.month==="Any"||D(c.ship).toLocaleDateString("en-AU",{month:"short"})===S.month)
+      && (!q || (P.city+" "+P.country+" "+P.port+" "+c.host).toLowerCase().includes(q)); })
+    .sort((a,b)=>(free(b)>=S.need)-(free(a)>=S.need) || D(a.ship)-D(b.ship));
+}
+function card(c){
+  const P=PORTS[c.port], f=free(c), cap=CAP[c.size], short=f<S.need;
+  return `<div class="card ${short?"short":""}" onclick="openC('${c.id}')">
+    <div class="ctop"><span class="cc">${P.cc}</span><div class="route"><b>${P.city} → Melbourne</b><small>Departs ${fmt(c.ship)} · arrives ~${fmtS(eta(c))}</small></div>
+      <div class="ppc"><b class="num">$${c.price}</b><small>per CBM</small></div></div>
+    <div class="fill"><i style="width:${c.used/cap*100}%"></i></div>
+    <div class="frow num">${short?`<span class="warn">Only ${f} CBM free</span>`:`<span><b>${f} CBM free</b> of ${cap} · ${c.size}ft</span>`}<span>≈ ${money(Math.round(S.need*c.price))} for ${S.need.toFixed(1)} CBM</span></div>
+    <div class="hrow"><span class="hav">${initials(c.host)}</span><span class="hn">${c.host}<small>★ ${c.rating.toFixed(1)} (${c.rev}) · ${c.type}</small></span>
+      <span class="bdg">ID ✓</span>${c.lic?'<span class="bdg lic">Licensed</span>':P.road?'<span class="bdg lic">No customs</span>':'<span class="bdg warn">Broker assigned</span>'}</div>
+  </div>`;
+}
+function renderFind(){
+  const list=visible();
+  $("#view").innerHTML = head("Ship it to Melbourne","Share a container · Prices in AUD") + `
+    <div class="mapbox">${worldSVG({all:[...new Set(list.map(c=>c.port))]})}<span class="cap num">${list.length} container${list.length===1?"":"s"} heading to Melbourne</span></div>
+    <div class="search">${ICON.search}<input id="q" placeholder="Search city, country or host" value="${esc(S.q)}" oninput="S.q=this.value;renderFindList()"></div>
+    <div class="need"><div class="t">Your goods<br><b class="num">${S.need.toFixed(1)} CBM</b> <a href="#" onclick="go('calc');return false">Calculate →</a></div>
+      <span class="step"><button onclick="setNeed(-.5)" aria-label="Less">−</button><button onclick="setNeed(.5)" aria-label="More">+</button></span></div>
+    <div class="chips">${REGIONS.map(r=>`<button class="chip ${S.region===r?"on":""}" onclick="S.region='${r}';save();renderFind()">${r}</button>`).join("")}</div>
+    <div class="chips">${["Any","Oct","Nov","Dec"].map(m=>`<button class="chip ${S.month===m?"on":""}" onclick="S.month='${m}';save();renderFind()">${m==="Any"?"Any month":"Departs "+m}</button>`).join("")}</div>
+    <div class="section-h"><h2>Containers with space</h2><span>Soonest first</span></div>
+    <div id="list"></div>`;
+  renderFindList();
+}
+function renderFindList(){
+  const list=visible();
+  $("#list").innerHTML = (list.length?list.map(card).join(""):`<div class="empty">No containers match. Try another region or month.</div>`) +
+    `<div class="post" onclick="openReq(null)"><div class="t"><b>No match yet?</b>Post a request and hosts going your way will offer you space.</div><span class="go">Post</span></div>`;
+}
+function setNeed(d){ S.need=Math.max(.1,r1(S.need+d)); save(); renderFind(); }
+
+/* ---------- Container detail ---------- */
+function openC(id){
+  const c=C(id), P=PORTS[c.port], f=free(c); S.cur=id;
+  $("#sheet").innerHTML = `
+    <div class="plain-head">${backBtn("#sheet")}<h2>${P.city} → Melbourne<small>${c.size}ft container · ${c.host}</small></h2></div>
+    <div class="block flush">${worldSVG({focus:c.port})}</div>
+    <div class="block"><div class="vgrid">
+      <div><small>Departs</small>${fmt(c.ship)}</div><div><small>Arrives (est.)</small>${fmt(eta(c))}</div>
+      <div><small>From</small>${P.port}</div><div><small>To</small>${P.road?"Melbourne depot":"Port of Melbourne"}</div>
+      <div><small>Transit</small>${P.days} days ${P.road?"by road":"at sea"}</div><div><small>Price</small>$${c.price} per CBM</div></div></div>
+    <div class="block"><h3>Space left <span>${f} of ${CAP[c.size]} CBM free</span></h3>${containerSVG(c.size,[{cbm:c.used,col:"var(--brand)"}])}
+      <div class="note">Your ${S.need.toFixed(1)} CBM would take ${Math.round(S.need/CAP[c.size]*100)}% of the container.</div></div>
+    <div class="block"><div class="shiprow"><span class="hav" style="width:44px;height:44px;font-size:14px">${initials(c.host)}</span>
+      <div style="flex:1"><b>${c.host}</b><div class="note" style="margin-top:2px">★ ${c.rating.toFixed(1)} · ${c.rev} reviews · ${c.type}</div></div></div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><span class="bdg">ID verified</span>${c.lic?'<span class="bdg lic">Licensed forwarder</span>':""}<span class="bdg lic">Escrow protected</span></div>
+      <p class="prose" style="margin-top:10px">“${c.note}”</p>
+      ${!c.lic&&!P.road?`<div class="notice">Private host. Boxshare puts a licensed customs broker (Harbourline Customs, fictional) on this container, so every sender's goods have their own paperwork.</div>`:""}
+      <div style="margin-top:12px">${REVIEWS.slice(0,2).map(r=>`<div class="review"><b>${r[0]}</b><span>${"★".repeat(r[1])}</span><br>${r[2]}</div>`).join("")}</div></div>
+    <div class="block"><h3>Getting your goods to the host</h3>
+      <div class="opt ${c.pickup?"":"off"}"><span class="pill ${c.pickup?"ok":""}">${c.pickup?"Yes":"No"}</span><span class="n">Pickup from your address<small>+$60 flat, within ${P.city}</small></span></div>
+      <div class="opt ${c.dropoff?"":"off"}"><span class="pill ${c.dropoff?"ok":""}">${c.dropoff?"Yes":"No"}</span><span class="n">Drop off at the host's place<small>Free · the address is shared after booking</small></span></div></div>
+    <div class="block"><h3>Not allowed <span>Australian border rules</span></h3><div class="prose"><ul>${PROHIBITED.slice(0,4).map(p=>`<li>${p}</li>`).join("")}</ul></div>
+      <a href="#" class="note" style="display:block;color:var(--brand);font-weight:600" onclick="openSafety();return false">See the full list →</a></div>
+    <div class="cta-bar"><button class="cta" ${f<.1?"disabled":""} onclick="openReq('${c.id}')"><span>Request space</span><span class="num">from ${money(Math.round(Math.min(S.need,f)*c.price))}</span></button></div>`;
+  openSheet("#sheet");
+}
+
+/* ---------- Request / booking ---------- */
+function openReq(id){
+  const c=id?C(id):null;
+  S.req = {cid:id, port:c?c.port:"mumbai", cbm:c?Math.min(S.need,free(c)):S.need, kg:Math.round(S.need*160), cats:["Boxes","Clothes"],
+    mode:c&&!c.dropoff?"pickup":"dropoff", suburb:"", decl:[false,false,false], ins:true, pay:S.pay||"apple"};
+  renderReq(); openSheet("#sheet2");
+}
+function quote(){
+  const r=S.req, c=C(r.cid), P=PORTS[c.port];
+  const freight=r.cbm*c.price, handling=P.road?40:95+28*r.cbm, pickup=r.mode==="pickup"?60:0, ins=r.ins?79:0;
+  const fee=(freight+handling+pickup)*.07;
+  return {freight,handling,pickup,ins,fee,total:Math.round((freight+handling+pickup+ins+fee)*100)/100,P,c};
+}
+const PAYS = [
+  {id:"apple",name:"Apple Pay",sub:"Face ID",logo:()=>`<span class="logo" style="background:#000;color:#fff">${APPLE}Pay</span>`},
+  {id:"card",name:"Visa •••• 4242",sub:"Demo test card",logo:()=>'<span class="logo" style="background:#1a1f71;color:#fff;font-style:italic">VISA</span>'},
+  {id:"payid",name:"PayID",sub:"Instant bank transfer, no card fees",logo:()=>'<span class="logo" style="background:#00a3a1;color:#fff">PayID</span>'},
+];
+const APPLE = '<svg width="13" height="15" viewBox="0 0 17 20" style="vertical-align:-1px;margin-right:2px" fill="currentColor"><path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 2 5.8 1.1 7.4c-1.9 3.2-.5 8 1.3 10.6.9 1.3 2 2.7 3.3 2.7 1.3-.1 1.8-.9 3.4-.9s2 .9 3.4.8c1.4 0 2.3-1.3 3.1-2.6 1-1.5 1.4-2.9 1.4-3-.1 0-2.9-1.1-2.9-4.4zM11.5 3c.7-.9 1.2-2 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.1.1 2.3-.6 3-1.5z"/></svg>';
+function reqStep(d){ const r=S.req, c=r.cid?C(r.cid):null, max=c?free(c):60; r.cbm=Math.min(max,Math.max(.1,r1(r.cbm+d))); renderReq(); }
+function reqToggle(k,v){ const r=S.req;
+  if(k==="cat"){ r.cats.includes(v)?r.cats=r.cats.filter(x=>x!==v):r.cats.push(v); }
+  else if(k==="decl"){ r.decl[v]=!r.decl[v]; }
+  else r[k]=v;
+  renderReq(); }
+function reqReady(){ const r=S.req; return r.cbm>0 && r.suburb.trim() && r.decl.every(Boolean) && r.cats.length; }
+function renderReq(){
+  const r=S.req, c=r.cid?C(r.cid):null, P=PORTS[c?c.port:r.port], q=c?quote():null;
+  const ready=reqReady();
+  $("#sheet2").innerHTML = `
+    <div class="plain-head">${backBtn("#sheet2")}<h2>${c?"Request space":"Post a request"}<small>${c?`${P.city} → Melbourne · departs ${fmt(c.ship)}`:"Hosts heading to Melbourne will offer you space"}</small></h2></div>
+    ${c?"":`<div class="block"><label class="field"><span>Sending from</span><select onchange="S.req.port=this.value;renderReq()">${Object.entries(PORTS).map(([k,p])=>`<option value="${k}" ${r.port===k?"selected":""}>${p.city}, ${p.country}</option>`).join("")}</select></label></div>`}
+    <div class="block"><h3>Your goods <a href="#" style="font-size:12px;color:var(--brand);font-weight:700;text-decoration:none" onclick="closeSheet('#sheet2');closeSheet('#sheet');go('calc');return false">Use calculator</a></h3>
+      <div class="line" style="align-items:center"><span>Volume<small>${c?`Up to ${free(c)} CBM available`:"Your best estimate"}</small></span>
+        <span class="step"><button onclick="reqStep(-.1)" aria-label="Less">−</button><b class="num">${r.cbm.toFixed(1)}</b><button onclick="reqStep(.1)" aria-label="More">+</button></span></div>
+      <label class="field" style="margin-top:8px"><span>Approx. weight (kg)</span><input type="number" inputmode="numeric" value="${r.kg}" oninput="S.req.kg=+this.value||0"></label>
+      <div class="field"><span>What's in it</span><div class="wrapchips">${CATS.map(k=>`<button class="chip ${r.cats.includes(k)?"on":""}" onclick="reqToggle('cat','${k}')">${k}</button>`).join("")}</div></div></div>
+    <div class="block"><h3>In ${P.city}</h3>
+      ${(!c||c.pickup)?`<div class="opt ${r.mode==="pickup"?"on":""}" onclick="reqToggle('mode','pickup')"><span class="radio"></span><span class="n">Host collects from me<small>+$60 flat fee</small></span></div>`:""}
+      ${(!c||c.dropoff)?`<div class="opt ${r.mode==="dropoff"?"on":""}" onclick="reqToggle('mode','dropoff')"><span class="radio"></span><span class="n">I'll drop off at the host's place<small>Free</small></span></div>`:""}</div>
+    <div class="block"><h3>In Melbourne</h3><label class="field"><span>Deliver to suburb</span><input placeholder="e.g. Tarneit VIC 3029" value="${esc(r.suburb)}" oninput="S.req.suburb=this.value;syncCTA()"></label>
+      <div class="note">Delivery from the port to anywhere in metro Melbourne is included.</div></div>
+    <div class="block"><h3>Declarations <span>Required</span></h3>
+      ${["These are my own used personal or household goods","No food, plants, soil, weapons or dangerous goods. Wooden items will be declared","I'll give a packing list and lodge my B534 (Unaccompanied Personal Effects statement) with the ABF"].map((t,i)=>
+        `<div class="opt ${r.decl[i]?"on":""}" onclick="reqToggle('decl',${i})"><span class="box"></span><span class="n" style="font-weight:500;font-size:13.5px">${t}</span></div>`).join("")}</div>
+    ${c?`<div class="block"><h3>Quote</h3>
+      <div class="line"><span>Freight<small>${r.cbm.toFixed(1)} CBM × $${c.price}</small></span><span class="num">${money2(q.freight)}</span></div>
+      <div class="line"><span>${P.road?"Depot handling":"Melbourne customs & biosecurity"}<small>${P.road?"Unloading and storage":"Broker clearance, DAFF inspection share, port fees"}</small></span><span class="num">${money2(q.handling)}</span></div>
+      ${q.pickup?`<div class="line"><span>Pickup in ${P.city}</span><span class="num">${money2(q.pickup)}</span></div>`:""}
+      <div class="opt" onclick="reqToggle('ins',${!r.ins})" style="padding:8px 0"><span class="n">Transit insurance<small>Covers up to $5,000 · $79</small></span><span class="toggle ${r.ins?"on":""}"></span></div>
+      <div class="line"><span>Boxshare service fee (7%)</span><span class="num">${money2(q.fee)}</span></div>
+      <div class="line total"><span>Total</span><span class="num">${money2(q.total)}</span></div>
+      <div class="notice ok">🔒 Held in escrow. The host is paid only after you confirm delivery in Melbourne. You get a full refund if the container doesn't sail.</div></div>
+    <div class="block"><h3>Pay with</h3>${PAYS.map(p=>`<div class="opt pm ${r.pay===p.id?"on":""}" onclick="reqToggle('pay','${p.id}')"><span class="radio"></span>${p.logo()}<span class="n">${p.name}<small>${p.sub}</small></span></div>`).join("")}</div>`
+    :`<div class="block"><div class="notice info">Free to post. Hosts and forwarders shipping from ${P.city} will send offers, and you pay only when you accept one.</div></div>`}
+    <div class="cta-bar" id="reqcta"></div>`;
+  syncCTA();
+}
+function syncCTA(){
+  const r=S.req, c=r.cid?C(r.cid):null, ready=reqReady(), el=$("#reqcta"); if(!el) return;
+  const why = !r.cats.length?"Pick what's in it":!r.suburb.trim()?"Add a delivery suburb":!r.decl.every(Boolean)?"Tick the declarations":"";
+  if(!c){ el.innerHTML=`<button class="cta center" ${ready?"":"disabled"} onclick="postReq()">${why||"Post request"}</button>`; return; }
+  const t=quote().total;
+  el.innerHTML = !ready ? `<button class="cta center" disabled>${why}</button>`
+    : r.pay==="apple" ? `<button class="cta black" onclick="applePay()">Pay with <b style="font-size:18px">${APPLE}Pay</b></button>`
+    : `<button class="cta" onclick="pay()"><span>${r.pay==="payid"?"Pay by PayID":"Pay into escrow"}</span><span class="num">${money2(t)}</span></button>`;
+}
+function applePay(){
+  const t=quote().total;
+  $("#applesheet").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:20px">${APPLE}Pay</b><button onclick="cancelApple()" style="color:#0a84ff">Cancel</button></div>
+    <div class="r" style="margin-top:10px"><span style="color:#777">Card</span><span>Demo card •••• 4242</span></div>
+    <div class="r"><span style="color:#777">Pay</span><span><b>BOXSHARE ESCROW (DEMO) ${money2(t)}</b></span></div>
+    <div class="face">☺</div><div class="side-btn" id="apstatus">Confirm with side button</div>`;
+  $("#scrim").classList.add("open"); $("#applesheet").classList.add("open");
+  clearTimeout(applePay._a); clearTimeout(applePay._b);
+  applePay._a=setTimeout(()=>{ const s=$("#apstatus"); if(s) s.innerHTML='<b style="color:#34c759">✓ Done</b>'; },1300);
+  applePay._b=setTimeout(()=>{ cancelApple(); pay(); },2000);
+}
+function cancelApple(){ clearTimeout(applePay._a); clearTimeout(applePay._b); $("#scrim").classList.remove("open"); $("#applesheet").classList.remove("open"); }
+function pay(){
+  const r=S.req, q=quote(), c=q.c;
+  const b={id:"BX-"+Math.random().toString(36).slice(2,6).toUpperCase(),port:c.port,host:c.host,cbm:r.cbm,total:q.total,method:r.pay,ship:c.ship,days:PORTS[c.port].days,
+    booked:iso(TODAY),status:0,rated:0,suburb:r.suburb.trim(),chat:[{me:false,t:`Hi! Thanks for booking ${r.cbm.toFixed(1)} CBM on my container. ${r.mode==="pickup"?"I'll message you to arrange pickup.":"I'll send my drop-off address and times."}`}]};
+  S.bookings.unshift(b); S.pay=r.pay; save();
+  closeSheet("#sheet2"); closeSheet("#sheet"); S.tab="ships"; render(); openTrack(b.id,true);
+}
+function postReq(){
+  const r=S.req; S.posts.unshift({id:"RQ-"+Math.random().toString(36).slice(2,6).toUpperCase(),port:r.port,cbm:r.cbm,suburb:r.suburb.trim(),at:iso(TODAY)});
+  save(); closeSheet("#sheet2"); closeSheet("#sheet"); S.tab="ships"; render(); toast("Request posted. Hosts will send offers.");
+}
+
+/* ---------- Calculator ---------- */
+function calcTotal(){ const base=ITEMS.reduce((s,i)=>s+(S.items[i[0]]||0)*i[3],0)+S.custom.reduce((s,x)=>s+x.v*x.n,0); return r1(base*1.1); }
+function bump(k,d){ S.items[k]=Math.max(0,(S.items[k]||0)+d); save(); renderCalc(); }
+function addCustom(){
+  const L=+$("#cl").value, W=+$("#cw").value, H=+$("#ch").value, n=Math.max(1,+$("#cn").value||1);
+  if(!(L>0&&W>0&&H>0)) return toast("Enter length, width and height in cm");
+  S.custom.push({L,W,H,n,v:L*W*H/1e6}); save(); renderCalc(); toast("Item added");
+}
+function renderCalc(){
+  const t=calcTotal(), prices=CONTAINERS.map(c=>c.price), lo=Math.round(t*Math.min(...prices)), hi=Math.round(t*Math.max(...prices));
+  const count=Object.values(S.items).reduce((a,b)=>a+b,0)+S.custom.reduce((a,x)=>a+x.n,0);
+  const top=$("#view").scrollTop;
+  $("#view").innerHTML = head("CBM calculator","How much space do you need?") + `
+    <div class="calc-sum"><div class="big num">${t.toFixed(1)} <small>CBM</small></div>
+      <p>${count} item${count===1?"":"s"} · about ${Math.round(t/33*100)}% of a 20ft container · roughly ${Math.round(t*160)} kg<br>Freight is about ${money(lo)}–${money(hi)}, depending on the route. Includes 10% packing allowance.</p>
+      <button onclick="S.need=Math.max(.1,${t});save();go('find')" ${t?"":"disabled"}>Find space for ${t.toFixed(1)} CBM →</button></div>
+    <div class="block"><h3>Boxes & bags</h3>${ITEMS.slice(0,4).map(itemRow).join("")}</div>
+    <div class="block"><h3>Furniture & appliances</h3>${ITEMS.slice(4).map(itemRow).join("")}</div>
+    <div class="block"><h3>Custom item <span>cm</span></h3>
+      <div class="row"><label class="field"><span>L</span><input id="cl" type="number" inputmode="numeric" placeholder="120"></label><label class="field" style="margin-top:0"><span>W</span><input id="cw" type="number" inputmode="numeric" placeholder="60"></label>
+      <label class="field" style="margin-top:0"><span>H</span><input id="ch" type="number" inputmode="numeric" placeholder="80"></label><label class="field" style="margin-top:0"><span>Qty</span><input id="cn" type="number" inputmode="numeric" value="1"></label></div>
+      <button class="cta small ghost" style="margin-top:10px" onclick="addCustom()">Add item</button>
+      ${S.custom.map((x,i)=>`<div class="item"><span class="n">${x.L}×${x.W}×${x.H} cm<small>× ${x.n}</small></span><span class="v num">${r1(x.v*x.n)} CBM</span><button class="pill" onclick="S.custom.splice(${i},1);save();renderCalc()">Remove</button></div>`).join("")}</div>
+    <div class="block"><button class="cta small ghost" onclick="S.items={};S.custom=[];save();renderCalc()">Clear all</button></div>`;
+  $("#view").scrollTop=top;
+}
+const itemRow = i => `<div class="item"><span class="n">${i[1]}<small>${i[2]?i[2]+" · ":""}${i[3]} CBM each</small></span>
+  <span class="step"><button onclick="bump('${i[0]}',-1)" aria-label="Fewer ${i[1]}">−</button><b class="num">${S.items[i[0]]||0}</b><button onclick="bump('${i[0]}',1)" aria-label="More ${i[1]}">+</button></span></div>`;
+
+/* ---------- Shipments & tracking ---------- */
+const stepDates = b => [b.booked, add(b.ship,-5), add(b.ship,-1), b.ship, add(b.ship,b.days), add(b.ship,b.days+4), add(b.ship,b.days+6)];
+function progress(b){
+  if(b.status<3) return 0; if(b.status>=4) return 1;
+  return Math.min(.92,Math.max(.08,(TODAY-D(b.ship))/864e5/b.days));
+}
+function renderShips(){
+  const offers = p => CONTAINERS.filter(c=>c.port===p.port || PORTS[c.port].reg===PORTS[p.port].reg).filter(c=>free(c)>=p.cbm);
+  $("#view").innerHTML = head("My shipments","Bookings and requests") + `
+    <div class="section-h"><h2>Bookings</h2><span>${S.bookings.length}</span></div>
+    ${S.bookings.length?S.bookings.map(b=>{ const P=PORTS[b.port], st=(P.road?STEPS_ROAD:STEPS)[b.status];
+      return `<div class="card" onclick="openTrack('${b.id}')"><div class="ctop"><span class="cc">${P.cc}</span><div class="route"><b>${P.city} → Melbourne</b><small>${b.id} · ${b.cbm.toFixed(1)} CBM · ${b.host}</small></div>
+        <span class="pill ${b.status>=6?"ok":"acc"}">${b.status>=6?"Delivered":b.status>=3?"In transit":"Booked"}</span></div>
+        <div class="prog"><i style="width:${b.status/6*100}%"></i></div><div class="frow"><span><b>${st}</b></span><span>ETA ${fmtS(add(b.ship,b.days))}</span></div></div>`; }).join("")
+      :`<div class="empty">No bookings yet.</div>`}
+    <div class="section-h"><h2>Posted requests</h2><span>${S.posts.length}</span></div>
+    ${S.posts.length?S.posts.map(p=>{ const P=PORTS[p.port], o=offers(p);
+      return `<div class="block"><div class="ctop"><span class="cc">${P.cc}</span><div class="route"><b>${P.city} → ${esc(p.suburb)}</b><small>${p.id} · ${p.cbm.toFixed(1)} CBM · posted ${fmtS(p.at)}</small></div><span class="pill br">${o.length} offer${o.length===1?"":"s"}</span></div>
+        ${o.slice(0,3).map(c=>`<div class="opt" onclick="openC('${c.id}')"><span class="hav">${initials(c.host)}</span><span class="n">${c.host}<small>${PORTS[c.port].city} · departs ${fmtS(c.ship)} · $${c.price}/CBM</small></span><span class="chev">›</span></div>`).join("")}
+        <button class="pill" style="margin-top:8px" onclick="S.posts=S.posts.filter(x=>x.id!=='${p.id}');save();render()">Withdraw request</button></div>`; }).join("")
+      :`<div class="post" onclick="openReq(null)"><div class="t"><b>Nothing posted</b>Tell hosts what you need to send and where from.</div><span class="go">Post</span></div>`}`;
+}
+function openTrack(id, fresh){
+  const b=S.bookings.find(x=>x.id===id), P=PORTS[b.port], steps=P.road?STEPS_ROAD:STEPS, ds=stepDates(b);
+  const pay=PAYS.find(p=>p.id===b.method);
+  $("#sheet").innerHTML = `
+    <div class="plain-head">${backBtn("#sheet","render()")}<h2>${fresh?"Space booked":P.city+" → Melbourne"}<small>${b.id} · ${b.host}</small></h2></div>
+    ${fresh?`<div class="check">✓</div><p style="text-align:center;margin:10px 24px 0;font-size:14px;color:var(--muted)">${money2(b.total)} is held in escrow (demo). The host is paid after delivery.</p>`:""}
+    <div class="block flush" style="position:relative">${worldSVG({focus:b.port,prog:progress(b)})}
+      <span class="pill acc" style="position:absolute;left:10px;bottom:10px">${steps[b.status]}</span></div>
+    <div class="block"><h3>Status <span>ETA ${fmt(add(b.ship,b.days))}</span></h3><div class="tl">
+      ${steps.map((s,i)=>`<div class="s ${i<b.status||b.status===6?"done":i===b.status?"cur":""}"><span class="dot">${i<b.status||b.status===6?"✓":""}</span><span class="t">${s}<small>${i<=b.status?"":"Est. "}${fmt(ds[i])}</small></span></div>`).join("")}</div>
+      ${b.status<6?`<button class="cta small ghost" style="margin-top:12px" onclick="advance('${b.id}')">Move to next step (demo)</button>`:""}</div>
+    ${b.status===6?`<div class="block" style="text-align:center"><h3 style="justify-content:center">${b.rated?"Thanks for rating":"Confirm delivery & rate "+b.host}</h3>
+      <div class="stars">${[1,2,3,4,5].map(n=>`<button class="${n<=b.rated?"on":""}" onclick="rate('${b.id}',${n})" aria-label="${n} stars">★</button>`).join("")}</div>
+      <div class="note">${b.rated?"Payment released to the host from escrow.":"Rating releases the escrow payment to the host."}</div></div>`:""}
+    <div class="block"><div class="vgrid">
+      <div><small>Volume</small>${b.cbm.toFixed(1)} CBM</div><div><small>Paid</small>${money2(b.total)}</div>
+      <div><small>Method</small>${pay?pay.name:"Card"}</div><div><small>Escrow</small>${b.rated?"Released":"Held"}</div></div>
+      ${P.road?"":`<div class="notice info">Paperwork: ${b.status>=2?"✓":"□"} Packing list · ${b.status>=2?"✓":"□"} B534 lodged · ${b.status>=5?"✓":"□"} Biosecurity cleared</div>`}</div>
+    <div class="block"><h3>Chat with ${b.host}</h3><div class="bubbles" id="bubbles">${b.chat.map(m=>`<div class="bub ${m.me?"me":""}">${esc(m.t)}</div>`).join("")}</div>
+      <div class="chatin"><input id="chatIn" placeholder="Message" onkeydown="if(event.key==='Enter')sendChat('${b.id}')"><button onclick="sendChat('${b.id}')">Send</button></div></div>
+    <div style="height:30px"></div>`;
+  if(!$("#sheet").classList.contains("open")) openSheet("#sheet");
+}
+function advance(id){ const b=S.bookings.find(x=>x.id===id); b.status=Math.min(6,b.status+1);
+  if(b.status===3) b.chat.push({me:false,t:"Container has sailed 🚢 I'll keep you posted."});
+  if(b.status===5) b.chat.push({me:false,t:"Cleared customs and biosecurity ✅ Booking delivery now."});
+  save(); openTrack(id); renderTabs(); }
+function rate(id,n){ const b=S.bookings.find(x=>x.id===id); b.rated=n; save(); openTrack(id); toast("Payment released to "+b.host); }
+function sendChat(id){ const el=$("#chatIn"), t=el.value.trim(); if(!t) return; const b=S.bookings.find(x=>x.id===id);
+  b.chat.push({me:true,t}); save(); openTrack(id); $("#sheet").scrollTop=1e6;
+  setTimeout(()=>{ b.chat.push({me:false,t:"Got it 👍 (auto-reply in this demo)"}); save(); if($("#sheet").classList.contains("open")&&$("#bubbles")){ openTrack(id); $("#sheet").scrollTop=1e6; } },1200); }
+
+/* ---------- Host ---------- */
+const H = () => S.host;
+const hostCap = () => CAP[H().size];
+const accepted = () => REQUESTS.filter(r=>H().rs[r.id]==="accepted");
+const hostFree = () => r1(hostCap()-H().own-accepted().reduce((s,r)=>s+r.cbm,0));
+const hostSegs = () => [{cbm:H().own,col:"var(--brand)"}, ...accepted().map((r,i)=>({cbm:r.cbm,col:SEG_COLS[i%SEG_COLS.length]}))];
+function hset(k,v){ H()[k]=v;
+  if(k==="size"){ const others=accepted().reduce((s,r)=>s+r.cbm,0); if(H().own+others>hostCap()) H().own=Math.max(0,r1(hostCap()-others)); }
+  save(); renderListing(); }
+function renderListing(){
+  const h=H(), P=PORTS[h.port], f=hostFree(), others=accepted().reduce((s,r)=>s+r.cbm,0), top=$("#view").scrollTop;
+  $("#view").innerHTML = head("My container","List your spare space") + `
+    <div class="block"><div class="shiprow"><span class="cc">${P.cc}</span><div class="route"><b>${P.city} → Melbourne</b><small>Departs ${fmt(h.date)} · ETA ${fmtS(add(h.date,P.days))}</small></div>
+      <span class="pill ${h.published?"ok":""}">${h.published?"Live":"Draft"}</span></div>
+      <div style="margin-top:12px" id="cgfx">${containerSVG(h.size,hostSegs())}</div>
+      <div class="frow num" id="ftxt"><span>Your goods <b>${h.own.toFixed(1)}</b> · senders <b>${r1(others)}</b></span><span><b>${f} CBM</b> to share</span></div></div>
+    <div class="block"><h3>Route & date</h3>
+      <label class="field"><span>Shipping from</span><select onchange="hset('port',this.value)">${Object.entries(PORTS).map(([k,p])=>`<option value="${k}" ${h.port===k?"selected":""}>${p.city} · ${p.port}</option>`).join("")}</select></label>
+      <div class="row" style="margin-top:10px"><label class="field" style="margin-top:0"><span>Ship date</span><input type="date" value="${h.date}" onchange="if(this.value)hset('date',this.value)"></label>
+        <div class="field" style="margin-top:0"><span>Container</span><div class="seg" style="margin:0">${[20,40].map(s=>`<button class="${h.size===s?"on":""}" onclick="hset('size',${s})">${s}ft</button>`).join("")}</div></div></div></div>
+    <div class="block"><h3>Your own goods <span id="owntxt" class="num">${h.own.toFixed(1)} CBM</span></h3>
+      <input type="range" min="0" max="${r1(hostCap()-others)}" step="0.1" value="${h.own}" oninput="liveOwn(+this.value)" aria-label="Your own goods in CBM">
+      <div class="note">Move the slider to set how much your own stuff takes. Whatever is left is offered to senders.</div></div>
+    <div class="block"><h3>Price</h3><div class="line" style="align-items:center"><span>Per CBM<small>Similar ${P.city} routes: $${Math.round(PORTS[h.port].days*4+50)}–$${Math.round(PORTS[h.port].days*6+70)}</small></span>
+      <span class="step"><button onclick="hset('price',Math.max(20,H().price-5))" aria-label="Lower price">−</button><b class="num">$${h.price}</b><button onclick="hset('price',H().price+5)" aria-label="Raise price">+</button></span></div>
+      <div class="note" id="potential">If you fill it: about <b>${money(Math.round(f*h.price*.97))}</b> after the 3% host fee.</div></div>
+    <div class="block"><h3>Handover</h3>
+      <div class="opt" onclick="hset('pickup',!H().pickup)"><span class="n">I can collect from senders<small>Sender pays a $60 pickup fee, which goes to you</small></span><span class="toggle ${h.pickup?"on":""}"></span></div>
+      <div class="opt" onclick="hset('dropoff',!H().dropoff)"><span class="n">Senders can drop off at my place<small>Your address is shared only after booking</small></span><span class="toggle ${h.dropoff?"on":""}"></span></div></div>
+    <div class="block"><h3>Items I'll accept</h3><div class="wrapchips">${CATS.map(k=>`<button class="chip ${h.allow.includes(k)?"on":""}" onclick="H().allow.includes('${k}')?H().allow=H().allow.filter(x=>x!=='${k}'):H().allow.push('${k}');save();renderListing()">${k}</button>`).join("")}</div></div>
+    <div class="block"><div class="notice">${P.road?"Interstate road freight: no customs or biosecurity paperwork, but a signed packing list is still needed for each sender.":"<b>You'll be the importer for this container.</b> Boxshare puts a licensed customs broker on every shared container, and each sender lodges their own B534 Unaccompanied Personal Effects statement. See Account → How it works."}</div></div>
+    <div class="cta-bar"><button class="cta center" onclick="H().published=true;save();renderListing();toast('Listing ${h.published?"updated":"published"}')">${h.published?"Update listing":"Publish listing"}</button></div>`;
+  $("#view").scrollTop=top;
+}
+function liveOwn(v){ H().own=r1(v); save(); const f=hostFree(), others=accepted().reduce((s,r)=>s+r.cbm,0);
+  $("#cgfx").innerHTML=containerSVG(H().size,hostSegs()); $("#owntxt").textContent=H().own.toFixed(1)+" CBM";
+  $("#ftxt").innerHTML=`<span>Your goods <b>${H().own.toFixed(1)}</b> · senders <b>${r1(others)}</b></span><span><b>${f} CBM</b> to share</span>`;
+  $("#potential").innerHTML=`If you fill it: about <b>${money(Math.round(f*H().price*.97))}</b> after the 3% host fee.`; }
+function renderReqs(){
+  const f=hostFree(), P=PORTS[H().port], st=r=>H().rs[r.id];
+  const order=r=>({undefined:0,countered:1,accepted:2,declined:3})[st(r)];
+  $("#view").innerHTML = head("Requests",`Senders near ${P.city} · ${f} CBM free`) + `
+    <div class="demo-strip">Accept a request and it's added to your load plan and earnings. Senders pay into escrow when you accept.</div>
+    <div style="height:12px"></div>
+    ${[...REQUESTS].sort((a,b)=>order(a)-order(b)).map(r=>{ const s=st(r), fits=r.cbm<=f;
+      return `<div class="req" style="${s==="declined"?"opacity:.5":""}"><div class="top"><span class="hav" style="width:36px;height:36px">${initials(r.name)}</span>
+        <span class="n">${r.name}<small>★ ${r.rating.toFixed(1)} · to ${r.to} · ${r.when}</small></span><span class="cbm num">${r.cbm.toFixed(1)}<small>CBM</small></span></div>
+        <div class="items">${r.items}</div>
+        <div class="frow num"><span>Offers <b>$${r.offer}/CBM</b>${r.offer<H().price?` <span class="warn">(you ask $${H().price})</span>`:""}</span><span>You get <b>${money(Math.round(r.cbm*r.offer*.97))}</b></span></div>
+        ${s==="accepted"?`<div class="acts"><button disabled>✓ Accepted</button><button onclick="H().rs['${r.id}']=undefined;delete H().rs['${r.id}'];save();render()">Undo</button></div>`
+        :s==="declined"?`<div class="acts"><button onclick="delete H().rs['${r.id}'];save();render()">Declined · undo</button></div>`
+        :`<div class="acts"><button onclick="H().rs['${r.id}']='declined';save();render()">Decline</button>
+           ${r.offer<H().price?`<button onclick="H().rs['${r.id}']='countered';save();render();toast('Counter-offer sent at $${H().price}/CBM')" ${s==="countered"?"disabled":""}>${s==="countered"?"Countered":"Counter $"+H().price}</button>`:""}
+           <button class="yes" ${fits?"":"disabled"} onclick="H().rs['${r.id}']='accepted';save();render();toast('${r.name} added to your container')">${fits?"Accept":"Too big"}</button></div>`}
+      </div>`; }).join("")}`;
+}
+function renderLoad(){
+  const h=H(), acc=accepted(), f=hostFree(), done=h.chk.filter(Boolean).length;
+  const CHK=["Licensed customs broker appointed","Packing list from every sender","Each sender has lodged a B534","Fumigation / ISPM-15 certificates for timber items","Container swept clean of soil and pests before loading"];
+  $("#view").innerHTML = head("Load plan",`${h.size}ft container · ${r1(hostCap()-f)} of ${hostCap()} CBM booked`) + `
+    <div class="block">${containerSVG(h.size,hostSegs())}</div>
+    <div class="block"><h3>Who's in the box <span>${acc.length} sender${acc.length===1?"":"s"}</span></h3>
+      <div class="legend"><i style="background:var(--brand)"></i><span class="n">Your own goods<small>Load first, at the front wall</small></span><b class="num">${h.own.toFixed(1)}</b></div>
+      ${acc.map((r,i)=>`<div class="legend"><i style="background:${SEG_COLS[i%SEG_COLS.length]}"></i><span class="n">${r.name}<small>${r.items}</small></span><b class="num">${r.cbm.toFixed(1)}</b></div>`).join("")}
+      <div class="legend"><i style="background:var(--chip);border:1px solid var(--line)"></i><span class="n">Free space</span><b class="num">${f}</b></div></div>
+    <div class="block"><h3>Before the doors close <span>${done} of ${CHK.length}</span></h3>
+      ${CHK.map((t,i)=>`<div class="opt ${h.chk[i]?"on":""}" onclick="H().chk[${i}]=!H().chk[${i}];save();renderLoad()"><span class="box"></span><span class="n" style="font-weight:500;font-size:13.5px">${t}</span></div>`).join("")}</div>
+    <div class="block"><h3>Loading tips</h3><div class="prose"><ul><li>Put heavy items low and toward the front wall, and keep the weight even side to side.</li><li>Label every box with the sender's booking ID and give each sender their own colour.</li><li>Strap off each sender's section so nothing mixes in transit.</li><li>Photograph each section before the doors close. Senders see the photos in the app.</li></ul></div></div>`;
+}
+function renderEarn(){
+  const h=H(), acc=accepted(), gross=acc.reduce((s,r)=>s+r.cbm*r.offer,0), fee=gross*.03, net=gross-fee, P=PORTS[h.port];
+  const release=add(h.date,P.days+6);
+  $("#view").innerHTML = head("Earnings","Paid out after delivery") + `
+    <div class="earn"><div style="font-size:12.5px;opacity:.9">Expected payout</div><div class="big num">${money2(net)}</div>
+      <p>From ${acc.length} sender${acc.length===1?"":"s"} · held in escrow · released around ${fmt(release)}</p></div>
+    <div class="block"><h3>Breakdown</h3>
+      ${acc.map(r=>`<div class="line"><span>${r.name}<small>${r.cbm.toFixed(1)} CBM × $${r.offer}</small></span><span class="num">${money2(r.cbm*r.offer)}</span></div>`).join("")||'<div class="note">No accepted requests yet.</div>'}
+      <div class="line" style="border-top:1px solid var(--line);margin-top:6px;padding-top:10px"><span>Freight booked</span><span class="num">${money2(gross)}</span></div>
+      <div class="line"><span>Boxshare host fee (3%)</span><span class="num">−${money2(fee)}</span></div>
+      <div class="line total"><span>You receive</span><span class="num">${money2(net)}</span></div>
+      <div class="note">Senders also pay a 7% service fee, customs handling and insurance. Those go to Boxshare and the broker, not out of your share.</div></div>
+    <div class="block"><h3>Payout to</h3><div class="opt pm on"><span class="radio"></span><span class="logo" style="background:#00a3a1;color:#fff">PayID</span><span class="n">your-email@example.com<small>Paid within 1 business day of release</small></span></div></div>
+    <div class="block"><h3>How payouts work</h3><div class="tl">
+      ${["Sender pays into escrow when you accept","Container sails, and the senders see tracking","Delivered in Melbourne, and the sender confirms","Escrow releases to your PayID"].map((t,i)=>`<div class="s ${i===0&&acc.length?"done":""}"><span class="dot">${i===0&&acc.length?"✓":i+1}</span><span class="t">${t}</span></div>`).join("")}</div></div>`;
+}
+
+/* ---------- Account / info ---------- */
+function renderAcct(){
+  $("#view").innerHTML = head("Account","Demo profile") + `
+    <div class="block"><div class="shiprow"><span class="avatar" style="width:52px;height:52px;font-size:18px">ME</span><div style="flex:1"><b>Your profile</b><div class="note" style="margin-top:2px">Melbourne VIC · member since Oct 2026</div></div></div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><span class="bdg">ID verified (demo)</span><span class="bdg lic">Phone verified</span><span class="bdg lic">★ 4.9 · 12 reviews</span></div></div>
+    <div class="block">
+      <div class="list-item" onclick="setRole(S.role==='sender'?'host':'sender')"><span class="ic">⇄</span><span class="n">Switch to “${S.role==="sender"?"I have space":"I need space"}”<small>You can be both a sender and a host</small></span><span class="chev">›</span></div>
+      <div class="list-item" onclick="openHow()"><span class="ic">${ICON.info}</span><span class="n">How Boxshare works<small>Fees, escrow, customs</small></span><span class="chev">›</span></div>
+      <div class="list-item" onclick="openSafety()"><span class="ic">${ICON.shield}</span><span class="n">Safety & prohibited items<small>What can't go in a container to Australia</small></span><span class="chev">›</span></div>
+      <div class="list-item" onclick="toast('Payment methods are demo only')"><span class="ic">${ICON.wallet}</span><span class="n">Payments & payouts<small>Apple Pay · Visa •••• 4242 · PayID</small></span><span class="chev">›</span></div></div>
+    <div class="block"><h3>Reviews</h3>${REVIEWS.map(r=>`<div class="review"><b>${r[0]}</b><span>${"★".repeat(r[1])}</span><br>${r[2]}</div>`).join("")}</div>
+    <div class="block"><button class="cta small ghost" onclick="resetDemo()">Reset demo data</button></div>`;
+}
+function resetDemo(){ try{localStorage.removeItem("boxshare")}catch(e){} S=JSON.parse(JSON.stringify(DEFAULT)); S.q="";S.cur=null;S.req=null; render(); toast("Demo reset"); }
+function infoSheet(title, html){ $("#sheet2").innerHTML=`<div class="plain-head">${backBtn("#sheet2")}<h2>${title}</h2></div>${html}<div style="height:30px"></div>`; openSheet("#sheet2"); }
+function openHow(){
+  infoSheet("How Boxshare works", `
+  <div class="block prose"><h3>Two sides</h3><p><b>Hosts</b> have spare room in a container coming to Melbourne. They're people moving house or freight forwarders running shared (LCL) containers. They list the free CBM and a price per CBM.</p>
+    <p><b>Senders</b> book part of that space, or post a request and wait for offers.</p></div>
+  <div class="block prose"><h3>Money</h3><ul><li>The sender pays freight, Melbourne handling, optional insurance and a <b>7% service fee</b>.</li><li>The host pays a <b>3% host fee</b> out of the freight.</li><li>All money sits in <b>escrow</b> until the sender confirms delivery. If the container doesn't sail, the sender gets a full refund.</li></ul></div>
+  <div class="block prose"><h3>Customs & biosecurity (simplified)</h3><ul>
+    <li>A shared container still has one importer. Boxshare requires a <b>licensed customs broker</b> on every container that carries other people's goods.</li>
+    <li>Each sender lodges their own <b>B534 Unaccompanied Personal Effects statement</b> with the Australian Border Force and gives a packing list.</li>
+    <li>Every container is assessed by the <b>Department of Agriculture (DAFF)</b> for biosecurity. Timber needs treatment certificates, and everything must be clean of soil.</li>
+    <li>Duty and GST may apply to new goods or goods owned for less than 12 months.</li></ul>
+    <p class="note">This is a demo summary, not advice. Check <a href="https://www.abf.gov.au" target="_blank" rel="noopener">abf.gov.au</a> and <a href="https://www.agriculture.gov.au" target="_blank" rel="noopener">agriculture.gov.au</a>.</p></div>
+  <div class="block prose"><h3>Trust</h3><ul><li>Hosts and senders verify their ID. Forwarders show their licence.</li><li>The host photographs every sender's section at loading.</li><li>Ratings are released only after delivery.</li></ul></div>`);
+}
+function openSafety(){
+  infoSheet("Safety & prohibited items", `
+  <div class="block prose"><h3>Don't send</h3><ul>${PROHIBITED.map(p=>`<li>${p}</li>`).join("")}</ul></div>
+  <div class="block prose"><h3>Declare</h3><ul><li>Wooden furniture, cane, bamboo and wicker</li><li>Religious items made from natural materials</li><li>Used outdoor gear, bikes, shoes and tents (they must be clean)</li><li>Anything you're not sure about. Declaring it is always safer.</li></ul></div>
+  <div class="block prose"><h3>Protecting both sides</h3><ul><li>Payment is held in escrow until delivery</li><li>Optional transit insurance up to $5,000</li><li>Never pay a host outside the app</li><li>Report a listing from the host's profile</li></ul>
+    <div class="notice">If a sender's goods break the rules, the whole container can be held at the border, so hosts can refuse or inspect any item before loading.</div></div>`);
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const views={find:renderFind,calc:renderCalc,ships:renderShips,acct:renderAcct,listing:renderListing,reqs:renderReqs,load:renderLoad,earn:renderEarn};
+  if(!TABS[S.role].some(t=>t[0]===S.tab)) S.tab=TABS[S.role][0][0];
+  if(!["calc","listing"].includes(S.tab)) $("#view").scrollTop=0;
+  views[S.tab](); renderTabs();
+}
+function tick(){ const d=new Date(); $("#clock").textContent=d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); }
+tick(); setInterval(tick,30000);
+function fit(){ const p=$("#phone"); p.style.zoom = innerWidth>760 ? Math.min(1,(innerHeight-48)/868) : 1; }
+fit(); addEventListener("resize",fit);
+render();
+</script>
+
+</body></html>
