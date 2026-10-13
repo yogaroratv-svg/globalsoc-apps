@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home Security Glen Waverley | Global SOC</title>
+<meta name="description" content="Free 5-minute home security check for Glen Waverley households: doors, lighting, cameras, car keys, Wi-Fi, accounts and scams. Local, independent advice from Global SOC.">
+<meta property="og:title" content="Safer homes in Glen Waverley, inside and online">
+<meta property="og:description" content="Take the free 5-minute home security check and get a personalised action plan.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23141b3a'/%3E%3Cpath d='M14 32 32 16l18 16v17H14z' fill='none' stroke='%23ffb547' stroke-width='5' stroke-linejoin='round'/%3E%3Crect x='27' y='35' width='10' height='14' fill='%23ffb547'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f6f9;--card:#fff;--ink:#141826;--muted:#5e6577;--line:#e3e4ec;--brand:#1d2a6b;--brand2:#3446a8;--accent:#e98a12;--glow:#ffb547;--soft:#eceefa;--on:#fff;--good:#1f8a5b;--mid:#c27c0e;--bad:#c8372d;--night1:#0b1030;--night2:#1b2559}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0d16;--card:#141826;--ink:#e9ebf3;--muted:#9aa0b4;--line:#262b3d;--brand:#9fb0ff;--brand2:#b9c5ff;--accent:#ffb547;--soft:#1a2042;--on:#0b0d16;--good:#3ccf8e;--mid:#f0b03c;--bad:#ff6b5e;--night1:#070a1f;--night2:#141c47;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;text-decoration:none;letter-spacing:-.01em}
+.logo i{width:32px;height:32px;border-radius:9px;background:#141b3a;color:#ffb547;display:grid;place-items:center;font-style:normal;font-size:15px}
+.logo small{font-weight:600;color:var(--muted);font-size:13px}
+.links{display:flex;gap:24px;font-size:14.5px;font-weight:600}
+.links a{text-decoration:none;color:var(--muted)}.links a:hover{color:var(--ink)}
+@media (max-width:860px){.links{display:none}}
+@media (max-width:480px){.logo small{display:none}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#1b1200;text-decoration:none;font-weight:800;font-size:15px;padding:13px 20px;border-radius:12px;border:0;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn.ghost{background:transparent;color:inherit;border:1.5px solid currentColor;opacity:.9}
+.btn.sm{padding:9px 14px;font-size:14px}
+.btn.dark{background:var(--brand);color:var(--on)}
+/* hero */
+.hero{background:radial-gradient(50% 60% at 75% 40%,rgba(255,181,71,.16),transparent 70%),linear-gradient(170deg,var(--night1),var(--night2));color:#eef0fb;overflow:hidden}
+.hgrid{display:grid;grid-template-columns:1.05fr .95fr;gap:36px;align-items:center;padding:60px 20px 64px}
+@media (max-width:900px){.hgrid{grid-template-columns:1fr;padding-top:40px}}
+.eyebrow{display:inline-block;font-size:13px;font-weight:700;color:var(--glow);background:rgba(255,181,71,.12);padding:6px 12px;border-radius:999px}
+h1{font-size:clamp(34px,5.4vw,58px);line-height:1.04;letter-spacing:-.035em;margin-top:18px;color:#fff}
+h1 span{color:var(--glow);text-shadow:0 0 30px rgba(255,181,71,.45)}
+.lead{font-size:18px;color:#c3c8e6;margin-top:16px;max-width:540px}
+.ctas{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
+.trust{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.trust span{font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);border-radius:999px;padding:6px 12px;color:#dfe3f7}
+.housebox svg{width:100%;height:auto;display:block}
+/* house animation */
+.star{animation:tw 3s ease-in-out infinite}
+@keyframes tw{50%{opacity:.2}}
+.win{animation:lamp 7s ease-in-out infinite}
+@keyframes lamp{0%,40%{fill:#ffcf73}45%,70%{fill:#2a3266}75%,100%{fill:#ffcf73}}
+.porch{animation:pulse 3s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+@keyframes pulse{50%{opacity:.55;transform:scale(1.15)}}
+.cone{transform-origin:0 0;animation:sweep 6s ease-in-out infinite alternate}
+@keyframes sweep{from{transform:rotate(-14deg)}to{transform:rotate(22deg)}}
+.wave{animation:wv 2.4s ease-out infinite;opacity:0}
+.wave:nth-child(2){animation-delay:.4s}.wave:nth-child(3){animation-delay:.8s}
+@keyframes wv{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+.floaty{animation:fl 5s ease-in-out infinite}
+@keyframes fl{50%{transform:translateY(-8px)}}
+/* sections */
+section{padding:68px 0}
+.sh{max-width:680px}
+.sh .k{font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.08em}
+h2{font-size:clamp(27px,3.5vw,38px);letter-spacing:-.03em;line-height:1.1;margin-top:8px}
+.sh p{color:var(--muted);margin-top:12px;font-size:16.5px}
+.grid{display:grid;gap:16px;margin-top:32px}
+.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:repeat(2,1fr)}
+@media (max-width:900px){.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px}
+.card .ic{width:44px;height:44px;border-radius:12px;background:var(--soft);display:grid;place-items:center;font-size:22px}
+.card h3{font-size:18px;margin-top:14px;letter-spacing:-.01em}
+.card p{color:var(--muted);font-size:15px;margin-top:6px}
+.why{background:var(--card);border-block:1px solid var(--line)}
+.why .card{background:var(--bg)}
+.src{font-size:14px;color:var(--muted);margin-top:18px}
+.src a{color:var(--brand);font-weight:600}
+/* quiz */
+#check{scroll-margin-top:70px}
+.quiz{margin-top:30px;background:var(--card);border:1px solid var(--line);border-radius:26px;padding:28px;box-shadow:0 30px 60px rgba(20,24,60,.08);max-width:820px}
+@media (max-width:600px){.quiz{padding:20px;border-radius:20px}}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;background:var(--soft);color:var(--brand);border-radius:999px;padding:5px 11px}
+.qn{font-size:13px;color:var(--muted);font-weight:600}
+.pbar{height:8px;border-radius:9px;background:var(--line);margin-top:14px;overflow:hidden}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--brand2),var(--accent));width:0;transition:width .35s}
+.secs{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.secs span{font-size:18px;opacity:.3;transition:opacity .3s}
+.secs span.on{opacity:1}
+.q{font-size:clamp(20px,2.6vw,25px);font-weight:800;letter-spacing:-.02em;margin-top:22px;line-height:1.25}
+.why1{color:var(--muted);font-size:14.5px;margin-top:6px}
+.opts{display:grid;gap:10px;margin-top:20px}
+.opt{display:flex;align-items:center;gap:12px;text-align:left;font:600 16px Inter,sans-serif;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:14px;padding:15px 16px;cursor:pointer;transition:border-color .15s,transform .1s}
+.opt:hover{border-color:var(--brand2)}
+.opt:active{transform:scale(.99)}
+.opt.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg))}
+.opt b{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:13px}
+.opt.sel b{background:var(--accent);border-color:var(--accent);color:#1b1200}
+.qnav{display:flex;justify-content:space-between;margin-top:20px;gap:10px}
+.link{background:none;border:0;font:700 14.5px Inter,sans-serif;color:var(--muted);cursor:pointer;padding:8px 0}
+.link:disabled{opacity:.3;cursor:default}
+.fade{animation:fin .35s ease}
+@keyframes fin{from{opacity:0;transform:translateY(10px)}}
+.intro{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+@media (max-width:600px){.intro{grid-template-columns:1fr}}
+.intro ul{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.intro li{font-size:13.5px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+.small{font-size:13px;color:var(--muted)}
+/* results */
+.res{display:none}.res.on{display:block}
+.rtop{display:grid;grid-template-columns:240px 1fr;gap:22px;align-items:center}
+@media (max-width:700px){.rtop{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.ring{position:relative;width:200px;height:200px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .v{position:absolute;inset:0;display:grid;place-items:center;align-content:center}
+.ring .v b{font-size:60px;line-height:1;letter-spacing:-.04em}
+.ring .v span{font-size:13px;color:var(--muted);font-weight:600}
+.rtop h3{font-size:24px;letter-spacing:-.02em}
+.rtop p{color:var(--muted);margin-top:6px}
+.viz{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-top:22px}
+@media (max-width:760px){.viz{grid-template-columns:1fr}}
+.vbox{background:var(--bg);border-radius:18px;padding:12px}
+.vbox h4{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:4px 6px 6px}
+.vbox svg{width:100%;height:auto;display:block}
+.bars{display:grid;gap:9px;margin-top:8px;padding:0 6px 6px}
+.bars div{display:grid;grid-template-columns:24px 1fr 38px;gap:8px;align-items:center;font-size:14px;font-weight:600}
+.bars em{font-style:normal;text-align:right;color:var(--muted);font-size:13px}
+.bars i{grid-column:2/4;height:7px;border-radius:9px;background:var(--line);overflow:hidden;margin-top:-4px;display:block}
+.bars i s{display:block;height:100%;width:0;border-radius:9px;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.acts{margin-top:26px}
+.acts h3{font-size:19px;letter-spacing:-.01em;margin-bottom:12px}
+.act{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:15px 0;border-top:1px solid var(--line)}
+.act .n{width:30px;height:30px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
+.act h4{font-size:15.5px}
+.act p{color:var(--muted);font-size:14.5px;margin-top:3px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tags span{font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--muted)}
+details.more{margin-top:10px}
+details.more summary{cursor:pointer;font-weight:700;color:var(--brand);padding:10px 0}
+.rbtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+/* pricing */
+.price{display:flex;flex-direction:column}
+.price .amt{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-top:10px}
+.price .amt small{font-size:14px;color:var(--muted);font-weight:600}
+.price ul{list-style:none;margin-top:12px;display:grid;gap:6px;font-size:14.5px;color:var(--muted);flex:1}
+.price li:before{content:"✓ ";color:var(--good);font-weight:800}
+.price.hl{border:2px solid var(--accent)}
+.badge{display:inline-block;font-size:11.5px;font-weight:800;background:var(--accent);color:#1b1200;border-radius:999px;padding:3px 9px;margin-left:6px;vertical-align:3px}
+.band{background:linear-gradient(135deg,var(--night1),var(--night2));color:#eef0fb;border-radius:28px;padding:40px;display:grid;grid-template-columns:1.1fr 1fr;gap:30px;align-items:center}
+@media (max-width:900px){.band{grid-template-columns:1fr;padding:26px}}
+.band h2{color:#fff}.band p{color:#c3c8e6;margin-top:12px}
+.band ul{list-style:none;display:grid;gap:10px}
+.band li{background:rgba(255,255,255,.07);border-radius:14px;padding:12px 16px;font-size:15px}
+.band li b{display:block;color:#fff}
+details.f{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 20px;margin-top:10px}
+details.f summary{font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
+details.f summary:after{content:"+";color:var(--muted);font-size:20px;line-height:1}
+details.f[open] summary:after{content:"−"}
+details.f p{color:var(--muted);margin-top:8px;font-size:15px}
+.contact{display:grid;grid-template-columns:.9fr 1.1fr;gap:30px;align-items:start}
+@media (max-width:900px){.contact{grid-template-columns:1fr}}
+form.book{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px;display:grid;gap:14px}
+label{font-size:13px;font-weight:600;color:var(--muted);display:grid;gap:6px}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;outline:0;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--brand2)}
+textarea{min-height:110px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+.attached{display:none;background:var(--soft);border-radius:12px;padding:10px 12px;font-size:13.5px;color:var(--brand)}
+.attached.on{display:block}
+.emerg{background:color-mix(in srgb,var(--bad) 9%,var(--card));border:1px solid color-mix(in srgb,var(--bad) 30%,var(--line));border-radius:16px;padding:16px 18px;margin-top:22px;font-size:14.5px}
+.emerg b{color:var(--bad)}
+footer{border-top:1px solid var(--line);padding:26px 0 40px;font-size:13px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rv{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rv{opacity:1;transform:none}}
+@media print{header,.hero,.why,#services,#community,#faq,#book,footer,.rbtns,.intro,.qwrap{display:none!important}section{padding:0}.quiz{box-shadow:none;border:0}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav">
+  <a class="logo" href="/home-security/"><i>⌂</i>Home Security <small>by Global SOC</small></a>
+  <nav class="links"><a href="#check">Free check</a><a href="#services">Services</a><a href="#community">Community</a><a href="#faq">FAQ</a><a href="/">Global SOC</a></nav>
+  <a class="btn sm" href="#check">Free check</a>
+</div></header>
+
+<div class="hero"><div class="wrap hgrid">
+  <div>
+    <span class="eyebrow">📍 For Glen Waverley households</span>
+    <h1>Safer homes in Glen Waverley, <span>inside and online</span>.</h1>
+    <p class="lead">Burglars look for an unlocked door, a visible car key or a dark side path. Scammers look for a reused password. Take our free 5-minute check and get a plain-English action plan that covers both.</p>
+    <div class="ctas"><a class="btn" href="#check">Take the free check →</a><a class="btn ghost" href="#book">Book a free call</a></div>
+    <div class="trust"><span>📍 Local to Glen Waverley</span><span>✅ ABN 46 646 550 094</span><span>🛡️ Cybersecurity background</span><span>🔒 Answers stay on your device</span></div>
+  </div>
+  <div class="housebox" id="heroHouse"></div>
+</div></div>
+
+<main>
+<section class="why"><div class="wrap">
+  <div class="sh rv"><span class="k">Why now</span><h2>Home security has changed</h2><p>Today's risks are a mix of old-fashioned break-ins and things that happen entirely online. Most of the fixes are cheap or free.</p></div>
+  <div class="grid g3">
+    <div class="card rv"><div class="ic">🔑</div><h3>Break-ins for car keys</h3><p>Many Melbourne burglaries aim to steal car keys, often while people are home. Where you keep your keys matters more than ever.</p></div>
+    <div class="card rv"><div class="ic">📡</div><h3>Keyless car theft</h3><p>Thieves can relay the signal from a keyless fob inside your house to unlock and start the car on your driveway.</p></div>
+    <div class="card rv"><div class="ic">📱</div><h3>Scams and hacked accounts</h3><p>Fake bank, toll, delivery and ATO messages target every age group. A hacked camera account can show when you're away.</p></div>
+  </div>
+  <p class="src rv">See the latest recorded crime for Glen Waverley (postcode 3150) and the City of Monash at the <a href="https://www.crimestatistics.vic.gov.au/" target="_blank" rel="noopener">Crime Statistics Agency Victoria</a>.</p>
+</div></section>
+
+<section id="check"><div class="wrap">
+  <div class="sh rv"><span class="k">Free check</span><h2>How secure is your home?</h2><p>25 quick questions across 7 areas. You get a score, a picture of where your home is strong and weak, and a prioritised list of fixes with rough costs.</p></div>
+  <div class="quiz" id="quiz">
+    <div class="intro" id="intro">
+      <div>
+        <h3 style="font-size:20px;letter-spacing:-.01em">About 5 minutes · no sign-up</h3>
+        <p class="small" style="margin-top:6px">Your answers are saved only in this browser. Nothing is sent to anyone unless you choose to book a call.</p>
+        <ul><li>🚪 Doors & windows</li><li>💡 Lighting</li><li>📹 Cameras & alarms</li><li>🚗 Car & keys</li><li>🧳 Away & routines</li><li>📶 Wi-Fi & devices</li><li>🔐 Accounts & scams</li></ul>
+      </div>
+      <div style="display:grid;gap:8px"><button class="btn dark" id="start">Start the check →</button><button class="link" id="resume" style="display:none">Resume where I left off</button></div>
+    </div>
+    <div class="qwrap" id="qwrap" style="display:none"></div>
+    <div class="res" id="res"></div>
+  </div>
+</div></section>
+
+<section id="services" style="background:var(--card);border-block:1px solid var(--line)"><div class="wrap">
+  <div class="sh rv"><span class="k">Services</span><h2>Independent help, physical and digital</h2><p>We don't sell a brand of alarm. We look at your whole home, tell you what's worth doing, help you set it up properly, and refer you to licensed local trades for anything hardwired.</p></div>
+  <div class="grid g3">
+    <div class="card price rv"><div class="ic">📝</div><h3>Online check</h3><div class="amt">Free</div><ul><li>25-question self-assessment</li><li>Score and action plan</li><li>Free 20-minute follow-up call</li></ul><a class="btn ghost sm" style="margin-top:16px;color:var(--ink)" href="#check">Start now</a></div>
+    <div class="card price hl rv"><div class="ic">🏠</div><h3>Home Security Review<span class="badge">Most popular</span></h3><div class="amt">from $149 <small>· 90 min</small></div><ul><li>Walk-through of doors, windows, lighting, cameras and car</li><li>Wi-Fi, router and smart-device check</li><li>Family account and scam check-up</li><li>Written report with priorities and costs</li></ul><a class="btn sm" style="margin-top:16px" href="#book" data-svc="Home Security Review">Request a review</a></div>
+    <div class="card price rv"><div class="ic">🛠️</div><h3>Setup help</h3><div class="amt">from $90 <small>/ hour</small></div><ul><li>Video doorbells and wireless cameras set up securely</li><li>Smart locks, sensor lights and timers</li><li>Router lock-down, guest network, 2-step login, password manager</li></ul><a class="btn ghost sm" style="margin-top:16px;color:var(--ink)" href="#book" data-svc="Setup help">Ask about setup</a></div>
+    <div class="card price rv"><div class="ic">🤝</div><h3>Home Secure care plan</h3><div class="amt">from $19 <small>/ month</small></div><ul><li>Quarterly camera, alarm and router health check</li><li>"Is this real?" scam hotline for the whole family</li><li>Help if an account is hacked</li></ul><a class="btn ghost sm" style="margin-top:16px;color:var(--ink)" href="#book" data-svc="Care plan">Join the waitlist</a></div>
+    <div class="card price rv"><div class="ic">🏪</div><h3>Kingsway small business</h3><div class="amt">Custom quote</div><ul><li>CCTV, after-hours and cash-handling review</li><li>Point-of-sale, Wi-Fi and email security</li><li>Staff scam and phishing training</li></ul><a class="btn ghost sm" style="margin-top:16px;color:var(--ink)" href="#book" data-svc="Small business">Get a quote</a></div>
+    <div class="card price rv"><div class="ic">👵</div><h3>Seniors & families</h3><div class="amt">Concession pricing</div><ul><li>Patient, in-home help at your pace</li><li>Set up a phone safely for a parent</li><li>Plain-English scam checklist to keep by the phone</li></ul><a class="btn ghost sm" style="margin-top:16px;color:var(--ink)" href="#book" data-svc="Seniors & families">Ask us</a></div>
+  </div>
+</div></section>
+
+<section id="community"><div class="wrap">
+  <div class="band rv">
+    <div><span class="k" style="color:var(--glow);font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Community</span><h2>Free talks for local groups</h2><p>We volunteer our time to help Glen Waverley stay safe. Invite us to speak to your group, at no cost and with no sales pitch.</p><a class="btn" style="margin-top:20px" href="#book" data-svc="Free community talk">Invite us to speak →</a></div>
+    <ul>
+      <li><b>🏠 Protect your home and your phone</b>A 45-minute talk with practical steps, Q&A and a take-home checklist.</li>
+      <li><b>📞 Spot the scam</b>Live examples of the latest SMS, phone and email scams, and what to do if you've clicked.</li>
+      <li><b>👪 Kids online</b>For school parent groups: privacy settings, gaming chat, sextortion warning signs.</li>
+      <li><b>Who we speak to</b>Neighbourhood Watch groups, libraries, U3A, Probus, Rotary, schools, and cultural and seniors associations.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section id="faq" style="padding-top:20px"><div class="wrap" style="max-width:820px">
+  <div class="sh rv"><span class="k">FAQ</span><h2>Questions</h2></div>
+  <details class="f"><summary>Do you sell alarms or cameras?</summary><p>No. We're independent, so we recommend what suits your home and budget rather than a brand. Hardwired alarms, cabling and electrical work are referred to licensed local trades.</p></details>
+  <details class="f"><summary>What area do you cover?</summary><p>Glen Waverley (3150) first. We can also help in Wheelers Hill, Mount Waverley, Mulgrave, Vermont South and Burwood East on request.</p></details>
+  <details class="f"><summary>Is my information private?</summary><p>The online check runs in your browser and isn't sent anywhere. If you book, we only receive what you put in the form. We never share your details, and our report stays with you.</p></details>
+  <details class="f"><summary>I'm renting. Can I still improve security?</summary><p>Yes. Most digital fixes, sensor lights, wireless cameras, video doorbells, timers and key habits need no landlord approval. For locks and screen doors we can help you put a request to your landlord.</p></details>
+  <details class="f"><summary>Can cameras record my neighbours?</summary><p>Victorian surveillance law restricts recording private activities and conversations. Point cameras at your own property and avoid recording audio of others. We'll help you set them up the right way.</p></details>
+  <details class="f"><summary>Can you help in a language other than English?</summary><p>Tell us your preferred language in the booking form and we'll do our best to help or bring someone who can.</p></details>
+  <div class="emerg"><b>In an emergency, call 000.</b> To report a crime that has already happened, call the Police Assistance Line on 131 444. Report scams at <a href="https://www.scamwatch.gov.au/" target="_blank" rel="noopener">scamwatch.gov.au</a> and cybercrime at <a href="https://www.cyber.gov.au/report-and-recover/report" target="_blank" rel="noopener">cyber.gov.au</a>.</div>
+</div></section>
+
+<section id="book" style="background:var(--card);border-top:1px solid var(--line)"><div class="wrap contact">
+  <div class="rv"><span class="k" style="font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.08em;text-transform:uppercase">Book</span><h2>Book a free 20-minute call</h2><p style="color:var(--muted);margin-top:12px">Tell us a little about your home and what worries you. We'll call back within one business day to talk it through, with no obligation.</p>
+    <p style="margin-top:18px;font-weight:600">Prefer email? <a href="mailto:yogesh@globalsoc.com.au?subject=Home%20security%20Glen%20Waverley" style="color:var(--brand)">yogesh@globalsoc.com.au</a></p>
+    <p class="small" style="margin-top:14px">Global SOC Pty Ltd · ABN 46 646 550 094 · Glen Waverley, Melbourne · operating since 2020.</p></div>
+  <form class="book rv" action="https://formsubmit.co/yogesh@globalsoc.com.au" method="POST">
+    <input type="hidden" name="_subject" value="Home security enquiry: Glen Waverley">
+    <input type="hidden" name="_template" value="table">
+    <input type="hidden" name="_next" value="https://globalsoc.com.au/thanks.html">
+    <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+    <input type="hidden" name="Check result" id="fres" value="Not taken">
+    <div class="attached" id="attached"></div>
+    <div class="row"><label>Name<input name="name" required autocomplete="name"></label><label>Phone<input name="phone" type="tel" autocomplete="tel"></label></div>
+    <label>Email<input name="email" type="email" required autocomplete="email"></label>
+    <div class="row"><label>Suburb<select name="suburb" required><option>Glen Waverley</option><option>Wheelers Hill</option><option>Mount Waverley</option><option>Mulgrave</option><option>Vermont South</option><option>Burwood East</option><option>Other</option></select></label>
+    <label>I'm interested in<select name="service" id="svc"><option>Free 20-minute call</option><option>Home Security Review</option><option>Setup help</option><option>Care plan</option><option>Small business</option><option>Seniors & families</option><option>Free community talk</option></select></label></div>
+    <div class="row"><label>Home type<select name="home"><option>House</option><option>Townhouse / unit</option><option>Apartment</option><option>Business premises</option></select></label><label>Best time to call<select name="time"><option>Weekday daytime</option><option>Weekday evening</option><option>Weekend</option></select></label></div>
+    <label>What's on your mind? (and preferred language)<textarea name="message" placeholder="e.g. We had a car stolen in our street, and I want to check our cameras and Mum's phone."></textarea></label>
+    <button class="btn dark" type="submit">Request my free call →</button>
+    <p class="small">We'll only use your details to reply to you.</p>
+  </form>
+</div></section>
+</main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · ABN 46 646 550 094 · Glen Waverley, Melbourne VIC</span><span><a href="/">globalsoc.com.au</a> · <a href="/dnsaudit/">DNS Audit</a> · <a href="#book">Contact</a></span></div></footer>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SECS={doors:['Doors & windows','🚪'],light:['Lighting','💡'],watch:['Cameras & alarms','📹'],car:['Car & keys','🚗'],away:['Away & routines','🧳'],net:['Wi-Fi & devices','📶'],acct:['Accounts & scams','🔐']};
+// [section, question, why, [[label,points 0-2]], weight 1-3, fix, cost]
+const Q=[
+['doors','How are your external doors locked?','Most break-ins come through a door.',[['Deadlocks on every external door',2],['Deadlock on the front door only',1],['Standard latch locks only',0]],3,'Fit deadlocks (or smart deadlocks) to every external door, including laundry and garage access doors.','$$'],
+['doors','Do you have security screen doors?','',[['Yes, front and back',2],['On some doors',1],['No',0]],2,'Fit security screen doors that meet AS 5039, so you can let air in without leaving a door open.','$$'],
+['doors','Do your windows have key locks or restrictors?','',[['Yes, all reachable windows',2],['Some of them',1],['No',0]],2,'Add key locks or restrictors to ground-floor and easy-to-reach windows. Many break-ins use an unlocked window.','$'],
+['doors','Are the garage and side gates secured?','The garage often leads straight into the house, and to the car keys.',[['Garage locked and side gate padlocked',2],['One of the two',1],['Neither, or often left open',0]],2,'Padlock side gates and keep the internal garage door locked.','$'],
+['doors','Where do you keep a spare key?','',[['With a trusted person or in a code key safe',2],['Hidden outside (mat, pot, meter box)',0],['We have no spare key',2]],1,'Remove hidden outdoor keys. Burglars check the usual spots first. Use a code key safe or a trusted neighbour.','$'],
+['light','Do you have sensor lights at entrances and side paths?','',[['Yes, front, back and sides',2],['Some areas',1],['None',0]],2,'Install motion-sensor LED lights at the front, back and side paths. They are cheap and burglars avoid lit approaches.','$'],
+['light','Can your front door and windows be seen from the street?','',[['Yes, clear lines of sight',2],['Partly blocked by plants or fences',1],['Hidden by tall hedges or walls',0]],1,'Trim hedges near doors and windows so neighbours and passers-by can see your entry points.','Free'],
+['light','When you are out after dark, does the house look lived in?','',[['Yes, smart plugs or timers on lights',2],['Sometimes we leave a light on',1],['No',0]],1,'Put a lamp (and a TV light) on smart plugs or timers with a varied schedule.','$'],
+['watch','Do you have an alarm, and is it used?','',[['Monitored alarm, armed when out and at night',2],['Alarm with phone alerts, armed when out',2],['Alarm, but rarely armed or not sure it works',0],['No alarm',0]],2,'Arm your alarm every time you go out and at night (perimeter mode). Test it every three months.','$$'],
+['watch','Do you have cameras or a video doorbell?','',[['Cameras on doors, driveway and side',2],['Video doorbell only',1],['None',0]],2,'Add a video doorbell plus a camera covering the driveway and side path. Point them at your own property, not your neighbours\'.','$$'],
+['watch','Is camera footage stored somewhere a thief can\'t take it?','',[['Yes, cloud or a hidden recorder',2],['Only on the camera or a visible recorder',1],['No cameras',0]],1,'Store footage in the cloud or on a hidden recorder. Thieves take visible recorders.','$'],
+['watch','Do you know your neighbours well enough to swap numbers?','',[['Yes, several',2],['One or two',1],['Not really',0]],1,'Swap numbers with two or three neighbours, keep an eye on each other\'s homes during holidays, and consider joining Neighbourhood Watch.','Free'],
+['car','Where are the car keys kept at home, especially overnight?','Many burglaries aim to steal car keys.',[['Out of sight, away from the front door',2],['In the bedroom',1],['In a bowl or on a hook near the entrance',0]],3,'Keep car keys out of sight and away from entrances. If someone confronts you, hand them over: your safety comes first.','Free'],
+['car','Does your car have keyless entry or start?','',[['No, or the fob is kept in a signal-blocking pouch',2],['Yes, and the fob is not in a pouch',0]],2,'Keep keyless fobs in a signal-blocking (Faraday) pouch or tin to stop relay theft, and switch off keyless entry if your car allows it.','$'],
+['car','Where does the car park overnight?','',[['Locked garage',2],['Lit driveway with a camera',1],['Street or unlit driveway',0]],1,'Use a locked garage if you can. Otherwise park in a lit driveway with a camera, and add a steering lock or immobiliser to older cars.','$'],
+['away','Do you post holiday photos or check-ins while you are away?','',[['Only after we get home',2],['Sometimes, to friends only',1],['Yes, publicly while away',0]],1,'Post holiday photos after you get home, and check who can see your posts.','Free'],
+['away','How are parcels and mail handled?','',[['Parcel locker, collection point, or someone is home',2],['Sometimes left at the door',1],['Usually left at the door',0]],1,'Use Australia Post Parcel Lockers or a collection point, or ask a neighbour. Piled-up parcels and mail show no one is home.','Free'],
+['away','Do you lock up when you\'re home, e.g. at night or in the back garden?','Many burglaries happen while people are home.',[['Always',2],['Sometimes',1],['Rarely',0]],2,'Lock doors even when you are home, especially at night and when you are in the garden.','Free'],
+['net','Have you changed your Wi-Fi router\'s admin password from the default?','',[['Yes',2],['Not sure',0],['No',0]],2,'Log in to your router (the address is usually on its label), change the admin password, and turn on automatic updates.','Free'],
+['net','Is your Wi-Fi password strong and kept private?','',[['Strong, shared only with the household',2],['Still the password on the sticker',1],['Weak or widely shared',0]],1,'Use WPA2 or WPA3 with a long passphrase, and give visitors a guest network.','Free'],
+['net','Do your camera, doorbell and smart-home apps use 2-step login and updates?','A hacked camera account can show when you are away.',[['Yes',2],['Not sure',0],['No',0],['We have no smart devices',2]],2,'Turn on 2-step login for every camera, doorbell and smart-lock app, and keep the devices updated.','Free'],
+['net','Are smart devices on a separate guest or IoT network?','',[['Yes',2],['No',1],['Not sure',1]],1,'Put cameras, TVs and smart plugs on a guest or IoT network so a hacked device can\'t reach your laptops and phones.','Free'],
+['acct','Is 2-step verification on for email, banking and myGov?','',[['Yes, on all of them',2],['On some',1],['No, or not sure',0]],3,'Turn on 2-step verification (an authenticator app or passkey is best). Do email first: it can reset every other account.','Free'],
+['acct','How does your household manage passwords?','',[['Password manager, unique passwords',2],['Mostly unique, saved in the browser or a notebook',1],['The same few passwords everywhere',0]],2,'Use a password manager (Bitwarden, 1Password, or Apple or Google Passwords) so every account has its own password.','Free'],
+['acct','Would everyone at home recognise a scam call or text (bank, toll, delivery, ATO)?','',[['Yes, we talk about it',2],['Mostly',1],['Older or younger family members may not',0]],2,'Agree a family rule: never act on an unexpected call or message. Hang up and call back on the official number. Report scams to Scamwatch.','Free'],
+['acct','Are phones and computers set to update automatically, with backups?','',[['Yes',2],['Some devices',1],['No',0]],1,'Turn on automatic updates and a cloud or external-drive backup on every device.','Free'],
+];
+let st={i:0,a:{}};
+function load(){try{const s=JSON.parse(localStorage.getItem('gs-homecheck')||'null');if(s&&s.a)st=s}catch(e){}}
+function save(){try{localStorage.setItem('gs-homecheck',JSON.stringify(st))}catch(e){}}
+
+/* ---------- house illustration ---------- */
+function house(z){
+  const c=k=>z?z[k]:null, hero=!z;
+  const stars=hero?[[40,40],[90,22],[150,55],[300,30],[420,48],[480,20],[60,120],[460,110],[350,70]].map(([x,y],i)=>`<circle class="star" cx="${x}" cy="${y}" r="${i%3?1.4:2}" fill="#fff" style="animation-delay:${i*.37}s"/>`).join(''):'';
+  const zc=(k,def)=>c(k)||def;
+  const badge=(k,x,y)=>z?`<g><circle cx="${x}" cy="${y}" r="15" fill="${c(k)}"/><text x="${x}" y="${y+5}" text-anchor="middle" font-size="14">${SECS[k][1]}</text></g>`:'';
+  return `<svg viewBox="0 0 520 380" role="img" aria-label="${hero?'House at night with security features':'Your home security by area'}">
+  ${hero?`<defs><radialGradient id="pg"><stop offset="0" stop-color="#ffcf73" stop-opacity=".9"/><stop offset="1" stop-color="#ffcf73" stop-opacity="0"/></radialGradient><linearGradient id="cg" x1="0" x2="1"><stop offset="0" stop-color="#ffcf73" stop-opacity=".45"/><stop offset="1" stop-color="#ffcf73" stop-opacity="0"/></linearGradient></defs>${stars}<circle cx="455" cy="62" r="22" fill="#fff6d8"/><circle cx="465" cy="55" r="20" fill="var(--night1)" opacity=".85"/>`:''}
+  <rect x="0" y="320" width="520" height="60" rx="${z?14:0}" fill="${hero?'#151d47':'var(--line)'}"/>
+  <path d="M232 320 L212 380 H268 L248 320Z" fill="${hero?'#222c63':'var(--card)'}" opacity=".8"/>
+  <!-- wifi -->
+  <g transform="translate(240 64)" stroke="${zc('net','#9fb0ff')}" stroke-width="5" fill="none" stroke-linecap="round">
+    <path class="${hero?'wave':''}" d="M-12 -2 A16 16 0 0 1 12 -2"/><path class="${hero?'wave':''}" d="M-24 -12 A32 32 0 0 1 24 -12"/><path class="${hero?'wave':''}" d="M-36 -22 A48 48 0 0 1 36 -22"/></g>
+  <circle cx="240" cy="68" r="5" fill="${zc('net','#9fb0ff')}"/>
+  <!-- house -->
+  <polygon points="92,178 240,86 388,178" fill="${hero?'#2a3473':'var(--soft)'}" stroke="${hero?'#3a4690':'var(--line)'}" stroke-width="3"/>
+  <rect x="112" y="172" width="256" height="148" fill="${hero?'#1e275a':'var(--card)'}" stroke="${hero?'#3a4690':'var(--line)'}" stroke-width="3"/>
+  <g stroke="${zc('doors','#3a4690')}" stroke-width="${z?4:3}">
+    <rect class="${hero?'win':''}" x="134" y="200" width="56" height="44" rx="4" fill="${hero?'#ffcf73':'var(--bg)'}"/>
+    <rect class="${hero?'win':''}" style="animation-delay:-3s" x="290" y="200" width="56" height="44" rx="4" fill="${hero?'#ffcf73':'var(--bg)'}"/>
+    <rect x="214" y="236" width="52" height="84" rx="4" fill="${hero?'#121844':'var(--bg)'}"/>
+  </g>
+  <line x1="162" y1="200" x2="162" y2="244" stroke="${hero?'#3a4690':'var(--line)'}" stroke-width="2"/><line x1="318" y1="200" x2="318" y2="244" stroke="${hero?'#3a4690':'var(--line)'}" stroke-width="2"/>
+  <circle cx="256" cy="280" r="4" fill="${zc('doors','#ffcf73')}"/>
+  <!-- porch light -->
+  ${hero?`<circle class="porch" cx="282" cy="236" r="34" fill="url(#pg)"/>`:''}
+  <circle cx="282" cy="236" r="6" fill="${zc('light','#ffcf73')}"/>
+  <!-- camera -->
+  <g transform="translate(368 186)">${hero?`<polygon class="cone" points="0,0 120,40 120,90" fill="url(#cg)"/>`:''}<rect x="-6" y="-8" width="26" height="14" rx="4" fill="${zc('watch','#c9cff0')}"/><circle cx="20" cy="-1" r="4" fill="${hero?'#ff5a4e':'var(--card)'}"/></g>
+  <!-- car -->
+  <g transform="translate(398 276)"><path d="M6 30 L14 12 Q18 4 28 4 H72 Q82 4 86 12 L96 30 Q104 32 104 40 V44 H0 V38 Q0 31 6 30Z" fill="${zc('car','#4a5bc4')}"/><rect x="24" y="10" width="22" height="16" rx="3" fill="${hero?'#9fb0ff':'var(--card)'}" opacity=".7"/><rect x="52" y="10" width="24" height="16" rx="3" fill="${hero?'#9fb0ff':'var(--card)'}" opacity=".7"/><circle cx="24" cy="44" r="9" fill="#111"/><circle cx="80" cy="44" r="9" fill="#111"/></g>
+  <!-- mailbox / parcels -->
+  <g transform="translate(36 262)"><rect x="12" y="20" width="6" height="38" fill="${hero?'#3a4690':'var(--muted)'}"/><rect x="0" y="0" width="32" height="24" rx="6" fill="${zc('away','#c9cff0')}"/><rect x="40" y="38" width="22" height="20" rx="2" fill="${zc('away','#a3743a')}"/></g>
+  <!-- phone -->
+  <g class="${hero?'floaty':''}" transform="translate(52 120)"><rect x="0" y="0" width="38" height="66" rx="8" fill="${hero?'#121844':'var(--card)'}" stroke="${zc('acct','#9fb0ff')}" stroke-width="4"/><path d="M12 36 V30 A7 7 0 0 1 26 30 V36" fill="none" stroke="${zc('acct','#ffcf73')}" stroke-width="3"/><rect x="10" y="35" width="18" height="14" rx="3" fill="${zc('acct','#ffcf73')}"/></g>
+  ${badge('net',290,40)}${badge('doors',200,300)}${badge('light',300,262)}${badge('watch',420,160)}${badge('car',470,262)}${badge('away',100,300)}${badge('acct',110,112)}
+  </svg>`;
+}
+$('#heroHouse').innerHTML=house(null);
+
+/* ---------- quiz ---------- */
+function showQ(){
+  const q=Q[st.i],[sec,text,why,opts]=q,sel=st.a[st.i];
+  const seen=new Set(Q.slice(0,st.i+1).map(x=>x[0]));
+  $('#qwrap').innerHTML=`<div class="fade"><div class="qtop"><span class="chip">${SECS[sec][1]} ${SECS[sec][0]}</span><span class="qn">Question ${st.i+1} of ${Q.length}</span></div>
+  <div class="pbar"><i style="width:${st.i/Q.length*100}%"></i></div>
+  <div class="secs">${Object.entries(SECS).map(([k,[l,ic]])=>`<span class="${seen.has(k)?'on':''}" title="${l}">${ic}</span>`).join('')}</div>
+  <div class="q">${esc(text)}</div>${why?`<div class="why1">${esc(why)}</div>`:''}
+  <div class="opts">${opts.map((o,k)=>`<button class="opt ${sel===k?'sel':''}" data-k="${k}"><b>${sel===k?'✓':String.fromCharCode(65+k)}</b>${esc(o[0])}</button>`).join('')}</div>
+  <div class="qnav"><button class="link" id="back" ${st.i?'':'disabled'}>← Back</button><button class="link" id="restart">Start over</button></div></div>`;
+  requestAnimationFrame(()=>{const b=$('#qwrap .pbar i');if(b)b.style.width=(st.i+1)/Q.length*100+'%'});
+  document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{st.a[st.i]=+b.dataset.k;save();document.querySelectorAll('.opt').forEach(x=>x.classList.toggle('sel',x===b));
+    setTimeout(()=>{if(st.i<Q.length-1){st.i++;save();showQ()}else results()},220)});
+  $('#back').onclick=()=>{if(st.i){st.i--;save();showQ()}};
+  $('#restart').onclick=reset;
+}
+function begin(){$('#intro').style.display='none';$('#res').classList.remove('on');$('#qwrap').style.display='block';showQ();$('#quiz').scrollIntoView({behavior:'smooth',block:'start'})}
+function reset(){st={i:0,a:{}};save();begin()}
+document.addEventListener('keydown',e=>{if($('#qwrap').style.display!=='block')return;const k=e.key.toUpperCase().charCodeAt(0)-65;const b=document.querySelectorAll('.opt')[k];if(e.key.length===1&&b)b.click()});
+
+/* ---------- results ---------- */
+const col=p=>p>=80?'var(--good)':p>=55?'var(--mid)':'var(--bad)';
+const grade=s=>s>=90?'A':s>=80?'B':s>=70?'C':s>=55?'D':'E';
+const verdict={A:'Excellent. Your home is well protected.',B:'Good. A few gaps are worth closing.',C:'Fair. Some quick wins will make a real difference.',D:'At risk. Several gaps an opportunist could use.',E:'High risk. Start with the top three actions today.'};
+function compute(){
+  let tot=0,max=0;const sec={};Object.keys(SECS).forEach(k=>sec[k]={e:0,m:0});const gaps=[];
+  Q.forEach((q,i)=>{const [s,text,,opts,w,fix,cost]=q,k=st.a[i];if(k===undefined)return;const p=opts[k][1];tot+=p*w;max+=2*w;sec[s].e+=p*w;sec[s].m+=2*w;if(p<2)gaps.push({s,text,ans:opts[k][0],fix,cost,gap:(2-p)*w,p})});
+  gaps.sort((a,b)=>b.gap-a.gap||a.p-b.p);
+  const pct={};Object.entries(sec).forEach(([k,v])=>pct[k]=v.m?Math.round(v.e/v.m*100):100);
+  return {score:max?Math.round(tot/max*100):0,pct,gaps};
+}
+function radar(pct){
+  const keys=Object.keys(SECS),n=keys.length,cx=160,cy=150,R=105;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [cx+Math.cos(a)*r,cy+Math.sin(a)*r]};
+  let g='';[.25,.5,.75,1].forEach(f=>{g+=`<polygon points="${keys.map((_,i)=>pt(i,R*f).join(',')).join(' ')}" fill="none" stroke="var(--line)"/>`});
+  keys.forEach((k,i)=>{const [x,y]=pt(i,R);g+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)"/>`;const [lx,ly]=pt(i,R+24);g+=`<text x="${lx}" y="${ly+6}" text-anchor="middle" font-size="18">${SECS[k][1]}</text>`});
+  const poly=keys.map((k,i)=>pt(i,R*Math.max(.04,pct[k]/100)).join(',')).join(' ');
+  return `<svg viewBox="0 0 320 300"><g>${g}</g><polygon points="${keys.map((_,i)=>`${cx},${cy}`).join(' ')}" fill="color-mix(in srgb,var(--accent) 30%,transparent)" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"><animate attributeName="points" from="${keys.map(()=>`${cx},${cy}`).join(' ')}" to="${poly}" dur="1s" fill="freeze" calcMode="spline" keySplines=".2 .8 .2 1"/></polygon>${keys.map((k,i)=>{const [x,y]=pt(i,R*Math.max(.04,pct[k]/100));return `<circle cx="${x}" cy="${y}" r="5" fill="${col(pct[k])}" opacity="0"><animate attributeName="opacity" to="1" begin=".9s" dur=".3s" fill="freeze"/></circle>`}).join('')}</svg>`;
+}
+function results(){
+  const r=compute(),g=grade(r.score),z={};Object.keys(SECS).forEach(k=>z[k]=col(r.pct[k]));
+  $('#qwrap').style.display='none';$('#intro').style.display='none';
+  const top=r.gaps.slice(0,5),rest=r.gaps.slice(5);
+  const act=(x,i)=>`<div class="act"><div class="n" style="--c:${x.p===0?'var(--bad)':'var(--mid)'}">${i+1}</div><div><h4>${esc(x.fix)}</h4><p>${SECS[x.s][1]} You answered: “${esc(x.ans)}”</p><div class="tags"><span>${SECS[x.s][0]}</span><span>${x.cost==='Free'?'Free':x.cost==='$'?'Under $100':'$100–$500+'}</span>${x.p===0&&x.gap>=4?'<span style="color:var(--bad);border-color:var(--bad)">High impact</span>':''}</div></div></div>`;
+  $('#res').innerHTML=`<div class="fade"><div class="rtop">
+    <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="${col(r.score)}" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" style="transition:stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1)"/></svg><div class="v"><b style="color:${col(r.score)}">${g}</b><span>${r.score} / 100</span></div></div>
+    <div><h3>${verdict[g]}</h3><p>${r.gaps.length?`We found ${r.gaps.length} things to improve. ${r.gaps.filter(x=>x.cost==='Free').length} of them cost nothing.`:'You answered the best option to every question. Nice work.'}</p></div></div>
+    <div class="viz"><div class="vbox"><h4>Your home</h4>${house(z)}</div><div class="vbox"><h4>By area</h4>${radar(r.pct)}<div class="bars">${Object.entries(SECS).map(([k,[l,ic]])=>`<div><span>${ic}</span><span>${l}</span><em>${r.pct[k]}</em><i><s style="background:${col(r.pct[k])}" data-w="${r.pct[k]}"></s></i></div>`).join('')}</div></div></div>
+    ${top.length?`<div class="acts"><h3>Do these first</h3>${top.map(act).join('')}${rest.length?`<details class="more"><summary>${rest.length} more improvements</summary>${rest.map((x,i)=>act(x,i+5)).join('')}</details>`:''}</div>`:''}
+    <div class="rbtns"><a class="btn dark" href="#book" id="bookres">Talk it through on a free call →</a><button class="btn ghost" style="color:var(--ink)" onclick="print()">Save as PDF</button><button class="btn ghost" style="color:var(--ink)" id="retake">Retake</button></div>
+    <p class="small" style="margin-top:14px">This check is general guidance, not a professional inspection. Your answers stay in this browser.</p></div>`;
+  $('#res').classList.add('on');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const a=$('#arc');if(a)a.style.strokeDashoffset=326.7*(1-r.score/100);document.querySelectorAll('.bars s').forEach(s=>s.style.width=s.dataset.w+'%')}));
+  $('#retake').onclick=reset;
+  const summary=`Score ${r.score}/100 (${g}). Weakest: ${Object.entries(r.pct).sort((a,b)=>a[1]-b[1]).slice(0,3).map(([k,v])=>SECS[k][0]+' '+v+'%').join(', ')}. Top gaps: ${top.slice(0,3).map(x=>x.text).join(' | ')}`;
+  $('#fres').value=summary;$('#attached').textContent='✓ Your check result (score '+r.score+'/100) will be attached so we can prepare.';$('#attached').classList.add('on');
+  $('#quiz').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ---------- wiring ---------- */
+load();
+if(Object.keys(st.a).length){$('#resume').style.display='block';$('#resume').textContent=Object.keys(st.a).length>=Q.length?'See my last result':'Resume where I left off'}
+$('#start').onclick=()=>{st={i:0,a:{}};save();begin()};
+$('#resume').onclick=()=>{$('#intro').style.display='none';if(Object.keys(st.a).length>=Q.length)results();else begin()};
+document.querySelectorAll('[data-svc]').forEach(a=>a.addEventListener('click',()=>{const s=$('#svc');[...s.options].forEach(o=>{if(o.text===a.dataset.svc)s.value=o.text})}));
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
