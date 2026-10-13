@@ -447,7 +447,7 @@ async function spfWalk(d,depth,st){
   if(!s){if(depth>0)st.voids.push(d);return}
   const kids=[];
   for(const term of s.split(/\s+/).slice(1)){
-    const m=term.match(/^[+\-~?]?(include|a|mx|ptr|exists|redirect|ip4|ip6)(?:[:=]([^\/]*))?(?:\/(\d+))?/i);if(!m)continue;
+    const m=term.match(/^[+\-~?]?(include|a|mx|ptr|exists|redirect|ip4|ip6)(?=[:=\/]|$)(?:[:=]([^\/]*))?(?:\/(\d+))?/i);if(!m)continue; // lookahead stops "all" matching as "a"
     const mech=m[1].toLowerCase(),val=m[2],cidr=m[3];
     if(['include','a','mx','ptr','exists','redirect'].includes(mech))st.count++;
     if(mech==='ptr')st.ptr=true;
