@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reading Your Email DNS | Global SOC</title>
-<meta name="description" content="What your MX, SPF, DKIM, DMARC, MTA-STS and TLS-RPT records say about your email setup, how to read them yourself, and what to fix. Uses globalsoc.com.au as the live example.">
+<title>What Your DNS Says | Global SOC</title>
+<meta name="description" content="What your email, web and subdomain DNS records say about your business, how to read them yourself, and what to fix. Uses globalsoc.com.au as the live example.">
 <meta name="author" content="Yogesh">
-<meta property="og:title" content="What your email DNS records say about you">
+<meta property="og:title" content="What your DNS records say about your business">
 <meta property="og:description" content="How to read your own MX, SPF, DKIM and DMARC records, and what each one means.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/read-your-email-dns/">
@@ -67,9 +67,9 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 
 <section class="hero"><div class="wrap">
   <span class="tag">EMAIL SECURITY · HOW IT WORKS</span>
-  <h1>What your email DNS records say about you</h1>
-  <p class="lede">Your domain publishes a public description of how your email works: who receives it, who may send it, and what to do with fakes. Here's how to read your own, what each record means, and what to fix.</p>
-  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 9 min read</span></div></div>
+  <h1>What your DNS records say about your business</h1>
+  <p class="lede">Your domain publishes a public description of how your email, website and tools are set up. Here's how to read your own records, what each one means, and what to fix.</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 15 min read</span></div></div>
 </div></section>
 
 <main class="wrap"><article>
@@ -79,7 +79,14 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 <li><a href="#senders">SPF and DKIM: who may send as you</a></li>
 <li><a href="#dmarc">DMARC: the policy, and who reads the reports</a></li>
 <li><a href="#transport">MTA-STS, TLS-RPT and DANE: protecting email in transit</a></li>
+<li><a href="#saas">Your SaaS footprint: the tools your DNS admits to</a></li>
+<li><a href="#web">The web side: CDN, certificates and headers</a></li>
+<li><a href="#surface">Your attack surface: subdomains and certificate logs</a></li>
+<li><a href="#fixes">From findings to fixes</a></li>
+<li><a href="#sectors">Why different sectors care</a></li>
+<li><a href="#public">What should be public, and what shouldn't</a></li>
 <li><a href="#limits">What DNS can't tell you</a></li>
+<li><a href="#rules">Good practice when reviewing a domain</a></li>
 <li><a href="#lab">Check your own domain in two minutes</a></li>
 </ol></div>
 
@@ -154,6 +161,99 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 </table></div>
 <p>Few small businesses use any of these yet, so having them is a sign of a careful email setup, and adding them is cheap.</p>
 
+<h2 id="saas">Your SaaS footprint: the tools your DNS admits to</h2>
+<p>Over the years, every business connects services to its domain: a CRM, a marketing tool, a helpdesk, HR and finance software. Each one leaves a trace in DNS, and the traces rarely get cleaned up. Reading them is one of the quickest ways to build an inventory of your own tools, and to find the ones you forgot.</p>
+<div class="tw"><table>
+<tr><th>Where to look</th><th>Examples</th><th>What it shows you</th></tr>
+<tr><td><b>SPF includes</b></td><td><code>_spf.salesforce.com</code>, <code>sendgrid.net</code>, <code>servers.mcsv.net</code> (Mailchimp), <code>mail.zendesk.com</code>, <code>hubspot</code>, <code>xero</code>, <code>sapsf.com</code></td><td>Every service allowed to send email as you: CRM, marketing, helpdesk, finance and HR.</td></tr>
+<tr><td><b>Verification TXT records</b></td><td><code>MS=</code>, <code>google-site-verification</code>, <code>atlassian-domain-verification</code>, <code>docusign</code>, <code>adobe-idp-site-verification</code>, <code>facebook-domain-verification</code>, <code>zoom</code>, <code>apple-domain-verification</code></td><td>Services that asked you to prove you own the domain. Plenty of these are for tools you no longer use.</td></tr>
+<tr><td><b>CNAMEs</b></td><td><code>autodiscover</code> → Microsoft, <code>enterpriseenrollment</code> → Intune, <code>lyncdiscover</code> and <code>sip</code> → Teams</td><td>How deeply you use Microsoft 365: Outlook setup, managed devices and Teams calling.</td></tr>
+</table></div>
+<h3>What to do with this</h3>
+<ul>
+<li><b>Build a service list and match it to a person.</b> Every include and verification record should map to a tool someone still owns and pays for. Anything nobody recognises is a cleanup candidate.</li>
+<li><b>Remove records for cancelled services.</b> A leftover verification or SPF include can let a former vendor, or anyone who takes over that account, act as your domain. It's also a good moment to check the account itself was closed when the person who owned it left.</li>
+<li><b>Treat verification records as a clue, not a verdict.</b> A record shows the service was <i>once</i> connected, not that it's still in use.</li>
+</ul>
+
+<h2 id="web">The web side: CDN, certificates and headers</h2>
+<p>A visit to your website tells a browser (and a security reviewer) how it's hosted and how carefully it's protected:</p>
+<div class="tw"><table>
+<tr><th>Where to look</th><th>What you'll see</th><th>What it tells you</th></tr>
+<tr><td><b>A records, CNAMEs, server header</b></td><td>Cloudflare, Akamai, Imperva, AWS CloudFront, Azure Front Door, Fastly or Sucuri</td><td>A <b>CDN or web application firewall (WAF)</b> sits in front of the site and absorbs attacks before they reach it.</td></tr>
+<tr><td></td><td>A bare IP at a shared host, and a server header like <code>Apache/2.4.x</code></td><td>Probably <b>no WAF</b>: the web server faces the internet directly, and the version number helps attackers find known flaws.</td></tr>
+<tr><td><b>Security headers, HSTS, TLS versions</b></td><td>Present or missing</td><td>How much web hardening has been done. Missing headers are cheap to add and block whole categories of attack.</td></tr>
+<tr><td><b>Certificate issuer and expiry</b></td><td>Let's Encrypt, DigiCert, Sectigo</td><td>Free or paid certificates, and whether renewal is automated. A certificate that expires without notice takes a website offline.</td></tr>
+<tr><td><b>CAA and DNSSEC</b></td><td>Often absent on small-business domains</td><td>Maturity markers. CAA limits who may issue certificates for you; DNSSEC stops forged DNS answers.</td></tr>
+<tr><td><b>Name servers</b></td><td>Cloudflare, Route 53 or Azure DNS, versus the registrar's default</td><td>Whether your DNS is managed deliberately or left wherever the domain was bought.</td></tr>
+<tr><td><b>RDAP (registration data)</b></td><td>Registrar and expiry date</td><td>The domain lifecycle. A domain close to expiry, with auto-renew off or an out-of-date card, is a business-continuity risk.</td></tr>
+</table></div>
+<p>Our own domain is a good example. GitHub Pages can't set security headers, so globalsoc.com.au scores lower on that check than we'd like. The fix is to put Cloudflare in front and add the headers there, which is the kind of finding we'd flag for any client in the same position.</p>
+
+<h2 id="surface">Your attack surface: subdomains and certificate logs</h2>
+<p>Every public HTTPS certificate is recorded in open <b>certificate transparency logs</b>, which means a list of your subdomains is available to anyone, including people with bad intentions. Looking at that list yourself is one of the most useful things you can do, because it often includes systems nobody remembers:</p>
+<div class="tw"><table>
+<tr><th>Subdomain pattern</th><th>What it suggests</th><th>Why it matters</th></tr>
+<tr><td><code>vpn.</code>, <code>remote.</code>, <code>sslvpn.</code>, <code>fortigate.</code>, <code>citrix.</code>, <code>gp.</code></td><td>An internet-facing VPN or remote-access device</td><td>These are a leading ransomware entry point in ACSC advisories. They need prompt patching and multi-factor authentication.</td></tr>
+<tr><td><code>owa.</code>, <code>mail.</code> (on its own IP), <code>adfs.</code>, <code>sts.</code></td><td>On-premises Exchange or ADFS</td><td>High-value targets that are exploited often, and easy to forget when you've moved to the cloud.</td></tr>
+<tr><td><code>dev.</code>, <code>test.</code>, <code>staging.</code>, <code>uat.</code>, <code>old.</code></td><td>Non-production systems exposed publicly</td><td>Usually less protected, and sometimes loaded with real data.</td></tr>
+<tr><td><code>jira.</code>, <code>confluence.</code>, <code>gitlab.</code>, <code>jenkins.</code></td><td>Self-hosted developer tools</td><td>A frequent source of serious vulnerabilities, and often holding source code and secrets.</td></tr>
+<tr><td>A <b>dangling CNAME</b></td><td>A subdomain pointing at a cloud resource that's been deleted</td><td><b>Subdomain takeover</b>: someone else can claim that resource and serve content on your domain. High severity, and quick to fix.</td></tr>
+</table></div>
+<p>For each hostname on your own list, ask three questions: <i>Do we still need it? Who owns it? Is it patched and behind multi-factor authentication?</i> If any answer is "no" or "don't know", retire it or lock it down.</p>
+
+<h2 id="fixes">From findings to fixes</h2>
+<p>Most DNS review findings follow the same pattern: something visible, the business risk it creates, and a defined fix. Here are the common ones:</p>
+<div class="tw"><table>
+<tr><th>Finding</th><th>The business risk</th><th>The fix</th></tr>
+<tr><td>No DMARC, or <code>p=none</code></td><td>Anyone can send an invoice that looks exactly like it came from your accounts team. Payment-redirection fraud is among Australia's costliest cybercrimes (see the ACSC's Annual Cyber Threat Report).</td><td>SPF and DKIM for every sender, then DMARC stepped up to <code>p=reject</code>, usually over 4–6 weeks.</td></tr>
+<tr><td>No DMARC reporting service, or reports going to a personal mailbox</td><td>You're collecting reports nobody reads.</td><td>Send reports to a reporting service or shared mailbox, and review them monthly.</td></tr>
+<tr><td>SPF at 8–10 lookups, or a hand-flattened chain</td><td>One more email tool and all your mail starts failing SPF.</td><td>Clean up senders, then manage SPF centrally.</td></tr>
+<tr><td>Microsoft 365 with default filtering only</td><td>You rely entirely on the standard filtering that comes with the licence.</td><td>A Microsoft 365 security review: Defender configuration, impersonation protection and multi-factor authentication.</td></tr>
+<tr><td>A gateway <i>and</i> Defender licensing</td><td>You may be paying twice for the same job.</td><td>A licensing review, which often saves money.</td></tr>
+<tr><td>No WAF, origin exposed, missing security headers</td><td>Your website sits directly on the internet with no shield.</td><td>Web hardening: Cloudflare WAF, security headers and TLS settings.</td></tr>
+<tr><td><code>vpn.</code>, <code>owa.</code> or <code>adfs.</code> exposed</td><td>These are the devices ransomware groups target first.</td><td>An authorised review of your external attack surface, with patching and multi-factor authentication.</td></tr>
+<tr><td>Stale verification records and unused SaaS</td><td>Leftover accounts can become a back door.</td><td>A SaaS and offboarding audit.</td></tr>
+<tr><td>Domain close to expiry, DNS left at the registrar</td><td>One missed renewal and your website and email go dark.</td><td>Domain and DNS management, with renewal reminders.</td></tr>
+<tr><td>Anything that drifts over time</td><td>A fix that was right last year quietly breaks.</td><td>Daily monitoring that emails you when something changes. You can <a href="/dnsaudit/">start it free</a> from any DNS Audit report.</td></tr>
+</table></div>
+
+<h2 id="sectors">Why different sectors care</h2>
+<div class="tw"><table>
+<tr><th>Sector</th><th>What's at stake</th></tr>
+<tr><td><b>Real estate, conveyancers and law firms</b></td><td>Trust accounts and settlement payments, among the most targeted for invoice fraud.</td></tr>
+<tr><td><b>Accountants and financial advisers</b></td><td>Client funds and tax data, plus ATO and ASIC expectations.</td></tr>
+<tr><td><b>Health, including dental, GP and allied health</b></td><td>Patient records and the Notifiable Data Breaches scheme.</td></tr>
+<tr><td><b>Anyone with cyber insurance</b></td><td>Renewal questionnaires increasingly ask whether DMARC and multi-factor authentication are in place.</td></tr>
+<tr><td><b>Larger and regulated organisations</b></td><td>APRA CPS 234 (financial services), the SOCI Act (critical infrastructure) and the ACSC Information Security Manual's guidance on email authentication.</td></tr>
+</table></div>
+
+<h2 id="public">What should be public, and what shouldn't</h2>
+<p>Some DNS information has to be public for the internet to work with you. Other information ends up there by accident and gives away more than it should. A good rule: <b>publish what other organisations need in order to deal with you safely, and nothing that describes your inside.</b></p>
+<div class="tw"><table>
+<tr><th>Public by design: keep and maintain it</th><th>Public by accident: review and remove</th></tr>
+<tr><td>
+<ul>
+<li>MX records for mail you actually receive (or a null MX)</li>
+<li>SPF, DKIM and DMARC, kept current</li>
+<li>MTA-STS and TLS-RPT</li>
+<li>CAA records limiting who can issue certificates</li>
+<li>DNSSEC, where your DNS host supports it</li>
+<li>A <code>security.txt</code> file saying how to report a problem</li>
+<li>Records for the public website and services you intend people to use</li>
+</ul></td><td>
+<ul>
+<li>Internal host names and private IP addresses (<code>10.x</code>, <code>192.168.x</code>) in public DNS</li>
+<li>Test, staging and old systems left reachable from the internet</li>
+<li>Verification and SPF records for cancelled services</li>
+<li>Passwords, keys or tokens pasted into TXT records (it happens)</li>
+<li>Dangling CNAMEs pointing at deleted cloud resources</li>
+<li>Wildcard records that make every typo resolve</li>
+<li>Server version banners and detailed software names in web headers</li>
+</ul></td></tr>
+</table></div>
+<p>Two practical habits help: use <b>split-horizon DNS</b> so internal names live only on your internal DNS servers, and put a <b>review of your DNS zone</b> on the calendar every six months, with the same urgency as renewing insurance.</p>
+
 <h2 id="limits">What DNS can't tell you</h2>
 <ul>
 <li><b>Published isn't deployed.</b> A gateway in the MX record doesn't prove it's configured well, or that Microsoft's front door is locked behind it.</li>
@@ -162,6 +262,15 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 <li><b>It says nothing about intent or quality.</b> A missing record might be an oversight, or a deliberate choice for a domain that sends no email.</li>
 </ul>
 <p>That's why we only ever present DNS findings as a checklist for the domain owner, and never as a score for someone else's business.</p>
+
+<h2 id="rules">Good practice when reviewing a domain</h2>
+<p>Whether you're checking your own domain or an adviser is checking it for you, a few rules keep everyone on the right side of the law and of common courtesy:</p>
+<ul>
+<li><b>Own domain, or written permission.</b> Reading public DNS records is fine. Going further, such as port scanning, trying to log in, attempting zone transfers or running vulnerability tests, needs the owner's written authorisation. Unauthorised testing can fall under the Criminal Code.</li>
+<li><b>Say what you saw, not what you assume.</b> Use "appears" or "indicates", never "you are vulnerable". DNS shows the outside of a business; it can't show the controls inside.</li>
+<li><b>Be helpful, never alarming.</b> A message that leads with serious-sounding findings and a demand to get in touch urgently reads like a shake-down. Describe the finding, the risk in plain words and the fix.</li>
+<li><b>Mind the Spam Act 2003.</b> Anyone contacting a business about their email security must identify themselves, give a valid contact and include a way to opt out.</li>
+</ul>
 
 <h2 id="lab">Check your own domain in two minutes</h2>
 <p>These commands work on any Windows laptop. Replace the domain with your own:</p>
