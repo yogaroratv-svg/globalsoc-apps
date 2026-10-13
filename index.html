@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Global SOC Apps</title>
+<meta name="description" content="App prototypes by Global SOC.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#14212b;--muted:#5f6c78;--line:#e1e6eb;--brand:#0e4d6e}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#18212a;--ink:#e9eff4;--muted:#93a1ad;--line:#26313b;--brand:#5fb3dd;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.5}
+main{max-width:960px;margin:0 auto;padding:48px 16px 64px}
+h1{font-size:clamp(28px,5vw,40px);letter-spacing:-.02em}
+.lead{color:var(--muted);margin-top:8px;max-width:600px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:32px}
+a.card{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;text-decoration:none;color:inherit;transition:transform .15s,box-shadow .15s}
+a.card:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;margin-bottom:14px}
+.card h2{font-size:19px}
+.card p{color:var(--muted);font-size:14px;margin-top:6px;flex:1}
+.open{margin-top:14px;font-weight:600;color:var(--brand);font-size:14px}
+.tag{display:inline-block;font-size:11px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin-top:10px;align-self:flex-start}
+footer{margin-top:40px;font-size:13px;color:var(--muted)}
+footer a{color:var(--brand)}
+</style>
+</head>
+<body>
+<main>
+  <h1>App prototypes</h1>
+  <p class="lead">Clickable prototypes designed for iPhone. They work best on a phone; on a computer they open inside a phone frame. All names, prices and data in them are made up.</p>
+  <div class="grid">
+    <a class="card" href="boxshare/"><div class="ic" style="background:#e2eef5">🚢</div><h2>Boxshare</h2><p>Share spare shipping-container space to Melbourne. Hosts list their free CBM, and senders book space and pay into escrow.</p><span class="tag">Logistics · marketplace</span><span class="open">Open app →</span></a>
+    <a class="card" href="kneadly/"><div class="ic" style="background:#e3efe9">💆</div><h2>Kneadly</h2><p>Last-minute massage deals around Melbourne: pick a time, book a discount and pay in the app.</p><span class="tag">Wellness · deals</span><span class="open">Open app →</span></a>
+    <a class="card" href="howzat/"><div class="ic" style="background:#fdeedd">🏏</div><h2>Howzat</h2><p>Free-to-play cricket tipping with friends: weekly tips, a joker, ladders and party mode.</p><span class="tag">Sport · free to play</span><span class="open">Open app →</span></a>
+    <a class="card" href="sector-watch/"><div class="ic" style="background:#f1e6f7">🎯</div><h2>Sector Watch</h2><p>A roulette spin tracker and pattern scorecard. Entertainment only: each spin is independent and the house edge never changes.</p><span class="tag">Tracker · 18+</span><span class="open">Open app →</span></a>
+  </div>
+  <footer>© 2026 <a href="https://globalsoc.com.au">Global SOC</a> · Demo prototypes, not live services.</footer>
+</main>
+</body>
+</html>
