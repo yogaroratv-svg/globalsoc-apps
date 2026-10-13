@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How to Read Your DNS Audit | Global SOC</title>
+<meta name="description" content="Knowledge base: what the grade, scores, severity labels and every section of a Global SOC DNS Audit report mean, and what to do about each finding.">
+<meta name="author" content="Yogesh">
+<meta property="og:title" content="How to read your DNS Audit report">
+<meta property="og:description" content="What the grade, the severity labels and each check mean, and how to fix what it finds.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/how-to-read-dns-audit-report/">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#06222c,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.88;max-width:620px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px}
+article h2{font-size:27px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px}
+article h3{font-size:19px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:4px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 10px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.f{color:var(--fail)}.w{color:var(--warn)}.p{color:var(--pass)}.i{color:var(--info)}
+.grades{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0 20px}
+.grades div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;border-top:4px solid var(--c)}
+.grades b{display:block;font-size:26px;line-height:1.1;color:var(--c)}
+.grades span{font-size:12.5px;color:var(--muted)}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}.grades{grid-template-columns:repeat(5,minmax(58px,1fr))}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav><a href="/blog/">All posts</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">KNOWLEDGE BASE · DNS AUDIT</span>
+  <h1>How to read your DNS Audit report</h1>
+  <p class="lede">You ran the audit and got a grade and a list. This guide explains what the grade means, how severe each label is, what every section checks, and what to do about what it found.</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 10 min read</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<div class="toc"><b>In this article</b><ol>
+<li><a href="#grade">The grade and score</a></li>
+<li><a href="#labels">The four labels: Fix now, Improve, Good, Info</a></li>
+<li><a href="#tabs">The four tabs</a></li>
+<li><a href="#areas">The eleven areas, one by one</a></li>
+<li><a href="#common">The findings people ask about most</a></li>
+<li><a href="#fp">When a finding isn't what it seems</a></li>
+<li><a href="#after">What to do after the audit</a></li>
+<li><a href="#limits">What the audit can't see</a></li>
+</ol></div>
+
+<h2 id="grade">The grade and score</h2>
+<p>The big letter and the "score out of 100" summarise everything the audit found. The score starts at 100 and loses points for each problem, depending on how serious it is:</p>
+<div class="tw"><table>
+<tr><th>Severity</th><th>Points lost if it's a <span class="f">Fix now</span></th><th>Points lost if it's an <span class="w">Improve</span></th></tr>
+<tr><td><b>High</b></td><td>15</td><td>8</td></tr>
+<tr><td><b>Medium</b></td><td>8</td><td>4</td></tr>
+<tr><td><b>Low</b></td><td>4</td><td>2</td></tr>
+</table></div>
+<p>The letter follows from the score:</p>
+<div class="grades">
+<div style="--c:var(--pass)"><b>A</b><span>90–100</span></div>
+<div style="--c:var(--pass)"><b>B</b><span>80–89</span></div>
+<div style="--c:var(--warn)"><b>C</b><span>70–79</span></div>
+<div style="--c:var(--warn)"><b>D</b><span>55–69</span></div>
+<div style="--c:var(--fail)"><b>F</b><span>0–54</span></div>
+</div>
+<div class="callout key"><b>It's a snapshot, not a pass mark</b>The grade measures <i>published DNS and public web settings</i> against good practice. A C doesn't mean you've been hacked and an A doesn't mean you can't be. Use it to see direction: run the audit, fix the top items, run it again and watch the number rise.</div>
+<p>The <b>Score by area</b> bars beside the grade work the same way for each category, but weigh problems three times as heavily, so a single serious issue stands out clearly. Click a bar to jump to that area's checks.</p>
+
+<h2 id="labels">The four labels</h2>
+<div class="tw"><table>
+<tr><th>Label</th><th>Meaning</th><th>What to do</th></tr>
+<tr><td><span class="pill f">Fix now</span></td><td>A real weakness, or something that will break email or your website.</td><td>Work through these first, highest severity first.</td></tr>
+<tr><td><span class="pill w">Improve</span></td><td>Not broken, but below good practice. The risk is lower or needs more than one thing to go wrong.</td><td>Plan these in after the "Fix now" items.</td></tr>
+<tr><td><span class="pill p">Good</span></td><td>Checked and fine.</td><td>Nothing. Worth keeping, because it shows what's already working.</td></tr>
+<tr><td><span class="pill i">Info</span></td><td>Something worth knowing that isn't a pass or fail, such as how many subdomains were found or which mail provider you use.</td><td>Read it. Occasionally an info item will surprise you.</td></tr>
+</table></div>
+<p>Each <b>Fix now</b> and <b>Improve</b> item also carries a severity tag (<i>high</i>, <i>medium</i> or <i>low</i>) and, wherever possible, a <b>Fix</b> line plus a ready-to-paste record you can copy.</p>
+
+<h2 id="tabs">The four tabs</h2>
+<ul>
+<li><b>Recommendations</b>: only the problems, sorted with the most urgent first. Start here.</li>
+<li><b>All checks</b>: every check in every area, including the passes, grouped and expandable. Use it to show a colleague, an insurer or your IT provider the whole picture.</li>
+<li><b>DNS map</b>: a diagram of your name servers, mail servers, addresses and subdomains. It's good for spotting something unexpected, such as an address you don't recognise.</li>
+<li><b>Raw records</b>: the actual DNS answers, exactly as received. This is the evidence behind every finding, useful when your IT provider asks "how do you know?"</li>
+</ul>
+<p>The buttons at the top let you <b>Share</b> a link, <b>Copy report</b> as text, download <b>JSON</b>, or print <b>PDF</b>.</p>
+
+<h2 id="areas">The eleven areas, one by one</h2>
+<div class="tw"><table>
+<tr><th>Area</th><th>What it checks</th><th>Why it matters</th></tr>
+<tr><td><b>Registration</b></td><td>Domain expiry, registry holds, transfer lock, age</td><td>An expired domain takes your website and email offline, and someone else can register it.</td></tr>
+<tr><td><b>Name servers</b></td><td>How many, whether they answer, whether they agree, whether they leak data (zone transfer, open recursion, version disclosure)</td><td>These servers answer for your whole domain, so they must be reliable and locked down.</td></tr>
+<tr><td><b>SOA &amp; zone</b></td><td>The zone's timing values</td><td>Poor values slow down changes or let outages last longer than they should.</td></tr>
+<tr><td><b>DNSSEC</b></td><td>Whether answers are digitally signed, and with a modern algorithm</td><td>Stops forged DNS answers from sending visitors to a fake site.</td></tr>
+<tr><td><b>Web &amp; certificates</b></td><td>Website address, HTTPS certificate and expiry, outdated TLS, HSTS, security headers, CAA, <code>security.txt</code></td><td>Protects visitors and stops browser warnings.</td></tr>
+<tr><td><b>Mail servers</b></td><td>MX records, whether each mail server exists, null MX</td><td>Makes sure email can reach you, and only your servers.</td></tr>
+<tr><td><b>SPF</b></td><td>The list of servers allowed to send as you, and the 10-lookup limit</td><td>Part of stopping people sending fake email as you.</td></tr>
+<tr><td><b>DMARC</b></td><td>The policy, the reporting address and subdomain coverage</td><td>Tells receivers to block fakes, and reports who's trying.</td></tr>
+<tr><td><b>DKIM &amp; mail transport</b></td><td>Signing keys found, MTA-STS, TLS-RPT, DANE</td><td>Proves mail is yours and keeps it encrypted in transit.</td></tr>
+<tr><td><b>Subdomains &amp; takeover</b></td><td>Subdomains found in common names and certificate logs, dangling CNAMEs, exposed internal addresses</td><td>Forgotten subdomains are a common way into a business.</td></tr>
+<tr><td><b>Hygiene &amp; exposure</b></td><td>Leftover verification records, secrets in TXT records, wildcard records</td><td>Housekeeping that reduces what outsiders can learn or abuse.</td></tr>
+</table></div>
+
+<h2 id="common">The findings people ask about most</h2>
+<div class="tw"><table>
+<tr><th>Finding</th><th>In plain English</th><th>Typical fix</th></tr>
+<tr><td><b>No DMARC record</b><br><span class="pill f">Fix now · high</span></td><td>Nothing tells receivers to reject emails that fake your domain.</td><td>Publish a DMARC record starting at <code>p=none</code> with a reporting address, then tighten to <code>quarantine</code> and <code>reject</code>.</td></tr>
+<tr><td><b>DMARC is monitor-only (<code>p=none</code>)</b><br><span class="pill w">Improve · high</span></td><td>You're collecting reports but fakes are still delivered. This is a normal first step, not a mistake.</td><td>Read the reports, fix any legitimate sender that fails, then move to <code>quarantine</code> and <code>reject</code>.</td></tr>
+<tr><td><b>No SPF record</b> or <b>multiple SPF records</b><br><span class="pill f">Fix now · high</span></td><td>Receivers can't tell which servers may send for you, or the duplicates make SPF fail outright.</td><td>One SPF record only, listing every legitimate sender.</td></tr>
+<tr><td><b>SPF needs more than 10 lookups</b><br><span class="pill f">Fix now · high</span></td><td>SPF breaks for all your mail once you go over the limit.</td><td>Remove services you no longer use, or flatten some includes to IP ranges.</td></tr>
+<tr><td><b>No CAA record</b><br><span class="pill w">Improve · medium</span></td><td>Any certificate authority may issue certificates for your domain.</td><td>Add CAA records naming the authorities you use.</td></tr>
+<tr><td><b>DNSSEC not enabled</b><br><span class="pill w">Improve · medium</span></td><td>DNS answers for your domain can be forged on the network.</td><td>Switch it on at your DNS host, then add the DS record at your registrar. Do it carefully: a wrong DS record can take the domain offline.</td></tr>
+<tr><td><b>No HSTS header</b> or <b>missing security headers</b><br><span class="pill w">Improve · medium</span></td><td>Browsers aren't told to insist on HTTPS or to block clickjacking and similar attacks.</td><td>Add the headers at your web server or CDN. The report gives the exact lines.</td></tr>
+<tr><td><b>Certificate not trusted</b> or <b>about to expire</b><br><span class="pill f">Fix now</span></td><td>Visitors see a browser warning now, or soon will.</td><td>Renew it, install the full chain, and turn on automatic renewal.</td></tr>
+<tr><td><b>Possible subdomain takeover</b><br><span class="pill f">Fix now · high</span></td><td>A subdomain points at a cloud resource that's been deleted, so someone else could claim it.</td><td>Delete the stale DNS record, or recreate the resource.</td></tr>
+<tr><td><b>Zone transfer allowed</b> or <b>open resolver</b><br><span class="pill f">Fix now</span></td><td>Your DNS server hands out your whole zone, or answers questions for anyone.</td><td>Restrict transfers to your secondary servers and turn recursion off.</td></tr>
+<tr><td><b>Mail server does not resolve</b><br><span class="pill f">Fix now · high</span></td><td>An MX points at a host that doesn't exist, so mail can bounce, and someone could register the name.</td><td>Correct or remove the MX record.</td></tr>
+</table></div>
+
+<h2 id="fp">When a finding isn't what it seems</h2>
+<p>DNS audits judge what's visible from outside, so a few findings need a human check:</p>
+<ul>
+<li><b>"No DKIM key found."</b> DKIM selectors can be named anything, and nobody outside your mail provider can list them. The audit tries about 55 common names. If you do sign email, this item is a prompt to check an email's headers, not proof of a problem.</li>
+<li><b>"Transfer lock not shown."</b> Some registries, including <code>.au</code>, don't publish that status publicly. It appears as information, not a fail.</li>
+<li><b>SOA serials differ between name servers.</b> Normal for a few minutes after a change, and constant on very large providers. It's only a concern if it stays out of step for hours.</li>
+<li><b>Wildcard DNS.</b> Flagged because it hides typos and makes takeovers harder to spot, but some setups genuinely need one.</li>
+<li><b>Domains that don't send email.</b> The audit still expects SPF <code>-all</code>, a null MX and DMARC <code>p=reject</code>. That's protective, not pedantic: scammers like unused domains.</li>
+<li><b>Server-side tests unavailable.</b> If our backend can't be reached, the web, certificate and name-server tests are skipped and the report says so. Run it again in a minute.</li>
+</ul>
+
+<h2 id="after">What to do after the audit</h2>
+<ol>
+<li><b>Fix the "Fix now" items first</b>, highest severity at the top of the Recommendations tab.</li>
+<li><b>Change one thing at a time</b> and note what you changed. DNS changes can take up to an hour to spread, depending on the record's TTL.</li>
+<li><b>Take care with email changes.</b> Tighten DMARC in steps, and keep reading its reports so you don't block a legitimate sender.</li>
+<li><b>Re-run the audit</b> after each batch. The grade should go up, and any new red item points to something you just broke.</li>
+<li><b>Turn on monitoring.</b> The box under the results emails you when something gets worse (a certificate nearing expiry, DMARC removed, a new risky subdomain), and when something gets fixed.</li>
+</ol>
+<div class="callout"><b>A real example: our own domain</b>When we first ran DNS Audit on globalsoc.com.au it scored a <b>D (67)</b>. Adding DMARC lifted it to <b>C (74)</b>, and adding CAA records to <b>C (78)</b>. What's left: DNSSEC, the HSTS and security headers that GitHub Pages can't set, and the old TLS version. We publish our own results because it's the best test of whether the advice is practical.</div>
+
+<h2 id="limits">What the audit can't see</h2>
+<ul>
+<li><b>Internal controls.</b> Multi-factor authentication, patching, backups, endpoint protection and staff training don't show in DNS.</li>
+<li><b>Anything not published.</b> The audit reads public records and makes standard, lightweight checks. It isn't a penetration test or vulnerability scan.</li>
+<li><b>Intent.</b> A missing record might be an oversight or deliberate. Use your judgement, and ask your IT provider when unsure.</li>
+</ul>
+<p>The audit is best used on <b>your own domains</b>. Reviewing someone else's beyond reading public records needs their written permission. For deeper background, see <a href="/blog/read-your-email-dns/">What your DNS records say about your business</a> and <a href="/blog/dmarc-explained/">DMARC explained</a>.</p>
+
+<div class="cta"><h3>Want a second pair of eyes?</h3><p>We'll go through your report with you, fix the high-priority items and set up monitoring, with no jargon.</p><a href="/dnsaudit/">Run a free DNS Audit →</a><a href="/#contact">Talk to Yogesh</a></div>
+
+<div class="author"><div class="av">Y</div><div><b style="color:var(--ink)">Yogesh</b> runs Global SOC, a security-first app and IT studio in Glen Waverley, Melbourne, helping small businesses build software and keep it secure.</div></div>
+</article></main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+</body>
+</html>
