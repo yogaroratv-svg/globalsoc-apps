@@ -134,6 +134,14 @@ td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
 .cta{margin-top:28px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:22px;padding:26px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
 .cta h3{font-size:20px}.cta p{opacity:.85;font-size:14.5px}
 .cta .btn{background:#fff;color:#0b3b4a}
+.learn{margin-top:28px}
+.learn h3{font-size:19px;margin-bottom:4px}.learn>p{color:var(--muted);font-size:14.5px;margin-bottom:14px}
+.learn .lg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.learn a{display:block;text-decoration:none;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px 16px;transition:border-color .15s,transform .15s}
+.learn a:hover{border-color:var(--accent);transform:translateY(-2px)}
+.learn a b{display:block;font-size:15px;margin-bottom:2px}.learn a span{font-size:13px;color:var(--muted);line-height:1.4;display:block}
+.learn a em{font-style:normal;font-size:11.5px;font-weight:700;letter-spacing:.05em;color:var(--accent);display:block;margin-bottom:4px}
+@media (max-width:760px){.learn .lg{grid-template-columns:1fr}}
 .mon{margin-top:28px;display:grid;grid-template-columns:1fr minmax(0,380px);gap:18px;align-items:center;border-left:5px solid var(--accent)}
 .mon h3{font-size:19px;margin-bottom:6px}.mon p{color:var(--muted);font-size:14.5px;line-height:1.5}
 .mon form{display:flex;gap:8px}.mon input[type=email]{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:12px 14px;font:500 15px Inter,system-ui,sans-serif}
@@ -216,6 +224,12 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
     <div class="pane" id="p-map"><div class="mapwrap" id="map"></div><div class="legend"><span class="dot" style="--c:var(--pass)">Good</span><span class="dot" style="--c:var(--warn)">Improve</span><span class="dot" style="--c:var(--fail)">Fix now</span><span class="dot" style="--c:var(--info)">Info</span></div></div>
     <div class="pane" id="p-raw"><div class="tblwrap" id="raw"></div></div>
 
+    <div class="panel learn" id="learn"><h3>📚 Understand your results</h3><p>New to SPF, DKIM or DMARC? These plain-English guides explain what your report is telling you and how to fix it.</p>
+      <div class="lg">
+        <a href="/blog/how-to-read-dns-audit-report/"><em>KNOWLEDGE BASE</em><b>How to read your report</b><span>The grade, the labels, every section, and the findings people ask about most.</span></a>
+        <a href="/blog/dmarc-explained/"><em>EMAIL SECURITY</em><b>DMARC explained</b><span>How SPF, DKIM and DMARC work together, with a hands-on lab.</span></a>
+        <a href="/blog/read-your-email-dns/"><em>HOW IT WORKS</em><b>What your DNS says about you</b><span>What each record means, what should be public, and what to clean up.</span></a>
+      </div></div>
     <div class="panel mon" id="mon"><div><h3>📬 Get an email if this changes</h3><p>We'll re-check <b id="mondom">this domain</b> every morning and email you only when something gets worse or gets fixed: an expiring certificate or domain, a removed DMARC record, a new risky subdomain and more. Free.</p><p class="fine">Your email is stored in Azure (Australia) only for these alerts. One-click unsubscribe in every email. <a href="/privacy.html">Privacy policy</a>.</p></div>
       <form id="monf" novalidate><input type="email" id="mone" placeholder="you@company.com.au" autocomplete="email" aria-label="Email address" required><input type="text" id="monhp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button class="btn" id="monb">Monitor</button></form>
       <p class="msg" id="monmsg" role="status"></p></div>
@@ -235,7 +249,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   </div>
 </main>
 
-<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/">globalsoc.com.au</a> · <a href="/privacy.html">Privacy</a> · <a href="/#contact">Contact</a></span></div></footer>
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/">globalsoc.com.au</a> · <a href="/blog/how-to-read-dns-audit-report/">How to read your report</a> · <a href="/privacy.html">Privacy</a> · <a href="/#contact">Contact</a></span></div></footer>
 <div class="toast" id="toast"></div>
 
 <script>
