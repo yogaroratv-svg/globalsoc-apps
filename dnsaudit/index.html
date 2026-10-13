@@ -134,6 +134,13 @@ td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
 .cta{margin-top:28px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:22px;padding:26px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
 .cta h3{font-size:20px}.cta p{opacity:.85;font-size:14.5px}
 .cta .btn{background:#fff;color:#0b3b4a}
+.mon{margin-top:28px;display:grid;grid-template-columns:1fr minmax(0,380px);gap:18px;align-items:center;border-left:5px solid var(--accent)}
+.mon h3{font-size:19px;margin-bottom:6px}.mon p{color:var(--muted);font-size:14.5px;line-height:1.5}
+.mon form{display:flex;gap:8px}.mon input[type=email]{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:12px 14px;font:500 15px Inter,system-ui,sans-serif}
+.mon input[type=email]:focus{outline:2px solid var(--accent);outline-offset:1px}
+.mon .msg{grid-column:1/-1;font-size:14px;font-weight:600;min-height:0}.mon .msg:empty{display:none}
+.mon .fine{font-size:12px;margin-top:8px}
+@media (max-width:700px){.mon{grid-template-columns:1fr}.mon form{flex-direction:column}}
 .how{padding:56px 0}
 .how h2{font-size:clamp(24px,3vw,32px);letter-spacing:-.02em}
 .how .g{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
@@ -169,7 +176,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
     <div class="err" id="err" role="alert"></div>
     <div class="ex">Try: <button data-d="globalsoc.com.au">globalsoc.com.au</button><button data-d="github.com">github.com</button><button data-d="cloudflare.com">cloudflare.com</button><button data-d="paypal.com">paypal.com</button></div>
     <div class="recent" id="recent"></div>
-    <p class="privacy">🔒 Runs in your browser using encrypted DNS-over-HTTPS (Google and Cloudflare public resolvers). Nothing is sent to or stored by Global SOC. Passive, read-only checks: no scanning of your servers.</p>
+    <p class="privacy">🔒 Runs in your browser using encrypted DNS-over-HTTPS (Google and Cloudflare public resolvers). Only the domain name goes to our Azure backend for certificate, header and name-server tests; results aren't stored. Light, standard checks, not a port scan.</p>
   </div>
   <div class="radar"><canvas id="radar" aria-hidden="true"></canvas><div class="rl"><b id="qc">0</b><span>DNS queries</span></div></div>
 </div>
@@ -209,6 +216,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
     <div class="pane" id="p-map"><div class="mapwrap" id="map"></div><div class="legend"><span class="dot" style="--c:var(--pass)">Good</span><span class="dot" style="--c:var(--warn)">Improve</span><span class="dot" style="--c:var(--fail)">Fix now</span><span class="dot" style="--c:var(--info)">Info</span></div></div>
     <div class="pane" id="p-raw"><div class="tblwrap" id="raw"></div></div>
 
+    <div class="panel mon" id="mon"><div><h3>📬 Get an email if this changes</h3><p>We'll re-check <b id="mondom">this domain</b> every morning and email you only when something gets worse or gets fixed: an expiring certificate or domain, a removed DMARC record, a new risky subdomain and more. Free.</p><p class="fine">Your email is stored in Azure (Australia) only for these alerts. One-click unsubscribe in every email.</p></div>
+      <form id="monf" novalidate><input type="email" id="mone" placeholder="you@company.com.au" autocomplete="email" aria-label="Email address" required><input type="text" id="monhp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button class="btn" id="monb">Monitor</button></form>
+      <p class="msg" id="monmsg" role="status"></p></div>
     <div class="cta"><div><h3>Want these fixed for you?</h3><p>Global SOC is a security-first studio in Glen Waverley, Melbourne. We can harden your DNS and email in a day.</p></div><a class="btn" href="/#contact">Talk to us →</a></div>
   </div>
 
@@ -246,6 +256,17 @@ const pulses=[];
 /* ---------- DNS over HTTPS ---------- */
 const API='https://gsoc-dnsaudit-api.azurewebsites.net/api'; // Azure Functions: TLS, headers, MTA-STS policy, direct NS tests, CT proxy
 function api(path,ms){return fetchT(API+path,{},ms).then(r=>r.ok?r.json():null).catch(()=>null)}
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='monf')return;e.preventDefault();
+  const em=$('#mone').value.trim(),msg=$('#monmsg'),b=$('#monb');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){msg.style.color='var(--fail)';msg.textContent='Enter a valid email address.';return}
+  b.disabled=true;b.textContent='Sending…';msg.textContent='';
+  try{const r=await fetchT(API+'/subscribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,email:em,hp:$('#monhp').value})},30000);const j=await r.json().catch(()=>({}));
+    if(r.ok&&j.ok){msg.style.color='var(--pass)';msg.textContent='✓ '+(j.message||'Check your inbox to confirm.');$('#monf').style.display='none'}
+    else{msg.style.color='var(--fail)';msg.textContent=j.error||'Something went wrong. Please try again.'}}
+  catch(err){msg.style.color='var(--fail)';msg.textContent='Could not reach the monitoring service. Please try again later.'}
+  b.disabled=false;b.textContent='Monitor';
+});
 function fetchT(url,opt={},ms=9000){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(url,{...opt,signal:c.signal}).finally(()=>clearTimeout(t))}
 let active=0;const waitQ=[];
 async function slot(){while(active>=12)await new Promise(r=>waitQ.push(r));active++}
@@ -618,7 +639,7 @@ function render(){
   $('#results').classList.add('on');
   $('#grade').textContent=g;$('#grade').style.color=colOf(score);$('#score').textContent=score+' / 100';
   const arc=$('#arc');arc.style.stroke=colOf(score);arc.style.strokeDashoffset=326.7;requestAnimationFrame(()=>requestAnimationFrame(()=>arc.style.strokeDashoffset=326.7*(1-score/100)));
-  $('#rdom').textContent=D;
+  $('#rdom').textContent=D;$('#mondom').textContent=D;$('#monmsg').textContent='';$('#monf').style.display='';
   $('#rmeta').textContent=`${new Date(LAST.date).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})} · ${LAST.queries} queries${LAST.server?' + server-side tests':''} · ${LAST.seconds}s`;
   const n=s=>CK.filter(c=>c.status===s).length;
   $('#counts').innerHTML=[['fail','Fix now'],['warn','Improve'],['pass','Good'],['info','Info']].map(([s,l])=>`<div><b style="color:var(--${s})">${n(s)}</b><span>${l}</span></div>`).join('');
