@@ -220,7 +220,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
       <div><h3>🧩 Takeover & exposure</h3><p>Dangling CNAMEs, dead name servers, internal IPs, wildcards and leftover verification records are common footholds for attackers.</p></div>
       <div><h3>🧭 Resilience</h3><p>Name server count, network diversity and SOA timers determine whether your domain stays up when one server or provider fails.</p></div>
       <div><h3>🏷️ Registration</h3><p>An expiring domain or a missing transfer lock can lose you your website and email overnight. We read public RDAP data where the registry publishes it.</p></div>
-      <div><h3>⚠️ Limits</h3><p>Browsers can't do zone transfers or query your name servers directly, so those tests are listed with the commands to run yourself. This is not a penetration test.</p></div>
+      <div><h3>🛰️ Server-side tests</h3><p>Our Azure backend checks your HTTPS certificate, outdated TLS, security headers, HSTS, security.txt and your MTA-STS policy file, and asks each name server directly about zone transfers, open recursion and version disclosure. These are light, standard checks, not a penetration test.</p></div>
     </div>
   </div>
 </main>
@@ -244,6 +244,8 @@ let cache,QN=0,CK=[],RAW=[],MAP,running=false,LAST=null;
 const pulses=[];
 
 /* ---------- DNS over HTTPS ---------- */
+const API='https://gsoc-dnsaudit-api.azurewebsites.net/api'; // Azure Functions: TLS, headers, MTA-STS policy, direct NS tests, CT proxy
+function api(path,ms){return fetchT(API+path,{},ms).then(r=>r.ok?r.json():null).catch(()=>null)}
 function fetchT(url,opt={},ms=9000){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(url,{...opt,signal:c.signal}).finally(()=>clearTimeout(t))}
 let active=0;const waitQ=[];
 async function slot(){while(active>=12)await new Promise(r=>waitQ.push(r));active++}
@@ -507,6 +509,7 @@ async function chkDKIM(c){
 }
 
 async function crt(d){
+  const s=ctx.ctP&&await ctx.ctP;if(s&&s.names&&s.names.length)return s.names;
   try{const r=await fetchT(`https://crt.sh/?q=%25.${encodeURIComponent(d)}&output=json`,{},12000);if(!r.ok)return [];const j=await r.json();
     const s=new Set();j.forEach(x=>String(x.name_value||'').split('\n').forEach(n=>{n=n.trim().toLowerCase().replace(/^\*\./,'');if(n.endsWith('.'+d)&&/^[a-z0-9._-]+$/.test(n))s.add(n)}));return [...s]}catch(e){return []}
 }
@@ -548,11 +551,18 @@ function chkHyg(c){
   if(sec.length)add('hyg','warn','TXT record may contain a secret',sec.map(x=>x.slice(0,80)+(x.length>80?'…':'')).join('\n'),{sev:'med',fix:'DNS is public. Remove the record and rotate the secret.'});
   if(H!==D)add('hyg','info','Audited the parent zone',`You entered ${H}. Zone-level checks ran on ${D}, and ${H} was included in the subdomain checks.`);
   const ns=(ctx.ns||[])[0]||'ns1.'+D;
-  add('hyg','info','Not testable from a browser','Zone transfers (AXFR), open recursion and version disclosure need direct queries to your name servers. Run these from a terminal:',{snip:`dig axfr ${D} @${ns}            # should fail / be refused\ndig version.bind chaos txt @${ns} # should not reveal software version\ndig example.org @${ns}            # should be REFUSED (no open recursion)`});
+  if(!ctx.srv)add('hyg','info','Server-side tests unavailable','Zone transfers (AXFR), open recursion and version disclosure need direct queries to your name servers. Run these from a terminal:',{snip:`dig axfr ${D} @${ns}            # should fail / be refused\ndig version.bind chaos txt @${ns} # should not reveal software version\ndig example.org @${ns}            # should be REFUSED (no open recursion)`});
 }
 
 /* ---------- run ---------- */
-const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web & CAA','Mail servers','SPF','DMARC','DKIM & transport','Subdomains & takeover','Hygiene'];
+const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web & CAA','Mail servers','SPF','DMARC','DKIM & transport','Subdomains & takeover','Server-side tests','Hygiene'];
+async function chkServer(){
+  const r=await ctx.srvP;
+  if(!r||!Array.isArray(r.checks)){ctx.srv=false;return}
+  ctx.srv=true;
+  r.checks.forEach(c=>{if(CATS[c.cat]&&ORDER[c.status]!==undefined)add(c.cat,c.status,c.title,c.detail,{sev:c.sev,fix:c.fix,snip:c.snip,node:c.cat==='dkim'?'MTA-STS':''})});
+  const t=$('#term');if(t){const d=document.createElement('div');d.innerHTML=`<span class="dim">srv</span> TLS, headers, MTA-STS, AXFR, recursion <span class="dim">→</span> ${r.checks.length} results <span class="dim">· ${r.ms}ms · Azure</span>`;t.appendChild(d);t.scrollTop=t.scrollHeight}
+}
 let done=0;
 function stage(name){$('#stage').textContent=name+'…'}
 function progress(){done++;const p=Math.round(done/STAGES.length*100);$('#bar').style.width=p+'%';$('#pct').textContent=p+'%'}
@@ -573,7 +583,7 @@ async function run(input){
   $('#err').textContent='';$('#d').value=host;running=true;$('#go').disabled=true;$('#go').textContent='Auditing…';
   try{history.replaceState(null,'','#'+host)}catch(e){}
   H=host;D=orgDomain(host);cache=new Map();CK=[];RAW=[];QN=0;done=0;MAP={ns:[],mx:[],ip:[],sub:[]};
-  ctx={rnd:'gs'+Math.random().toString(36).slice(2,9)};
+  ctx={rnd:'gs'+Math.random().toString(36).slice(2,9),srvP:api('/audit?d='+encodeURIComponent(D),45000),ctP:api('/ct?d='+encodeURIComponent(D),40000)};
   $('#results').classList.remove('on');$('#scan').classList.add('on');$('#term').innerHTML='';$('#bar').style.width='0';$('#pct').textContent='0%';
   $('#scan').scrollIntoView({behavior:'smooth',block:'start'});
   const t0=performance.now();
@@ -588,8 +598,9 @@ async function run(input){
   await Promise.all([step('Registration',chkReg),step('Name servers',()=>chkNS(c)),step('SOA',()=>chkSOA(c)),step('DNSSEC',()=>chkDNSSEC(c)),step('Web & CAA',()=>chkWeb(c))]);
   await step('Mail servers',()=>chkMX(c));
   await Promise.all([step('SPF',()=>chkSPF(c)),step('DMARC',()=>chkDMARC(c)),step('DKIM & transport',()=>chkDKIM(c)),step('Subdomains & takeover',()=>chkSub(c))]);
+  await step('Server-side tests',chkServer);
   await step('Hygiene',()=>chkHyg(c));
-  LAST={domain:D,entered:H,date:new Date().toISOString(),queries:QN,seconds:+((performance.now()-t0)/1000).toFixed(1)};
+  LAST={domain:D,entered:H,date:new Date().toISOString(),queries:QN,server:!!ctx.srv,seconds:+((performance.now()-t0)/1000).toFixed(1)};
   render();saveRecent(D);
   running=false;$('#go').disabled=false;$('#go').textContent='Audit →';
   setTimeout(()=>$('#scan').classList.remove('on'),600);
@@ -608,7 +619,7 @@ function render(){
   $('#grade').textContent=g;$('#grade').style.color=colOf(score);$('#score').textContent=score+' / 100';
   const arc=$('#arc');arc.style.stroke=colOf(score);arc.style.strokeDashoffset=326.7;requestAnimationFrame(()=>requestAnimationFrame(()=>arc.style.strokeDashoffset=326.7*(1-score/100)));
   $('#rdom').textContent=D;
-  $('#rmeta').textContent=`${new Date(LAST.date).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})} · ${LAST.queries} queries · ${LAST.seconds}s`;
+  $('#rmeta').textContent=`${new Date(LAST.date).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})} · ${LAST.queries} queries${LAST.server?' + server-side tests':''} · ${LAST.seconds}s`;
   const n=s=>CK.filter(c=>c.status===s).length;
   $('#counts').innerHTML=[['fail','Fix now'],['warn','Improve'],['pass','Good'],['info','Info']].map(([s,l])=>`<div><b style="color:var(--${s})">${n(s)}</b><span>${l}</span></div>`).join('');
   $('#cats').innerHTML=Object.entries(CATS).filter(([k])=>CK.some(c=>c.cat===k)).map(([k,[l,ic]])=>{const s=scoreOf(CK.filter(c=>c.cat===k),3);return `<div class="cat" data-cat="${k}"><span>${ic}</span><span>${l}</span><em>${s}</em><div class="bar"><i style="background:${colOf(s)}" data-w="${s}"></i></div></div>`}).join('');
