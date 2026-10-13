@@ -1,0 +1,1251 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Sector Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-hand phone tool. Wheel signal + colour signal on top, number pad within thumb reach,
+   board inputs, scorecard, wheel below. Deliberately single-theme: casino felt at night. */
+:root{
+  --felt:#0d231c; --felt-2:#123026; --felt-3:#1a3d31; --line:#2a5244;
+  --ink:#ecf2ec; --muted:#9bb5a8; --brass:#d8ad52; --brass-ink:#1c1606;
+  --red:#c63a32; --black:#16191a; --zero:#1d8a4f;
+  --hot:#ef8a3a; --cold:#6aa8dc; --good:#58c48a; --bad:#e2675f; --reform:#b58ce6;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:Barlow,"Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--felt);color:var(--ink)}
+body{font-family:var(--body);font-size:15px;line-height:1.4;padding-inline:16px;padding-block:10px 40px;max-width:560px;margin:0 auto}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header{display:flex;align-items:center;gap:10px;padding-block:4px 10px}
+header h1{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.06em;text-transform:uppercase;margin:0;color:var(--brass)}
+header .count{font-family:var(--display);color:var(--muted);font-size:15px;letter-spacing:.04em}
+header .spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--felt-2);border-radius:8px;padding:7px 12px;font-family:var(--display);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:14px}
+.btn:active{background:var(--felt-3)}
+.btn.warn{border-color:var(--bad);color:var(--bad)}
+.btn.on{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+
+.banner{background:var(--felt-3);border:1px dashed var(--brass);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px;display:flex;gap:10px;align-items:center}
+.banner p{margin:0;flex:1;min-width:0}
+
+/* Signal cards */
+.signal{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;background:var(--felt-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.signal2{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;margin-top:8px;background:var(--felt-2);border:1px solid var(--reform);border-radius:12px;padding:10px 12px}
+.signal2 .pick2{grid-row:span 2;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:28px;border:3px solid var(--reform)}
+.s2head{font-size:13px;color:var(--muted)}
+.lbl{font-family:var(--display);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--brass);font-size:13px}
+.signal2 .lbl{color:var(--reform)}
+.betset .lbl{align-self:center;margin-right:2px}
+.pad button.inbet2::after{content:"";position:absolute;inset:-3px;border:2px solid var(--reform);border-radius:10px;pointer-events:none}
+.moneybar{display:flex;gap:6px;margin-bottom:10px}
+.moneybar>div{flex:1;background:var(--felt-2);border:1px solid var(--line);border-radius:10px;padding:5px 9px;min-width:0}
+.moneybar .k,.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.moneybar .v{font-family:var(--display);font-weight:700;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mstats{margin-top:12px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.field input{width:100%}
+.stat{background:var(--felt-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.stat .v{font-family:var(--display);font-weight:700;font-size:24px}
+.stat .s{font-size:12px;color:var(--muted)}
+.stat .s.big{font-family:var(--display);font-size:18px;font-weight:600;color:var(--ink);margin-top:2px}
+#spark{width:100%;height:70px;margin-top:10px;background:var(--felt-2);border:1px solid var(--line);border-radius:10px}
+#adjIn{flex:1 1 120px}
+.adjrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--felt-3);font-size:13px}
+.btn.small{padding:3px 9px;font-size:12px}
+#cpill{cursor:pointer}
+.signal .conf{font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.stake{font-family:var(--display);font-weight:700;letter-spacing:.05em;font-size:15px;padding:1px 9px;border-radius:6px;border:1px solid var(--line)}
+.stake.x2{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
+.pill.stop{background:transparent;border:1px solid var(--bad);color:var(--bad)}
+.signal .pick{grid-row:span 5;width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:38px;border:3px solid var(--brass)}
+.pill{justify-self:start;font-family:var(--display);font-weight:700;letter-spacing:.08em;font-size:15px;padding:2px 10px;border-radius:99px;text-transform:uppercase}
+.pill.burst{background:var(--brass);color:var(--brass-ink)}
+.pill.reform{background:var(--reform);color:#1a0f26}
+.pill.forming{background:var(--hot);color:#2a1405}
+.pill.pattern{background:var(--brass);color:var(--brass-ink)}
+.pill.wait{background:transparent;border:1px solid var(--muted);color:var(--muted)}
+.nextwhy{grid-column:1/-1;font-size:12.5px;color:var(--hot)}
+.pill.scatter,.pill.neutral,.pill.cooloff{background:transparent;border:1px solid var(--muted);color:var(--muted)}
+.pill.cooloff{border-color:var(--cold);color:var(--cold)}
+.pill.collect,.pill.setup{background:transparent;border:1px dashed var(--muted);color:var(--muted)}
+.signal .why{font-size:13px;color:var(--muted);min-width:0}
+.signal .metric{font-size:12px;color:var(--muted)}
+.meter{display:inline-block;width:90px;height:6px;border-radius:3px;background:var(--felt-3);vertical-align:middle;position:relative;overflow:hidden;margin-left:4px}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--hot)}
+.betset{display:flex;flex-wrap:wrap;gap:4px}
+.chip{min-width:28px;height:26px;padding:0 4px;border-radius:6px;display:inline-grid;place-items:center;font-family:var(--display);font-weight:600;font-size:16px;position:relative}
+.review{white-space:pre-wrap;font-size:14px;line-height:1.45;margin-top:8px;color:var(--ink)}
+.tablebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 6px}
+.tablebar .seg{margin:0}
+.dirbtn{font-weight:700}
+.chip.key{box-shadow:0 0 0 2px var(--brass);font-weight:800}
+.chip.dead{opacity:.45;text-decoration:line-through}
+.read{background:var(--felt-2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:8px}
+.read .rgrid{display:flex;gap:6px}
+.read .rgrid>div{flex:1;min-width:0}
+.read .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.read .v{font-family:var(--display);font-weight:700;font-size:22px}
+.read .rrow{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.read .rrow .lbl{font-family:var(--display);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);font-size:12.5px}
+.read .betset{margin-top:3px}
+.chip.star::after{content:"★";position:absolute;top:-7px;right:-5px;font-size:11px;color:var(--brass)}
+.c-red{background:var(--red);color:#fff}.c-black{background:var(--black);color:#fff;box-shadow:inset 0 0 0 1px #3a4140}.c-zero{background:var(--zero);color:#fff}
+
+.colour{display:flex;align-items:center;gap:10px;margin-top:8px;background:var(--felt-2);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.colour[hidden]{display:none}
+.cycbox{flex-wrap:wrap}.cycbox .betset{flex-basis:100%;margin-top:4px}
+.pad button.coldn{opacity:.4}
+.pad button.coldn::before{content:"❄";position:absolute;top:1px;left:4px;font-size:10px;color:var(--cold)}
+.colour .dot{width:30px;height:30px;border-radius:50%;flex:none;border:2px solid var(--line)}
+.colour .txt{font-size:13px;color:var(--muted);flex:1;min-width:0}
+.colour .lbl{font-family:var(--display);font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--brass);font-size:13px}
+.pill.bet-red{background:var(--red);color:#fff}.pill.bet-black{background:var(--black);color:#fff;box-shadow:inset 0 0 0 1px #4a5250}
+.pill.cwait{background:transparent;border:1px solid var(--muted);color:var(--muted)}
+
+/* Pad */
+.pad{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.pad button{height:48px;border:0;border-radius:8px;font-family:var(--display);font-weight:700;font-size:22px;color:#fff;position:relative}
+.pad button:active{transform:scale(.94)}
+.pad .z{grid-column:span 4}
+.pad .undo{grid-column:span 2;background:var(--felt-3);border:1px solid var(--line);font-size:16px;letter-spacing:.06em;text-transform:uppercase}
+.pad button.inbet::after{content:"";position:absolute;inset:-3px;border:2px solid var(--brass);border-radius:10px;pointer-events:none}
+.pad button.hotn::before{content:"★";position:absolute;top:1px;right:4px;font-size:11px;color:var(--brass)}
+
+.strip{display:flex;gap:4px;overflow-x:auto;padding-block:10px 2px;scrollbar-width:none}
+.strip .chip{flex:none}
+.strip .chip.hit{outline:2px solid var(--good);outline-offset:1px}
+.strip .chip.pre{opacity:.5}
+
+section{margin-top:18px}
+h2{font-family:var(--display);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:15px;color:var(--brass);margin:0 0 8px}
+.board{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.board input{width:56px;text-align:center;font-family:var(--display);font-size:20px;font-weight:700}
+.board .grow{flex:1 1 140px;font-size:12.5px;color:var(--muted)}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:8px}
+.seg button{border:0;background:transparent;padding:5px 12px;font-family:var(--display);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--felt-3);color:var(--ink)}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:var(--display);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px;border-bottom:1px solid var(--felt-3);text-align:right}
+tr.mainrow td{font-weight:600}
+tr.best td:first-child::after{content:" ▲ best";color:var(--good);font-family:var(--display);font-size:11px;letter-spacing:.05em}
+.good{color:var(--good)}.bad{color:var(--bad)}
+.note{font-size:12.5px;color:var(--muted);margin-top:8px;max-width:65ch}
+
+.sides{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.side{border-radius:8px;padding:6px 8px;background:var(--felt-2);border:1px solid var(--line);font-size:12px;min-width:0}
+.side b{font-family:var(--display);font-size:15px;letter-spacing:.03em;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side.cold{border-color:var(--cold)}
+.side .tag{font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:11px;text-transform:uppercase;color:var(--cold)}
+.wheelwrap{display:grid;place-items:center;margin-top:10px}
+#wheel{width:100%;max-width:340px;height:auto}
+
+details{background:var(--felt-2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-top:10px}
+summary{font-family:var(--display);font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.row label{font-size:13px;color:var(--muted);flex:1 1 180px}
+select,input[type=number]{background:var(--felt);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
+textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px;font-family:Consolas,monospace;font-size:12px}
+@media (prefers-reduced-motion:reduce){.pad button:active{transform:none}}
+</style>
+
+<header>
+  <h1>Sector Watch</h1>
+  <span class="count num" id="count">0 spins</span>
+  <span class="spacer"></span>
+  <button class="btn" id="newBtn" type="button">New session</button>
+</header>
+
+<div class="banner" id="exampleBanner" hidden><p>These are example spins so you can see how it works. Tap <b>New session</b> before you start.</p></div>
+<div class="banner" id="setupBanner" hidden><p><b>Screen history:</b> tap the recent numbers shown on the casino screen, <b>oldest first</b>. They feed the signals but are not scored.</p><button class="btn on" id="doneBtn" type="button">Done</button></div>
+
+<div class="moneybar" aria-live="polite">
+  <div><div class="k">Balance</div><div class="v num" id="mBal">$0</div></div>
+  <div><div class="k">Session</div><div class="v num" id="mPL">$0</div></div>
+  <div><div class="k">Bets</div><div class="v num" id="mWL">0W 0L</div></div>
+</div>
+
+<div class="read" id="readBox" aria-live="polite">
+  <div class="rgrid">
+    <div><div class="k">Confidence</div><div class="v num" id="rConf">–</div></div>
+    <div><div class="k">Burst-on</div><div class="v num" id="rBurst">–</div></div>
+    <div><div class="k">Random</div><div class="v num" id="rRand">–</div></div>
+  </div>
+  <div class="rrow"><span class="lbl">Sector 3 · burst likely soon</span> · <span id="r3txt"></span><div class="betset" id="r3"></div></div>
+  <div class="rrow"><span class="lbl">Sector 4 · dead, avoid</span> · <span id="r4txt"></span><div class="betset" id="r4"></div></div>
+  <div class="rrow" id="rAdapt"></div>
+</div>
+
+<div class="signal" aria-live="polite">
+  <div class="pick num" id="pick">–</div>
+  <span class="pill collect" id="pill">Collecting</span>
+  <div class="why" id="why">Enter at least 4 spins.</div>
+  <div class="metric num" id="metric"></div>
+  <div class="conf num" id="conf"></div>
+  <div class="betset" id="betset"></div>
+  <div class="nextwhy" id="s1why"></div>
+  <div class="nextwhy" id="nextwhy"></div>
+</div>
+
+<div class="signal2" aria-live="polite">
+  <div class="pick2 num" id="pick2">–</div>
+  <div class="s2head"><span class="lbl" id="s2lbl">Current burst</span> <span id="s2txt"></span></div>
+  <div class="betset" id="betset2"></div>
+  <div class="nextwhy" id="s2why"></div>
+</div>
+
+<div class="colour cycbox" id="cycBox" aria-live="polite">
+  <div class="dot" id="ydot"></div>
+  <div class="txt"><span class="lbl">Burst cycle</span> · <span id="ytxt">Needs 8 spins.</span></div>
+  <span class="pill cwait" id="ypill">Wait</span>
+  <div class="betset" id="ybet"></div>
+</div>
+
+<div class="colour cycbox" id="aiBox" aria-live="polite" hidden>
+  <div class="dot" id="aidot"></div>
+  <div class="txt"><span class="lbl">Ask Claude</span> · <span id="aitxt">Needs 50 spins at this table.</span></div>
+  <button class="btn small" id="aiBtn" type="button" disabled>Ask</button>
+  <div class="betset" id="aibet"></div>
+  <div class="row" id="aiRow" hidden><button class="btn small" id="aiBetBtn" type="button">Bet these</button><button class="btn small" id="aiStop" type="button">Stop</button></div>
+</div>
+
+<div class="colour spikebox" id="spikeBox" aria-live="polite" hidden>
+  <div class="dot" id="sdot"></div>
+  <div class="txt"><span class="lbl">Number spike</span> · <span id="stxt"></span></div>
+  <span class="pill pattern" id="spill"></span>
+</div>
+
+<div class="colour" aria-live="polite">
+  <div class="dot" id="cdot"></div>
+  <div class="txt"><span class="lbl">Colour</span> · <span id="ctxt">Waiting for a streak.</span></div>
+  <span class="pill cwait" id="cpill">Wait</span>
+</div>
+
+<div class="tablebar">
+  <div class="seg" role="group" aria-label="Table type">
+    <button type="button" id="tComp" aria-pressed="true">Computerised</button>
+    <button type="button" id="tReal" aria-pressed="false">Real wheel</button>
+  </div>
+  <button class="btn dirbtn" id="dirBtn" type="button" hidden>Next spin: ↻ Clockwise</button>
+</div>
+
+<div class="pad" id="pad"></div>
+
+<div class="strip" id="strip" aria-label="Recent spins, newest first"></div>
+
+<section id="revSec">
+  <h2>Review this table</h2>
+  <p class="note" id="revNote">Claude reads every spin and score saved for this table and earlier tables, then tells you how the table is behaving, which bets are working here, and what to do next. Same as asking "check" on the laptop, so the laptop can be off.</p>
+  <div class="row"><button class="btn" id="revBtn" type="button">Review this table</button><button class="btn small" id="revStop" type="button" hidden>Stop</button></div>
+  <div class="review" id="revOut"></div>
+</section>
+
+<section>
+  <h2>Board hot numbers</h2>
+  <div class="board">
+    <input id="h0" type="number" inputmode="numeric" min="0" max="36" aria-label="Hot number 1">
+    <input id="h1" type="number" inputmode="numeric" min="0" max="36" aria-label="Hot number 2">
+    <input id="h2" type="number" inputmode="numeric" min="0" max="36" aria-label="Hot number 3">
+    <input id="h3" type="number" inputmode="numeric" min="0" max="36" aria-label="Hot number 4">
+    <span class="grow">Top 4 from the screen's last 250 spins. Update when the screen changes. Marked ★ on the pad.</span>
+  </div>
+  <h2>Board cold numbers</h2>
+  <div class="board">
+    <input id="c0" type="number" inputmode="numeric" min="0" max="36" aria-label="Cold number 1">
+    <input id="c1" type="number" inputmode="numeric" min="0" max="36" aria-label="Cold number 2">
+    <input id="c2" type="number" inputmode="numeric" min="0" max="36" aria-label="Cold number 3">
+    <input id="c3" type="number" inputmode="numeric" min="0" max="36" aria-label="Cold number 4">
+    <span class="grow">Coldest 4 from the screen's last 250 spins. Left out of every bet until they land. Marked ❄ on the pad.</span>
+  </div>
+  <div class="row"><button class="btn" id="setupBtn" type="button">Enter screen history</button><span class="note" id="setupNote">Tap in the screen's recent results to start with signals ready.</span></div>
+</section>
+
+<section>
+  <h2>Money</h2>
+  <div class="mgrid">
+    <label class="field" for="bankIn">Starting balance ($)<input id="bankIn" type="number" inputmode="decimal" min="0" step="1"></label>
+    <label class="field" for="unitIn">$ per number (chip, min $2.50)<input id="unitIn" type="number" inputmode="decimal" min="2.5" step="2.5"></label>
+    <label class="field" for="limitIn">Stop if session loss reaches ($, 0 = off)<input id="limitIn" type="number" inputmode="decimal" min="0" step="10"></label>
+    <label class="field" for="targetIn">Stop if session profit reaches ($, 0 = off)<input id="targetIn" type="number" inputmode="decimal" min="0" step="10"></label>
+    <label class="field" for="colAmtIn">Colour bet ($, min $25, 0 = not playing colours)<input id="colAmtIn" type="number" inputmode="decimal" min="0" step="5"></label>
+  </div>
+  <div class="row"><label for="heavyIn">Bet heavy: extra chip on the 6 key numbers (gold ring) when the main card bets</label><input id="heavyIn" type="checkbox"></div>
+  <div class="mgrid mstats">
+    <div class="stat"><div class="k">Balance</div><div class="v num" id="mBal2">$0</div><div class="s" id="mWL2">0 wins · 0 losses</div></div>
+    <div class="stat"><div class="k">This session</div><div class="v num" id="mPL2">$0</div><div class="s">all sessions: <b class="num" id="mAll">$0</b></div></div>
+    <div class="stat"><div class="k">Biggest win / loss</div><div class="s num big" id="mBig">– / –</div></div>
+    <div class="stat"><div class="k">Best point / worst dip</div><div class="s num big" id="mPeak">$0 / $0</div></div>
+  </div>
+  <svg id="spark" viewBox="0 0 320 70" preserveAspectRatio="none" role="img" aria-label="Session profit and loss over time"></svg>
+  <div class="row"><label for="adjIn">Other bets you made (not suggested by the app)</label></div>
+  <div class="row"><input id="adjIn" type="number" inputmode="decimal" min="0" step="1" placeholder="$ amount" aria-label="Other bet amount in dollars"><button class="btn" id="adjWin" type="button">+ Won</button><button class="btn" id="adjLoss" type="button">− Lost</button></div>
+  <div id="adjList"></div>
+  <p class="note">The app counts its own suggested bets automatically when you tap the result. Tap <b>Skip this bet</b> on the card before entering a spin you didn't play. With a colour amount set, tap the colour pill to skip a colour bet.</p>
+</section>
+
+<section>
+  <h2>Scorecard</h2>
+  <div class="seg" role="group" aria-label="Scorecard range">
+    <button type="button" id="scopeSession" aria-pressed="true">This session</button>
+    <button type="button" id="scopeAll" aria-pressed="false">All sessions</button>
+  </div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Rule</th><th>Bets</th><th>Hit %</th><th>Chance</th><th>Units</th></tr></thead>
+      <tbody id="scoreBody"></tbody>
+    </table>
+  </div>
+  <p class="note">Every rule is scored on every spin, side by side. Wheel rules bet the same numbers; they differ only in when they say BET. Units assume 1 unit per number (35:1 straight up), times the suggested stake for the main signal, or 1 unit on the colour (1:1). Compare the 1× and 2× rows to see if high confidence really wins more often. The rule marked best has the highest units with at least 20 bets.</p>
+</section>
+
+<section>
+  <h2>Wheel</h2>
+  <div class="sides" id="sides"></div>
+  <div class="wheelwrap"><svg id="wheel" viewBox="0 0 340 340" role="img" aria-label="Single-zero wheel with hot arc"></svg></div>
+</section>
+
+<details id="settings">
+  <summary>Settings</summary>
+  <div class="row"><label for="kSel">Numbers in each sector</label>
+    <select id="kSel"><option value="3">7 per sector (14 total)</option><option value="4">9 per sector (18 total)</option><option value="5">11 per sector (22 total)</option></select></div>
+  <div class="row"><label for="winIn">Recent window for the hot arc (spins)</label><input id="winIn" type="number" min="6" max="60" step="1"></div>
+  <div class="row"><label for="overSel">Burst is over after this many misses in a row</label>
+    <select id="overSel"><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="0">Never</option></select></div>
+  <div class="row"><label for="colSel">Colour streak needed before betting it</label>
+    <select id="colSel"><option value="2">2 in a row</option><option value="3">3 in a row</option><option value="4">4 in a row</option><option value="5">5 in a row</option></select></div>
+  <div class="row"><label>Cloud copy (Claude reads your spins from here)</label><span class="note" id="cloudMsg">Connecting…</span></div>
+  <div class="row"><label>Erase every session and start from zero</label><button class="btn warn" id="wipeBtn" type="button">Clear all history</button></div>
+</details>
+
+<details id="howBox">
+  <summary>How the signals work</summary>
+  <p class="note"><b>Jump</b> is how many pockets apart a spin lands from the previous one on the wheel (0–18). Evenly spread spins average about 9.2.</p>
+  <p class="note"><b>Pattern model</b>: no fixed burst rules. On every spin the app learns three things from this table: where spins tend to land relative to the last spin (for example close by, or about 17 pockets clockwise), the same relative to the spin before last, and which areas keep getting hit. A fourth part assumes an even spread. Each part gains trust when it predicted the actual spin well and loses trust when it didn't, so the model shifts as the table changes from bursts to scatter and back. It also learns from your earlier sessions.</p>
+  <p class="note"><b>Sectors</b>: the model's two best non-overlapping 9-number areas. <b>BET</b> when it gives those 18 numbers at least 5 points more than an even spread (49%). The line under Sector 1 says which part it trusts most and how its last 20 predictions did.</p>
+  <p class="note"><b>Cool-off</b>: after the set number of BET misses in a row, the app pauses for at least 2 spins and resumes once a prediction lands again.</p>
+  <p class="note"><b>Confidence</b> (0–100) comes from how far the model is above an even spread and how its last 20 predictions did. <b>High</b> (62+) suggests 2×, but only if recent predictions beat chance and you haven't lost 2 in a row.</p>
+  <p class="note"><b>Burst cycle</b> (your theory): a burst between two areas, then scatter, then a burst between a new area and one of the old ones, then scatter. <b>Burst on</b> = the last 8 spins all landed in two 9-number areas; the app doesn't bet a burst that is already running. One stray spin outside the two areas doesn't end it; it ends when 2 of the last 3 spins miss them. Burst-on % also drops by at most 10 points for a single stray spin. <b>Scatter</b> = no burst now. <b>Burst coming</b> = at least 2 scatter spins after a burst, then the last 3 spins hit one of the old burst areas once and a new area twice: bet 1 chip on each number of those two areas. Cold numbers are left out.</p>
+  <p class="note"><b>Table read</b> (top panel). <b>Confidence</b> is the main card's score. <b>Burst-on %</b> compares how tightly the last 12 spins sit in two 9-number areas (recent spins count more) with evenly spread spins: 80% means tighter than 80% of normal stretches. <b>Random %</b> is the rest. <b>Sector 3</b> is where a new burst looks likely to start: the cycle's new area, or an area that 2 of the last 4 spins hit. <b>Sector 4</b> is the dead area, with the lowest chance from the model; it is left out of the cycle bet.</p>
+  <p class="note"><b>Key numbers</b> (gold ring) are the 3 numbers in each sector the model rates highest. <b>Why Sector 1 / 2</b> says which part of the model picked the area, how many of the last 12 spins landed there, and the model's chance for those numbers.</p>
+  <p class="note"><b>Switching per table</b>: the app scores the model, the cycle bet and the old burst signal at this table. Once one has 12+ bets and is 10+ points below chance here, it switches off. If the model is switched off and the old burst signal is 10+ points above chance, the main card uses the old burst signal instead. The "At this table" line shows the scores. Colour switches between switch and follow the same way.</p>
+  <p class="note"><b>Table type</b> (above the number pad): <b>Computerised</b> ignores direction. <b>Real wheel</b> shows a direction button: set it to the direction of the next spin once, and it flips by itself after every spin you enter (tap it to correct; Undo puts it back). The model then also learns the jump pattern separately for clockwise and anticlockwise spins, and trusts that part more only when it predicts better; the line under Sector 1 shows how much it trusts it.</p>
+  <p class="note"><b>Ask Claude</b> (from 50 spins at a table, screen history included): tap Ask and Claude reads this table's spins, board hot and cold numbers, and picks 6 numbers for the next spin with a short reason. It uses your Claude usage and can take up to a minute. Picks count only for the next spin you enter. They are always scored ("Ask Claude picks" row); money counts only if you tap Bet these (1 chip each).</p>
+  <p class="note"><b>Minimums</b>: $2.50 a number and $25 on red/black are built in. Each spin keeps the chip and colour amounts it was played at, so changing them later never rewrites past money. <b>Bet heavy</b> (Money section) adds 1 extra chip on the key numbers in the bet.</p>
+  <p class="note"><b>Cold numbers</b>: enter the 4 coldest from the screen's last 250 spins. They are left out of the model's sectors and the cycle bet until they land, then they come back in. The scorecard row "Cold numbers" shows how often they land anyway.</p>
+  <p class="note"><b>Number spike</b>: the app counts exactly how many pockets clockwise each spin lands from the one before. If one exact jump keeps repeating far more than chance (at least 6 times and well above the 1-in-37 expected), it shows the single number that jump points to from the last spin. Bet 1 chip on it (35:1). It switches off by itself if the jump stops repeating. Skip this bet skips the spike bet too.</p>
+  <p class="note"><b>Scorecard</b>: the old burst, re-forming and forming rules still run in the background as rows, so you can compare them with the model.</p>
+  <p class="note"><b>Safety</b>: STOP once the session is down by the loss limit. Money is saved with the bet that was actually shown, so app updates never change past results.</p>
+  <p class="note"><b>Colour</b>: after 2 of the same colour in a row (setting), bet the <b>switch</b> to the other colour. On your spins the colour switched after a streak 57% of the time, and following a streak of 3 lost. The app also learns each table: if this table's last 20 streaks mostly carried on (a streaky table), it follows the streak instead. <b>2×</b> is suggested only when the last colour bet won and the chosen side has won at least 60% of this table's recent streaks; never after a loss. Zero breaks the streak.</p>
+</details>
+
+<details id="exportBox">
+  <summary>Export</summary>
+  <p class="note">Copy this and paste it to Claude after your session for a full analysis.</p>
+  <textarea id="csv" readonly aria-label="All spins as CSV"></textarea>
+  <div class="row"><button class="btn" id="copyBtn" type="button">Copy</button><span class="note" id="copyMsg"></span></div>
+</details>
+
+<script>
+(function(){
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const POS={};WHEEL.forEach((n,i)=>POS[n]=i);
+const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const SIDES=[
+  {name:"Zero side",from:31,len:11},
+  {name:"17·34·6 side",from:5,len:9},
+  {name:"23·8·10·5 side",from:14,len:9},
+  {name:"9·22·14·31 side",from:23,len:8}
+];
+const sideOf=n=>{const p=POS[n];return SIDES.find(s=>(p-s.from+37)%37<s.len);};
+const colourOf=n=>n===0?"green":RED.has(n)?"red":"black";
+const colorClass=n=>n===0?"c-zero":RED.has(n)?"c-red":"c-black";
+const dist=(a,b)=>{const d=Math.abs(POS[a]-POS[b]);return Math.min(d,37-d);};
+const pdist=(p,q)=>{const d=Math.abs(p-q);return Math.min(d,37-d);};
+const money=(x,plain)=>{const r=Math.round(x*100)/100,a=Math.abs(r),s=Number.isInteger(a)?String(a):a.toFixed(2);return plain?(r<0?"−$":"$")+s:(r>0?"+$":r<0?"−$":"$")+s;};
+const DECAY=0.85,ARC=9,RANDOM_JUMP=9.24,CONF_MED=48,CONF_HIGH=62;
+const KEY="sectorwatch.v2",OLDKEY="sectorwatch.v1";
+const MIN_CHIP=2.5,MIN_COL=25; // casino minimums: $2.50 a number, $25 on red/black
+const EXAMPLE=[26,32,17,3,0,15,8,12,35,19,10,26,3,34,0,32,22,15,19,12,5,24,33,8,23,10,16,11,30,29];
+
+const RULES=[
+  {id:"main",label:"Pattern model, both sectors"},
+  {id:"modelRaw",label:"· Model alone, no table switching"},
+  {id:"key",label:"· Key numbers only (gold ring)"},
+  {id:"main1",label:"· 1× bets"},
+  {id:"main2",label:"· 2× bets (high confidence)"},
+  {id:"sec1",label:"· Next burst sector only"},
+  {id:"sec2",label:"· Current burst sector only"},
+  {id:"ai",label:"Ask Claude picks"},
+  {id:"cycle",label:"Burst cycle: burst coming (old + new area)"},
+  {id:"cycleB",label:"Burst cycle: burst already on"},
+  {id:"coldav",label:"Cold numbers (if you had bet them)"},
+  {id:"spike",label:"Number spike (exact jump)"},
+  {id:"oldmain",label:"Old burst signal (v6)"},
+  {id:"forming",label:"Next burst: forming (9 nos)"},
+  {id:"wake",label:"Next burst: missing side wakes"},
+  {id:"drift",label:"Next burst: burst movement"},
+  {id:"burst",label:"Burst only"},
+  {id:"reform",label:"Re-forming only"},
+  {id:"jump",label:"Avg jump ≤ 5"},
+  {id:"arc",label:"Arc 4 of last 5"},
+  {id:"s23",label:"Side 2 of last 3"},
+  {id:"s24",label:"Side 2 of last 4"},
+  {id:"s35",label:"Side 3 of last 5"},
+  {id:"hot4",label:"Board hot numbers"},
+  {id:"colour",label:"Colour: switch / follow (learned)"},
+  {id:"colour2",label:"· Colour 2× bets"},
+  {id:"colourOld",label:"Colour: follow a 3+ streak (old)"}
+];
+let state={v:7,heavy:false,table:"computer",nextDir:"cw",spins:[],session:1,hot:[],cold:[],k:4,win:12,overN:3,colN:2,limit:180,target:0,unit:2.5,colAmt:0,banks:{},adj:[],setup:false,scope:"session",example:false};
+
+function load(){
+  try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&Array.isArray(s.spins)){state=Object.assign(state,s);
+    if(!(state.v>=4)){state.k=4;state.limit=180;}
+    if(!(state.v>=5)){state.target=0;state.unit=1;state.colAmt=0;state.banks={};state.adj=[];state.v=5;}
+    if(!(state.v>=6)){state.colN=2;state.v=6;}
+    // v7: casino minimums. Past spins keep the chip and colour amounts they were played at.
+    if(!(state.v>=7)){state.spins.forEach(s=>{if(s.u===undefined)s.u=state.unit;if(s.oca===undefined)s.oca=state.colAmt;});
+      if(!(state.unit>=MIN_CHIP))state.unit=MIN_CHIP;if(state.colAmt>0&&state.colAmt<MIN_COL)state.colAmt=MIN_COL;state.v=7;}
+    return;}}}catch(e){}
+  try{const old=JSON.parse(localStorage.getItem(OLDKEY)||"null");
+    if(old&&Array.isArray(old.spins)&&old.spins.length&&!old.example){
+      state.spins=old.spins.map(s=>({n:s.n,t:s.t,s:1,pre:false,hot:[]}));state.win=old.win||12;return;}}catch(e){}
+  state.example=true;state.session=1;
+  state.spins=EXAMPLE.map((n,i)=>({n,t:0,s:1,pre:i<8,hot:[26,32,19,10]}));
+  state.hot=[26,32,19,10];
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}cloudQueue();}
+
+/* ---------- signal engine ---------- */
+/* Pattern model: learns from this table's spins, no fixed burst thresholds.
+   Expert 0: where spins land relative to the last spin (learned jump profile).
+   Expert 1: same, relative to the spin before last.
+   Expert 2: which areas the table keeps hitting (recent frequency).
+   Expert 3: even spread (keeps the model honest when nothing works).
+   Each expert's trust rises when it predicted the actual spin well and falls when it didn't. */
+const SPIKE_MIN=6,SPIKE_Z=3.5;
+// burst cycle: "burst" = all of the last 8 spins inside two 9-number areas; "coming" needs 2+ scatter spins after a burst first
+const CYC_W=8,CYC_T=8,CYC_GAP=2;
+const COL_WIN=20,COL_PRIOR_S=3,COL_PRIOR_F=2;
+// per-table switching: a bet type needs 12+ bets here and to be 10+ points off chance before the app switches it
+const ADAPT_MIN=12,ADAPT_EDGE=0.10;
+// burst-on %: where the last 12 spins' clustering (two 9-number areas, recent spins weigh more) falls among evenly spread spins (5% steps)
+const BURSTQ2=[0,11.2,19.0,25.2,30.9,36.0,41.4,46.3,51.4,56.1,59.9,64.9,68.1,72.1,76.8,79.8,83.4,86.3,90.0,95.0,100.01];
+const BURSTQ=[0.623,0.719,0.739,0.755,0.769,0.782,0.791,0.801,0.811,0.821,0.830,0.839,0.849,0.859,0.874,0.882,0.894,0.910,0.925,0.952,1.000];
+const MODEL_MIN=8,MODEL_ETA=1,MODEL_SHARE=0.02,EDGE_BET=0.05,CONF_A=0.14,CONF_B=3,CONF_C=1;
+function newModel(){return {o1:new Array(37).fill(0),o2:new Array(37).fill(0),f:new Array(37).fill(0),w:[0.25,0.25,0.25,0.25],shadow:[],seen:0,raw:new Array(37).fill(0),rawN:0,
+  // real wheel: jump profile learned separately for clockwise and anticlockwise spins, mixed in with its own trust wd
+  o1d:{cw:new Array(37).fill(0),ccw:new Array(37).fill(0)},wd:0.2,dirSeen:0};}
+const smooth=(h,prior)=>h.map((v,i)=>v+0.5*(h[(i+36)%37]+h[(i+1)%37])+prior);
+function modelDist(M,nums,dir){
+  const n=nums.length,U=new Array(37).fill(1/37);
+  const norm=a=>{const s=a.reduce((x,y)=>x+y,0);return a.map(x=>x/s);};
+  const s1=smooth(M.o1,1),s2=smooth(M.o2,1),sf=smooth(M.f,1);
+  const e=[n>=1?norm(U.map((_,p)=>s1[(p-POS[nums[n-1]]+37)%37])):U,n>=2?norm(U.map((_,p)=>s2[(p-POS[nums[n-2]]+37)%37])):U,norm(sf),U];
+  const base=U.map((_,q)=>e.reduce((s,ei,i)=>s+M.w[i]*ei[q],0));
+  if(!dir||n<1||!M.o1d)return {p:base,e,base};
+  const sd=smooth(M.o1d[dir],1),ed=norm(U.map((_,p)=>sd[(p-POS[nums[n-1]]+37)%37]));
+  return {p:base.map((v,q)=>(1-M.wd)*v+M.wd*ed[q]),e,base,ed};
+}
+function modelUpdate(M,nums,x,top,dir){
+  const n=nums.length,q=POS[x];
+  if(n>=2){const D=modelDist(M,nums,dir);const w=M.w.map((wi,i)=>wi*Math.pow(D.e[i][q]*37,MODEL_ETA));const s=w.reduce((a,b)=>a+b,0);M.w=w.map(v=>(1-MODEL_SHARE)*v/s+MODEL_SHARE/4);
+    // direction part gains trust only when it predicted this spin better than the rest of the model
+    if(D.ed){const a=M.wd*D.ed[q],b=(1-M.wd)*D.base[q];M.wd=Math.min(0.9,Math.max(0.02,a/(a+b)));}}
+  if(dir&&n>=1&&M.o1d){M.o1d[dir]=M.o1d[dir].map(v=>v*0.98);M.o1d[dir][(q-POS[nums[n-1]]+37)%37]+=1;M.dirSeen++;}
+  if(top)M.shadow.push(top.includes(x));
+  M.o1=M.o1.map(v=>v*0.98);M.o2=M.o2.map(v=>v*0.98);M.f=M.f.map(v=>v*0.95);
+  if(n>=1){M.o1[(q-POS[nums[n-1]]+37)%37]+=1;M.raw=M.raw.map(v=>v*0.995);M.raw[(q-POS[nums[n-1]]+37)%37]+=1;M.rawN=M.rawN*0.995+1;}
+  if(n>=2)M.o2[(q-POS[nums[n-2]]+37)%37]+=1;
+  M.f[q]+=1;M.seen++;
+}
+function analyze(nums,hist,hot,lockIn,ctx){
+  const n=nums.length,k=state.k;
+  ctx=ctx||{recent:[],lossRun:0,net:0,cash:0};
+  const A={label:"collect",bet:[],sbet:[],spike:[],cbet:[],cyc:{phase:"none"},avoid:[],pick:null,rules:{},lock:lockIn,why:"Enter at least 4 spins.",J:null,arcFrom:null,colour:null,colourRun:0,colourCol:null,hotIn:[],conf:null,tier:null,stake:0,net:ctx.cash,stop:false,goal:false,noDouble:false};
+  // colour streak (independent of wheel minimum)
+  let run=0,col=null;
+  for(let i=n-1;i>=0;i--){const c=colourOf(nums[i]);if(c==="green")break;if(col===null)col=c;if(c!==col)break;run++;}
+  A.colourRun=run;A.colourCol=col;
+  // old rule (kept for spins entered before v13 and as a scorecard row): follow a streak of 3+
+  A.colourOld=col&&run>=3?col:null;A.rules.colourOld=!!A.colourOld;
+  // colour v13: after a streak, bet the SWITCH unless this table has been streaky lately (learned from its last 20 streaks).
+  // Your spins switched colour after a 2+ streak 57% of the time; table B was the streaky exception.
+  A.colStake=0;A.colMode=null;
+  if(col&&run>=state.colN){
+    const h=(ctx.colHist||[]).slice(-COL_WIN),sw=h.filter(v=>v==="S").length,fo=h.filter(v=>v==="F").length;
+    A.colMode=sw+COL_PRIOR_S>=fo+COL_PRIOR_F?"switch":"follow";
+    A.colour=A.colMode==="switch"?(col==="red"?"black":"red"):col;
+    const mh=A.colMode==="switch"?sw:fo;A.colRec={won:mh,n:h.length,sw,fo};
+    A.colStake=(ctx.colLastWon===true&&h.length>=8&&mh/h.length>=0.6)?2:1;
+  }
+  A.rules.colour=!!A.colour;A.rules.colour2=A.colStake===2;
+  A.rules.hot4=hot.length>0;
+  if(n<4)return A;
+  // jumps
+  const jumps=[];for(let i=Math.max(1,n-4);i<n;i++)jumps.push(dist(nums[i],nums[i-1]));
+  const J=jumps.reduce((a,b)=>a+b,0)/jumps.length;A.J=J;
+  const lastJump=dist(nums[n-1],nums[n-2]);
+  // hot arc
+  const recent=nums.slice(-state.win);
+  let best=-1,bestP=0;
+  for(let p=0;p<37;p++){let w=0;recent.forEach((x,i)=>{if((POS[x]-p+37)%37<ARC)w+=Math.pow(DECAY,recent.length-1-i);});if(w>best){best=w;bestP=p;}}
+  A.arcFrom=bestP;
+  const inArc=x=>(POS[x]-bestP+37)%37<ARC;
+  const arc5=nums.slice(-5).filter(inArc).length;
+  // fixed-side rules
+  const sideRule=(m,l)=>{const last=nums.slice(-l);return SIDES.some(s=>last.filter(x=>sideOf(x)===s).length>=m);};
+  // thresholds calibrated so each state is uncommon on evenly spread spins (burst ~20%, re-forming after scatter ~19%)
+  const burst=(n>=5&&J<=5)||arc5>=4;
+  const scatter=J>=10&&arc5<=2;
+  const reform=!burst&&hist.slice(-4).includes("scatter")&&lastJump<=3;
+  // lock = spin count when cool-off began; it ends when two spins after that land close together
+  let lock=lockIn;
+  if(lock!==false&&n>=lock+2&&ctx.model&&ctx.model.shadow[ctx.model.shadow.length-1]===true)lock=false;
+  A.lock=lock;
+  // ---- next-burst prediction ----
+  const kern=(c,p,r)=>Math.max(0,1-pdist(c,p)/r);
+  // seed: the last two spins landed close together in an area that was quiet for the 6 spins before
+  const mid=(()=>{const a=POS[nums[n-1]],b0=POS[nums[n-2]];let d=(a-b0+37)%37;if(d>18)d-=37;return (b0+Math.round(d/2)+37)%37;})();
+  const forming=n>=8&&lastJump<=4&&nums.slice(-8,-2).every(x=>pdist(POS[x],mid)>k);
+  // missing side waking up: the last spin landed on a side that had been absent for a long time
+  let wake=null;{const sd=sideOf(nums[n-1]);let gap=0;for(let i=n-2;i>=0&&sideOf(nums[i])!==sd;i--)gap++;if(n>=10&&gap>=1.5*37/sd.len)wake={side:sd,gap};}
+  // migration: how earlier bursts this session moved from one to the next
+  const bursts=ctx.bursts||[];let drift=null;
+  if(bursts.length>=3){
+    const cats={same:[],cw:[],ccw:[],opp:[]};
+    for(let i=1;i<bursts.length;i++){let d=(bursts[i]-bursts[i-1]+37)%37;if(d>18)d-=37;cats[Math.abs(d)<=4?"same":Math.abs(d)>=13?"opp":d>0?"cw":"ccw"].push(d);}
+    let bc=null;["same","cw","ccw","opp"].forEach(c=>{if(cats[c].length>=2&&(!bc||cats[c].length>=cats[bc].length))bc=c;});
+    if(bc&&cats[bc].length*2<bursts.length-1)bc=null;
+    if(bc){const ds=cats[bc],md=bc==="opp"?18:Math.round(ds.reduce((a,x)=>a+x,0)/ds.length);
+      drift={cat:bc,times:ds.length,of:bursts.length-1,pos:(bursts[bursts.length-1]+md+37)%37};}
+  }
+  A.state=burst?"burst":reform?"reform":forming?"forming":scatter?"scatter":"neutral";
+  A.label=lock!==false?"cooloff":A.state;
+  // Sector 1 = where the next burst is predicted; Sector 2 = the current burst (or the next strongest area).
+  const pull=(c,hs)=>{let sc=0;recent.forEach((x,i)=>{sc+=Math.pow(DECAY,recent.length-1-i)*Math.max(0,3-pdist(c,POS[x]));});hs.forEach(h=>{if(pdist(c,POS[h])<=k)sc+=0.75;});return sc;};
+  const hotNear=hot.filter(h=>{const o=(POS[h]-bestP+37)%37;return o<ARC+2||o>=37-2;});
+  let sc0=-1,cur=(bestP+4)%37;
+  for(let o=0;o<ARC;o++){const c=(bestP+o)%37,sc=pull(c,hotNear);if(sc>sc0){sc0=sc;cur=c;}}
+  A.cur=cur;
+  const nextScore=c=>{let s=0;
+    nums.slice(-3).forEach((x,i)=>{s+=[0.6,0.8,1][i]*kern(c,POS[x],5);});
+    if(forming)s+=2*kern(c,mid,5);
+    if(wake)s+=1.5*kern(c,POS[nums[n-1]],5);
+    if(drift)s+=1.5*kern(c,drift.pos,5);
+    hot.forEach(h=>{if(pdist(c,POS[h])<=k)s+=0.5;});
+    return s;};
+  let s1=-1,c1=cur;
+  for(let c=0;c<37;c++){const sc=nextScore(c);if(sc>s1){s1=sc;c1=c;}}
+  let c2=cur;
+  if(pdist(c1,cur)<2*k+1){let s2=-1;c2=(c1+18)%37;for(let c=0;c<37;c++){if(pdist(c,c1)<2*k+1)continue;const sc=pull(c,hot);if(sc>s2){s2=sc;c2=c;}}}
+  const win=c=>{const w=[];for(let j=-k;j<=k;j++)w.push(WHEEL[(c+j+37)%37]);return w;};
+  A.pick=WHEEL[c1];A.pick2=WHEEL[c2];A.bet1=win(c1);A.bet2=win(c2);
+  A.s2cur=c2===cur;
+  A.bet=A.bet1.concat(A.bet2);
+  A.hotIn=hot.filter(h=>A.bet.includes(h));
+  const last6=nums.slice(-6);A.in1=last6.filter(x=>A.bet1.includes(x)).length;A.in2=last6.filter(x=>A.bet2.includes(x)).length;
+  A.rules.burst=burst;A.rules.reform=reform;A.rules.jump=n>=5&&J<=5;A.rules.arc=arc5>=4;
+  A.rules.s23=sideRule(2,3);A.rules.s24=sideRule(2,4);A.rules.s35=sideRule(3,5);
+  A.rules.forming=forming;A.rules.wake=!!wake;A.rules.drift=!!drift;
+  A.ruleBet={forming:win(mid),wake:win(POS[nums[n-1]]),drift:drift?win(drift.pos):null};
+  A.rules.main=lock===false&&(burst||reform||forming);
+  // next-burst reasons shown under Sector 1
+  const nw=[];
+  if(forming)nw.push("Forming: last 2 spins "+lastJump+" pockets apart after 6 quiet spins there");
+  if(wake)nw.push(wake.side.name+" woke up after "+wake.gap+" spins away");
+  if(drift){const t={same:"stayed in the same place",cw:"moved clockwise",ccw:"moved anticlockwise",opp:"jumped to the opposite side"}[drift.cat];nw.push("Bursts "+t+" "+drift.times+" of "+drift.of+" times");}
+  A.nextWhy=nw.length?nw.join(" · "):"Following the last 3 spins";
+  // confidence 0-100: arc concentration, jump tightness, last spin in bet, board hot numbers, recent bet form, next-burst evidence
+  const b=A.bet.length,set=new Set(A.bet);
+  const in6=nums.slice(-6).filter(x=>set.has(x)).length,exp6=Math.min(6,n)*b/37;
+  const arcS=Math.max(0,Math.min(1,(in6-exp6)/Math.max(1,6-exp6)));
+  const jumpS=Math.max(0,Math.min(1,(RANDOM_JUMP-J)/6));
+  const lastS=set.has(nums[n-1])?1:0;
+  const hotS=Math.min(A.hotIn.length,2)/2;
+  const rb=ctx.recent.slice(-5);
+  const formS=rb.length?Math.max(0,Math.min(1,(rb.filter(Boolean).length/rb.length)/(2*b/37))):0.5;
+  const predS=Math.min(1,(forming?0.5:0)+(wake&&A.bet1.includes(nums[n-1])?0.25:0)+(drift&&pdist(drift.pos,c1)<=k?0.5:0));
+  A.conf=Math.round(100*(0.30*arcS+0.20*jumpS+0.15*lastS+0.10*hotS+0.10*formS+0.15*predS));
+  // ---- learned pattern model: the main signal. The fixed burst rules above stay only as scorecard rows. ----
+  A.oldBet=A.bet;A.oldBet1=A.bet1;A.oldBet2=A.bet2;A.oldConf=A.conf;A.rules.oldmain=A.rules.main;A.rules.main=false;A.modelOn=false;
+  const M=ctx.model;
+  // cold numbers from the board stay out of every bet until they land
+  const avoid=(ctx.cold||[]).filter(c=>!nums.includes(c));A.avoid=avoid;
+  // scorecard: the board's cold numbers as entered, whether or not they have landed since
+  A.rules.coldav=(ctx.cold||[]).length>0;A.ruleBet.coldav=ctx.cold||[];
+  if(M&&M.seen>=MODEL_MIN){
+    const D=modelDist(M,nums,ctx.dir);A.dist=D.p;A.modelOn=true;
+    const ws=c=>{let s=0;for(let j=-k;j<=k;j++)s+=D.p[(c+j+37)%37];return s;};
+    let m1=0,b1=-1;for(let c=0;c<37;c++){const v=ws(c);if(v>b1){b1=v;m1=c;}}
+    let m2=(m1+18)%37,b2=-1;for(let c=0;c<37;c++){if(pdist(c,m1)<2*k+1)continue;const v=ws(c);if(v>b2){b2=v;m2=c;}}
+    A.pick=WHEEL[m1];A.pick2=WHEEL[m2];A.bet1=win(m1).filter(x=>!avoid.includes(x));A.bet2=win(m2).filter(x=>!avoid.includes(x));A.bet=A.bet1.concat(A.bet2);
+    A.hotIn=hot.filter(h=>A.bet.includes(h));
+    A.in1=last6.filter(x=>A.bet1.includes(x)).length;A.in2=last6.filter(x=>A.bet2.includes(x)).length;
+    const base=A.bet.length/37;A.P=A.bet.reduce((s,x)=>s+D.p[POS[x]],0);A.base=base;
+    const fm=M.shadow.slice(-20),fh=fm.filter(Boolean).length;
+    A.form={hits:fh,n:fm.length,exp:fm.length*base};
+    const formEdge=fm.length?fh/fm.length-base:0;
+    // never bet while the model's own recent predictions are below chance
+    A.rules.main=lock===false&&A.P-base>=EDGE_BET&&!(fm.length>=10&&formEdge<0);
+    // number spike: an exact jump (pockets clockwise from the last spin) that keeps repeating far above chance
+    const ex=M.rawN/37;
+    A.spike=ex>0?M.raw.map((c,d)=>({d,c,e:ex,z:(c-ex)/Math.sqrt(ex),num:WHEEL[(POS[nums[n-1]]+d)%37]})).filter(o=>o.c>=SPIKE_MIN&&o.z>=SPIKE_Z).sort((a,b)=>b.c-a.c).slice(0,2):[];
+    A.sbet=[...new Set(A.spike.map(o=>o.num))];
+    A.edgeP=A.P-base;A.formEdge=formEdge;
+    A.conf=Math.round(100*Math.max(0,Math.min(1,CONF_A+CONF_B*(A.P-base)+CONF_C*formEdge)));
+    // plain-language reason from the expert the model trusts most
+    const wi=M.w.indexOf(Math.max(...M.w)),pct=Math.round(100*M.w[wi]);
+    const offTxt=(h,from)=>{const sm=smooth(h,1);const o=sm.indexOf(Math.max(...sm)),so=o>18?o-37:o;
+      return Math.abs(so)<=2?"close to "+from:Math.abs(so)+" pockets "+(so>0?"clockwise":"anticlockwise")+" of "+from;};
+    A.nextWhy=[wi===0?"Spins here tend to land "+offTxt(M.o1,"the last spin"):wi===1?"Spins here tend to land "+offTxt(M.o2,"the spin before last"):wi===2?"This table keeps hitting the area around "+WHEEL[smooth(M.f,1).indexOf(Math.max(...smooth(M.f,1)))]:"No clear pattern yet",
+      " ("+pct+"% of the model)"].join("");
+    if(ctx.dir)A.nextWhy+=" · next spin "+(ctx.dir==="cw"?"↻ clockwise":"↺ anticlockwise")+": direction part "+Math.round(100*M.wd)+"% of the model ("+M.dirSeen+" spins with direction learned)";
+    // why each sector, and its key numbers (highest model chance inside the sector)
+    const secWhy=(bs,c)=>{
+      if(!bs.length)return "";
+      const ex=[0,1,2].map(i=>M.w[i]*bs.reduce((s,x)=>s+D.e[i][POS[x]],0)),ti=ex.indexOf(Math.max(...ex));
+      const h12=nums.slice(-12).filter(x=>bs.includes(x)).length;
+      const off=from=>{let o=(c-POS[from]+37)%37;if(o>18)o-=37;return Math.abs(o)<=2?"close to "+from:Math.abs(o)+" pockets "+(o>0?"clockwise":"anticlockwise")+" from "+from;};
+      const r=ti===0?"spins here often land "+off(nums[n-1])+" (last spin)":ti===1&&n>=2?"spins often land "+off(nums[n-2])+" (spin before last)":"this area keeps getting hit";
+      return r+" · "+h12+" of the last 12 spins landed here · model "+Math.round(100*bs.reduce((s,x)=>s+D.p[POS[x]],0))+"% for these "+bs.length+" numbers (even "+Math.round(100*bs.length/37)+"%)";};
+    A.why1=secWhy(A.bet1,m1);A.why2=secWhy(A.bet2,m2);
+    const keys=bs=>bs.slice().sort((a,b)=>D.p[POS[b]]-D.p[POS[a]]).slice(0,3);
+    A.key=keys(A.bet1).concat(keys(A.bet2));
+  }else{A.nextWhy="Learning the table: "+(MODEL_MIN-(M?M.seen:0))+" more spins";
+    A.bet1=A.bet1.filter(x=>!avoid.includes(x));A.bet2=A.bet2.filter(x=>!avoid.includes(x));A.bet=A.bet1.concat(A.bet2);}
+  // Sector 4: the dead area (lowest model chance, or fewest recent hits before the model starts); kept out of the cycle bet
+  {const sc=c=>{let s=0;
+      if(A.dist){for(let j=-k;j<=k;j++)s+=A.dist[(c+j+37)%37];}
+      else{const l=nums.slice(-30);l.forEach((x,i)=>{if(pdist(c,POS[x])<=k)s+=Math.pow(0.97,l.length-1-i);});}
+      return s;};
+    // an area hit in the last 4 spins is never called dead
+    const l4=nums.slice(-4);let dc=0,dv=Infinity;
+    for(let c=0;c<37;c++){if(l4.some(x=>pdist(c,POS[x])<=k))continue;const v=sc(c);if(v<dv){dv=v;dc=c;}}
+    A.dead=win(dc);const l30=nums.slice(-30);A.deadHits={h:l30.filter(x=>A.dead.includes(x)).length,n:l30.length};}
+  // burst-on %
+  // one stray spin is normal inside a burst: it costs at most 10 points (score without the newest spin, minus 10)
+  const burstOf=xs=>{const w=xs.map((x,i)=>Math.pow(0.85,xs.length-1-i)),tw=w.reduce((a,b)=>a+b,0);let bb=0,pr=null;
+    for(let a=0;a<37;a++)for(let c=a+1;c<37;c++){if(pdist(a,c)<9)continue;let s=0;xs.forEach((x,i)=>{if(pdist(a,POS[x])<=4||pdist(c,POS[x])<=4)s+=w[i];});if(s>bb){bb=s;pr=[a,c];}}
+    const v=bb/tw;let p=100;for(let i=0;i<BURSTQ.length-1;i++){if(v<BURSTQ[i+1]){p=5*i+5*(v-BURSTQ[i])/(BURSTQ[i+1]-BURSTQ[i]);break;}}
+    return {p:Math.max(0,Math.min(100,p)),pr};};
+  if(n>=12){const now=burstOf(nums.slice(-12)).p,prev=burstOf(nums.slice(-12,-1)),x=nums[n-1];
+    const stray=!prev.pr.some(c=>pdist(c,POS[x])<=4);
+    const raw=stray?Math.max(now,prev.p-10):now;
+    // re-centre so evenly spread spins still average 50%
+    let q=100;for(let i=0;i<BURSTQ2.length-1;i++){if(raw<BURSTQ2[i+1]){q=5*i+5*(raw-BURSTQ2[i])/Math.max(1e-9,BURSTQ2[i+1]-BURSTQ2[i]);break;}}
+    A.burstPct=Math.round(Math.max(0,Math.min(100,q)));}
+  // ---- burst cycle (user's theory): burst between two areas -> scatter -> burst between a new area and one of the old ones -> scatter ----
+  const cy=ctx.cyc;
+  if(cy&&n>=CYC_W){
+    const xs=nums.slice(-CYC_W),inC=(c,x)=>pdist(c,POS[x])<=k;
+    let bp=null;
+    for(let a=0;a<37;a++)for(let b=a+1;b<37;b++){if(pdist(a,b)<2*k+1)continue;const c=xs.filter(x=>inC(a,x)||inC(b,x)).length;if(!bp||c>bp.c)bp={a,b,c};}
+    A.cyc={phase:"scatter",last:cy.last,since:cy.since};
+    if(bp.c>=CYC_T)A.cyc={phase:"burst",a:bp.a,b:bp.b};
+    // a running burst survives one stray spin: it ends only when 2 of the last 3 spins miss its two areas
+    else if(cy.last&&cy.since===0&&nums.slice(-3).filter(x=>!inC(cy.last.a,x)&&!inC(cy.last.b,x)).length<=1)A.cyc={phase:"burst",a:cy.last.a,b:cy.last.b,held:true};
+    else if(cy.last&&cy.since>=CYC_GAP){
+      const l3=nums.slice(-3),L=cy.last,old=[L.a,L.b].find(c=>l3.some(x=>inC(c,x)));
+      if(old!==undefined){
+        const rest=l3.filter(x=>!inC(L.a,x)&&!inC(L.b,x));let z=null;
+        for(let c=0;c<37;c++){if(pdist(c,L.a)<2*k+1||pdist(c,L.b)<2*k+1)continue;const m=rest.filter(x=>inC(c,x)).length;if(!z||m>z.m)z={c,m};}
+        if(z&&z.m>=2)A.cyc={phase:"coming",a:old,b:z.c,last:L};
+      }
+    }
+    if(A.cyc.phase!=="scatter"){const pair=win(A.cyc.a).concat(win(A.cyc.b)).filter(x=>!avoid.includes(x)&&!A.dead.includes(x));
+      if(A.cyc.phase==="coming")A.cbet=pair;else A.ruleBet.cycleB=pair;}
+  }
+  // Sector 3: where the next burst is likely to start
+  if(A.cyc.phase==="coming"){A.s3=win(A.cyc.b);A.s3why="burst cycle: a new area with the old "+WHEEL[A.cyc.a]+" area";}
+  else{let bc=null;const l4=nums.slice(-4),wt=[0.7,0.8,0.9,1].slice(-l4.length);
+    for(let c=0;c<37;c++){if(A.cyc.phase==="burst"&&(pdist(c,A.cyc.a)<2*k+1||pdist(c,A.cyc.b)<2*k+1))continue;
+      let h=0,sc=0;l4.forEach((x,i)=>{const d=pdist(c,POS[x]);if(d<=k){h++;sc+=wt[i]*(1-d/(k+1));}});if(h>=2&&(!bc||sc>bc.sc))bc={c,h,sc};}
+    if(bc){A.s3=win(bc.c);A.s3why=bc.h+" of the last 4 spins landed here";}else{A.s3=[];A.s3why="no new area forming yet";}}
+  A.s3=A.s3.filter(x=>!avoid.includes(x)&&!A.dead.includes(x));
+  A.rules.cycleB=A.cyc.phase==="burst";A.ruleBet.cycle=A.cbet;
+  A.tier=A.conf>=CONF_HIGH?"high":A.conf>=CONF_MED?"medium":"low";
+  A.label=lock!==false?"cooloff":A.rules.main?"pattern":"wait";
+  A.stop=state.limit>0&&ctx.cash<=-state.limit;
+  A.goal=!A.stop&&state.target>0&&ctx.cash>=state.target;
+  if(A.stop||A.goal)A.rules.main=false;
+  A.sbet=A.sbet||[];A.rules.spike=A.sbet.length>0&&!A.stop&&!A.goal;
+  A.ruleBet.spike=A.sbet;
+  A.rules.cycle=A.cbet.length>0&&!A.stop&&!A.goal;
+  // ---- per-table switching: each bet type is scored at this table; a clearly losing one switches off,
+  //      and a clearly winning old burst signal can take over the main card when the model is losing here ----
+  A.raw={model:A.rules.main,oldmain:A.rules.oldmain,cycle:A.rules.cycle};A.modelBet=A.bet;
+  A.rules.modelRaw=!!A.raw.model;A.ruleBet.modelRaw=A.modelBet;
+  const TL=ctx.tally||{},tst=id=>{const t=TL[id]||{bets:0,hits:0,exp:0};if(t.bets<ADAPT_MIN)return {s:"learning",t};const e=(t.hits-t.exp)/t.bets;return {s:e>=ADAPT_EDGE?"hot":e<=-ADAPT_EDGE?"cold":"ok",t};};
+  A.adapt={model:tst("model"),oldmain:tst("oldmain"),cycle:tst("cycle")};A.leader="model";
+  if(A.adapt.model.s==="cold"){
+    if(A.adapt.oldmain.s==="hot"){A.leader="oldmain";A.rules.main=A.rules.oldmain&&!A.stop&&!A.goal;
+      A.bet1=A.oldBet1.filter(x=>!avoid.includes(x));A.bet2=A.oldBet2.filter(x=>!avoid.includes(x));A.bet=A.bet1.concat(A.bet2);
+      A.conf=A.oldConf;A.tier=A.conf>=CONF_HIGH?"high":A.conf>=CONF_MED?"medium":"low";A.key=[];
+      A.why1=A.why2="old burst signal's area (it is winning at this table, the model is not)";}
+    else{A.leader="none";A.rules.main=false;}
+    A.label=lock!==false?"cooloff":A.rules.main?"pattern":"wait";
+  }
+  if(A.adapt.cycle.s==="cold")A.rules.cycle=false;
+  // scorecard: the key numbers alone, on spins where the main card bets
+  A.ruleBet.key=(A.key||[]).filter(x=>A.bet.includes(x));A.rules.key=A.rules.main&&A.ruleBet.key.length>0;
+  A.noDouble=A.rules.main&&A.tier==="high"&&(ctx.lossRun>=2||!(A.form&&A.form.hits>A.form.exp));
+  A.stake=A.rules.main?((A.tier==="high"&&!A.noDouble)?2:1):0;
+  A.rules.main1=A.stake===1;A.rules.main2=A.stake===2;
+  A.rules.sec1=A.rules.main;A.rules.sec2=A.rules.main;
+  if(A.stop){A.label="stop";A.why="Session loss limit of "+money(state.limit,true)+" reached. Stop for this session.";return A;}
+  if(A.goal){A.label="target";A.why="Profit target of "+money(state.target,true)+" reached. Lock it in.";return A;}
+  const pc=x=>Math.round(100*x)+"%";
+  if(!A.modelOn)A.why="Learning how this table moves. Keep entering spins.";
+  else if(lock!==false)A.why="Paused after "+state.overN+" misses in a row. Resumes once the pattern lands again.";
+  else if(A.leader==="none"){const t=A.adapt.model.t;A.why="The model is losing at this table ("+t.hits+" of "+t.bets+" landed, "+t.exp.toFixed(1)+" expected), so it's switched off here. Wait.";}
+  else if(A.leader==="oldmain"){const t=A.adapt.oldmain.t;A.why=A.rules.main?"Old burst signal is winning at this table ("+t.hits+" of "+t.bets+", "+t.exp.toFixed(1)+" expected): bet its sectors.":"Old burst signal leads at this table but has no bet right now. Wait.";}
+  else if(A.rules.main)A.why="Pattern says "+pc(A.P)+" chance these "+A.bet.length+" numbers land (even spread "+pc(A.base)+").";
+  else A.why="Pattern too weak: "+pc(A.P)+" for the best 18 numbers (even spread "+pc(A.base)+"). Wait.";
+  return A;
+}
+
+/* Replays one session and returns decisions before each spin plus the live analysis. */
+function replay(seq){
+  const nums=[],hist=[],out=[];let lock=false,miss=0;const ctx={recent:[],lossRun:0,net:0,cash:0,bursts:[],model:newModel(),cyc:{last:null,since:0},cold:[],colHist:[],colLastWon:null,tally:{}};
+  // the model also learns from earlier sessions' spins
+  const sid=seq.length?seq[0].s:state.session,pn=[];
+  if(sid!==undefined)state.spins.filter(s=>s.s<sid).forEach(s=>{if(pn.length&&s.s!==pn.sid)pn.length=0;pn.sid=s.s;modelUpdate(ctx.model,pn,s.n,null,s.dir);pn.push(s.n);});
+  for(let i=0;i<=seq.length;i++){
+    const hot=i<seq.length?(seq[i].hot||[]):state.hot;
+    ctx.cold=i<seq.length?(seq[i].cold||[]):(state.cold||[]);
+    // direction of the spin being predicted: stored on past spins; for the next spin, the toggle (real wheel only)
+    ctx.dir=i<seq.length?(seq[i].dir||null):(state.table==="real"?state.nextDir:null);
+    const A=analyze(nums,hist,hot,lock,ctx);
+    lock=A.lock;
+    if(i===seq.length){out.push(A);break;}
+    const sp=seq[i];
+    const U=sp.u!==undefined?sp.u:state.unit; // $ per chip this spin was played at
+    A.hit=A.bet.includes(sp.n);
+    let trigger=false;
+    if(!sp.pre&&A.rules.main&&state.overN>0){if(A.hit)miss=0;else{miss++;if(miss>=state.overN){trigger=true;miss=0;}}}
+    // signal form counts every BET signal; money counts only bets the user actually placed
+    if(!sp.pre&&A.rules.main){
+      ctx.recent.push(A.hit);ctx.lossRun=A.hit?0:ctx.lossRun+1;
+      const u=A.stake*(A.hit?36-A.bet.length:-A.bet.length);ctx.net+=u;
+      if(sp.played!==false&&!sp.dv){A.cashMain=u*U;ctx.cash+=A.cashMain;}
+    }
+    // spins entered from v9 on keep the bet that was actually shown, so app updates never rewrite past money
+    if(!sp.pre&&sp.dv&&sp.stake>0&&sp.played!==false){const h=sp.bet.includes(sp.n);A.cashMain=sp.stake*(h?36-sp.bet.length:-sp.bet.length)*U;
+      // extra chip on the key numbers (setting), at the same stake
+      if(sp.kb&&sp.kb.length)A.cashMain+=sp.stake*(sp.kb.includes(sp.n)?36-sp.kb.length:-sp.kb.length)*U;
+      ctx.cash+=A.cashMain;}
+    // number spike bet: 1 chip per spike number
+    A.shit=A.sbet.includes(sp.n);
+    if(!sp.pre&&sp.played!==false){const sb=sp.dv?(sp.sbet||[]):(A.rules.spike?A.sbet:[]);
+      if(sb.length){A.cashSpike=(sb.includes(sp.n)?36-sb.length:-sb.length)*U;ctx.cash+=A.cashSpike;}}
+    // Ask Claude picks: stored with the spin they were asked for; money only if you tapped "Bet these"
+    if(sp.ai&&sp.ai.length&&A.ruleBet){A.rules.ai=true;A.ruleBet.ai=sp.ai;A.aihit=sp.ai.includes(sp.n);
+      if(!sp.pre&&sp.aib&&sp.played!==false){A.cashAI=(A.aihit?36-sp.ai.length:-sp.ai.length)*U;ctx.cash+=A.cashAI;}}
+    // burst-cycle bet: 1 chip per number; spins from v12 on keep the bet that was shown
+    A.chit=A.cbet.includes(sp.n);
+    if(!sp.pre&&sp.played!==false){const cb=sp.dv?(sp.cbet||[]):(A.rules.cycle?A.cbet:[]);
+      if(cb.length){A.cashCycle=(cb.includes(sp.n)?36-cb.length:-cb.length)*U;ctx.cash+=A.cashCycle;}}
+    // colour money: spins from v13 keep the colour bet and stake that were shown; older spins use the old follow-3 rule
+    if(!sp.pre&&sp.colPlayed!==false){
+      const cb=sp.cv?sp.cb:(A.stop||A.goal?null:A.colourOld),cs=sp.cv?(sp.cs||0):1,amt=sp.cv?(sp.ca||0):(sp.oca!==undefined?sp.oca:state.colAmt);
+      if(cb&&cs>0&&amt>0){A.cashCol=(colourOf(sp.n)===cb?1:-1)*cs*amt;ctx.cash+=A.cashCol;}}
+    // learn how this table behaves after a streak (switch / follow), on every streak including screen history
+    if(A.colourCol&&A.colourRun>=state.colN){const c=colourOf(sp.n);ctx.colHist.push(c==="green"?"G":c===A.colourCol?"F":"S");}
+    if(!sp.pre&&A.colour&&!A.stop&&!A.goal)ctx.colLastWon=colourOf(sp.n)===A.colour;
+    A.cashAfter=ctx.cash;
+    out.push(A);
+    // remember where each new burst started, to learn how bursts move
+    if(A.state==="burst"&&hist[hist.length-1]!=="burst")ctx.bursts.push(A.cur);
+    // per-table tally of each bet type's own signal (live spins), for switching
+    if(!sp.pre&&A.raw){const up=(id,bet)=>{if(!bet||!bet.length)return;const t=ctx.tally[id]||(ctx.tally[id]={bets:0,hits:0,exp:0});t.bets++;if(bet.includes(sp.n))t.hits++;t.exp+=bet.length/37;};
+      if(A.raw.model)up("model",A.modelBet);if(A.raw.oldmain)up("oldmain",A.oldBet);if(A.raw.cycle)up("cycle",A.cbet);}
+    if(A.cyc.phase==="burst"){ctx.cyc.last={a:A.cyc.a,b:A.cyc.b};ctx.cyc.since=0;}else if(A.cyc.phase!=="none")ctx.cyc.since++;
+    modelUpdate(ctx.model,nums,sp.n,A.modelOn?A.bet:null,sp.dir);
+    nums.push(sp.n);hist.push(A.state||"collect");
+    if(trigger)lock=nums.length;
+  }
+  return out;
+}
+
+function scoreOf(seqs){
+  const tot={};RULES.forEach(r=>tot[r.id]={bets:0,hits:0,units:0,exp:0});
+  seqs.forEach(seq=>{
+    const dec=replay(seq);
+    seq.forEach((sp,i)=>{
+      if(sp.pre)return;const A=dec[i];
+      RULES.forEach(r=>{
+        if(!A.rules[r.id])return;const t=tot[r.id];
+        if(r.id.startsWith("colour")){const cc=r.id==="colourOld"?A.colourOld:A.colour,m=r.id==="colourOld"?1:A.colStake;const win=colourOf(sp.n)===cc;t.bets++;t.hits+=win?1:0;t.units+=m*(win?1:-1);t.exp+=18/37;return;}
+        const bet=r.id==="hot4"?(sp.hot||[]):r.id==="sec1"?A.bet1:r.id==="sec2"?A.bet2:(A.ruleBet&&A.ruleBet[r.id])||(r.id.startsWith("main")?A.bet:A.oldBet||A.bet);if(!bet||!bet.length)return;
+        const mult=(r.id.startsWith("main")||r.id.startsWith("sec"))?A.stake:1;
+        const hit=bet.includes(sp.n);t.bets++;t.hits+=hit?1:0;t.units+=mult*(hit?36-bet.length:-bet.length);t.exp+=bet.length/37;
+      });
+    });
+  });
+  return tot;
+}
+
+/* ---------- UI ---------- */
+const $=id=>document.getElementById(id);
+function chip(n,extra){const c=document.createElement("span");c.className="chip num "+colorClass(n)+(extra?" "+extra:"");c.textContent=n;return c;}
+const sessionSeq=()=>state.spins.filter(s=>s.s===state.session);
+
+let skipNext=false,skipCol=false,liveA=null;
+/* ---------- Ask Claude: on a tap, sends this table's spins to Claude and gets 6 numbers for the next spin ---------- */
+const AI_MIN=50,AI_N=6;
+let aiSample=null,aiLive=null,aiCtl=null;
+function aiPrompt(seq){
+  const real=state.table==="real";
+  const sp=seq.map(s=>(s.pre?"s":"")+s.n+(real&&s.dir?(s.dir==="cw"?"c":"a"):"")).join(" ");
+  return "A player is tracking a single-zero electronic roulette table and wants your pick for the next spin.\n"+
+    "Wheel order (clockwise from 0): "+WHEEL.join(" ")+"\n"+
+    "Spins at this table, oldest first ("+seq.length+" spins; an 's' prefix means it came from the casino screen's history before the player sat down"+
+    (real?"; this is a physical wheel and a 'c' or 'a' suffix gives that spin's direction, clockwise or anticlockwise":"; this is a computerised table, direction does not apply")+"):\n"+sp+"\n"+
+    (real?"The next spin will be "+(state.nextDir==="cw"?"clockwise":"anticlockwise")+".\n":"")+
+    (state.hot.length?"Board's hottest 4 numbers over the last 250 spins: "+state.hot.join(" ")+"\n":"")+
+    ((state.cold||[]).length?"Board's coldest 4 numbers over the last 250 spins: "+state.cold.join(" ")+"\n":"")+
+    "Look at the spins for any pattern you find useful (wheel areas, repeats, jumps between wheel positions, recent clusters) and pick exactly "+AI_N+" different numbers (0-36) for the next spin.\n"+
+    'Reply with only JSON: {"numbers":[6 integers],"reason":"one or two short sentences a player can read at a glance"}';
+}
+function aiErr(c,what){what=what||"picks";const again=what==="picks"?"Tap Ask":"Tap Review this table";return c==="not_granted"||c==="sampling_disabled"||c==="not_declared"?"Claude isn't allowed for this page. Allow it in the page's permissions to use this.":
+  c==="rate_limited"?"Too many requests, or your Claude usage limit is reached. Try again later.":c==="session_expired"?"Sign in to Claude again.":"Couldn't get "+what+" this time. "+again+" to try again.";}
+async function askClaude(){
+  const seq=sessionSeq();if(!aiSample||state.setup||seq.length<AI_MIN||(aiLive&&aiLive.status==="thinking"))return;
+  const forLen=seq.length;aiCtl=new AbortController();aiLive={status:"thinking",forLen};render();
+  try{
+    const r=await aiSample.json(aiPrompt(seq),{signal:aiCtl.signal,cache:false,effort:"low"});
+    let nums=Array.isArray(r&&r.numbers)?r.numbers.map(Number).filter(x=>Number.isInteger(x)&&x>=0&&x<=36):[];
+    nums=[...new Set(nums)].slice(0,AI_N);
+    if(!nums.length)throw {code:"invalid_json"};
+    aiLive=sessionSeq().length===forLen?{status:"done",forLen,nums,reason:String((r&&r.reason)||"").slice(0,300),bet:false}:null;
+  }catch(e){const c=e&&e.code;aiLive=c==="cancelled"?null:{status:"error",forLen,msg:aiErr(c)};}
+  render();
+}
+/* ---------- Review this table: Claude reads the saved spins and scores and writes a short "check" report ---------- */
+let revCtl=null,revBusy=false;
+function reviewPrompt(){
+  const seq=sessionSeq(),dec=replay(seq),A=dec[dec.length-1],real=state.table==="real";
+  const live=seq.filter(s=>!s.pre).length;
+  const fmt=t=>t.bets?t.hits+" of "+t.bets+" won (chance "+t.exp.toFixed(1)+"), "+(t.units>0?"+":"")+t.units+" units":"no bets";
+  const sc=scoreOf([seq]),all=scoreOf([...new Set(state.spins.map(s=>s.s))].map(id=>state.spins.filter(s=>s.s===id)));
+  const rows=RULES.filter(r=>sc[r.id].bets||all[r.id].bets).map(r=>"- "+r.label+": this table "+fmt(sc[r.id])+" | all tables "+fmt(all[r.id]));
+  const bank=state.banks[state.session]||0,pl=A.net+state.adj.filter(a=>a.s===state.session).reduce((x,a)=>x+a.amt,0);
+  const spins=seq.map(s=>(s.pre?"s":"")+s.n+(real&&s.dir?(s.dir==="cw"?"c":"a"):"")).join(" ");
+  const ad=A.adapt?["model","cycle","oldmain"].map(k=>k+" "+A.adapt[k].s).join(", "):"n/a";
+  return "You are reviewing a player's session with their roulette tracking app (single-zero, "+(real?"physical wheel":"computerised table")+"). "+
+    "Write the short report they would get from asking for a 'check': how this table is behaving, which of the app's bets are working here and which are not (always against chance, and say when a sample is too small to mean much), the money so far, and what to do next (keep going, change stake, switch off a bet, or move table). "+
+    "The player believes tables run in bursts; do not argue about randomness and do not lecture, but be honest: never promise a win, never suggest chasing losses or raising stakes after losses. "+
+    "Plain words for a phone screen, about 150 words, short lines or bullets, no tables, no markdown headings.\n\n"+
+    "Wheel order clockwise from 0: "+WHEEL.join(" ")+"\n"+
+    "This table: "+seq.length+" spins ("+live+" live; 's' = from the casino screen before sitting down"+(real?"; c/a = clockwise/anticlockwise":"")+"):\n"+spins+"\n"+
+    "Board hot numbers: "+(state.hot.join(" ")||"not entered")+"; board cold numbers: "+((state.cold||[]).join(" ")||"not entered")+"\n"+
+    "Money this table: start "+money(bank,true)+", now "+money(pl)+" ($"+state.unit+" a number"+(state.colAmt?", $"+state.colAmt+" colour bets":", colour bets off")+"; loss limit "+(state.limit?money(state.limit,true):"off")+")\n"+
+    "App right now: "+A.label+", confidence "+A.conf+", burst-on "+(A.burstPct==null?"n/a":A.burstPct+"%")+", burst cycle "+A.cyc.phase+", per-table switching: "+ad+
+    (A.colRec?", colour mode "+A.colMode+" (after streaks here: switched "+A.colRec.sw+", stayed "+A.colRec.fo+")":"")+"\n"+
+    "Sector 1: "+(A.bet1||[]).join(" ")+" | Sector 2: "+(A.bet2||[]).join(" ")+" | dead sector: "+(A.dead||[]).join(" ")+"\n"+
+    "Scorecard (units = chips won or lost at 1 chip a number, 1 unit on colour):\n"+rows.join("\n");
+}
+async function reviewTable(){
+  if(!aiSample||revBusy)return;const out=$("revOut");
+  if(sessionSeq().filter(s=>!s.pre).length<10){out.textContent="Enter at least 10 live spins at this table first.";return;}
+  revBusy=true;revCtl=new AbortController();$("revBtn").disabled=true;$("revStop").hidden=false;out.textContent="Reading your spins… this can take up to a minute.";
+  try{const r=await aiSample(reviewPrompt(),{signal:revCtl.signal,cache:false,onText:({text})=>{out.textContent=text;}});out.textContent=r.text+(r.truncated?"\n(cut short)":"");}
+  catch(e){const c=e&&e.code;out.textContent=c==="cancelled"?(e.text||""):((e&&e.text?e.text+"\n\n":"")+aiErr(c,"a review"));}
+  revBusy=false;$("revBtn").disabled=false;$("revStop").hidden=true;
+}
+function renderAI(seq){
+  $("revBtn").hidden=!aiSample;
+  if(!aiSample&&!revBusy)$("revNote").textContent="Open this app from claude.ai (signed in) to use Review. Spins are still saved to the cloud copy.";
+  const box=$("aiBox");box.hidden=!aiSample;if(!aiSample)return;
+  $("revNote").textContent="Claude reads every spin and score saved for this table and earlier tables, then tells you how the table is behaving, which bets are working here, and what to do next. Same as asking \"check\" on the laptop, so the laptop can be off.";
+  if(aiLive&&aiLive.forLen!==seq.length&&aiLive.status!=="thinking")aiLive=null;
+  const btn=$("aiBtn"),row=$("aiRow"),bb=$("aibet"),txt=$("aitxt"),bet=$("aiBetBtn"),stop=$("aiStop");bb.innerHTML="";
+  const ready=!state.setup&&seq.length>=AI_MIN,thinking=aiLive&&aiLive.status==="thinking";
+  btn.disabled=!ready||!!thinking;btn.textContent=aiLive&&aiLive.status==="done"?"Ask again":"Ask";
+  row.hidden=!(thinking||(aiLive&&aiLive.status==="done"));stop.hidden=!thinking;bet.hidden=!(aiLive&&aiLive.status==="done");
+  $("aidot").style.background=aiLive&&aiLive.status==="done"?"var(--brass)":"var(--felt-3)";
+  if(!ready)txt.textContent=state.setup?"":"Available after "+AI_MIN+" spins at this table ("+seq.length+" so far).";
+  else if(thinking)txt.textContent="Thinking… this can take up to a minute. Picks only count for the next spin.";
+  else if(aiLive&&aiLive.status==="error")txt.textContent=aiLive.msg;
+  else if(aiLive&&aiLive.status==="done"){txt.textContent="Picks for the next spin"+(aiLive.reason?": "+aiLive.reason:"");aiLive.nums.forEach(x=>bb.appendChild(chip(x)));
+    bet.textContent=aiLive.bet?"Betting these · "+money(aiLive.nums.length*state.unit,true)+" (tap to cancel)":"Bet these ("+money(aiLive.nums.length*state.unit,true)+")";bet.classList.toggle("on",!!aiLive.bet);}
+  else txt.textContent="Tap Ask for Claude's "+AI_N+" numbers for the next spin. Scored on the scorecard; money counts only if you tap Bet these.";
+}
+// key numbers inside the bet that get an extra chip when "bet heavy" is on
+const heavyOf=A=>(A&&A.key?A.key.filter(x=>A.bet.includes(x)):[]);
+function addSpin(n){
+  if(state.example){state.spins=[];state.example=false;state.session=1;state.adj=[];}
+  const L=liveA,on=!state.setup&&L&&L.rules.main,son=!state.setup&&L&&L.rules.spike,con=!state.setup&&L&&L.rules.cycle;
+  // Claude's picks belong to the spin they were asked for; a request still running is stopped (it would be late)
+  const ai=aiLive&&aiLive.status==="done"&&aiLive.forLen===sessionSeq().length&&!state.setup?aiLive:null;
+  if(aiLive&&aiLive.status==="thinking"&&aiCtl)aiCtl.abort();
+  aiLive=null;
+  state.spins.push({n,t:Date.now(),s:state.session,pre:!!state.setup,hot:state.hot.slice(),cold:(state.cold||[]).slice(),played:!skipNext,colPlayed:!skipCol,dv:1,bet:on?L.bet.slice():[],stake:on?L.stake:0,sbet:son?L.sbet.slice():[],cbet:con?L.cbet.slice():[],
+    cv:1,cb:(!state.setup&&L&&L.colour&&!L.stop&&!L.goal)?L.colour:null,cs:L?L.colStake:0,ca:state.colAmt,
+    u:state.unit,kb:on&&state.heavy?heavyOf(L):[],ai:ai?ai.nums.slice():[],aib:!!(ai&&ai.bet),
+    dir:state.table==="real"?state.nextDir:null});
+  // real wheels alternate direction every spin
+  if(state.table==="real")state.nextDir=state.nextDir==="cw"?"ccw":"cw";
+  skipNext=false;skipCol=false;
+  save();render();requestWake();
+}
+
+function renderMoney(seq,dec){
+  const id=state.session,adj=state.adj.filter(a=>a.s===id);
+  const start=state.banks[id]!==undefined?state.banks[id]:0;
+  // per-spin cash and cumulative series, adjustments placed where they were entered
+  const series=[0],events=[];let cum=0;
+  const addAt=i=>adj.filter(a=>a.i===i).forEach(a=>{cum+=a.amt;events.push(a.amt);series.push(cum);});
+  addAt(0);
+  seq.forEach((s,i)=>{const c=(dec[i].cashMain||0)+(dec[i].cashCol||0)+(dec[i].cashSpike||0)+(dec[i].cashCycle||0)+(dec[i].cashAI||0);if(c!==0){cum+=c;events.push(c);series.push(cum);}addAt(i+1);});
+  adj.filter(a=>a.i>seq.length).forEach(a=>{cum+=a.amt;events.push(a.amt);series.push(cum);});
+  const wins=events.filter(x=>x>0),losses=events.filter(x=>x<0);
+  let peak=0,dd=0;series.forEach(v=>{peak=Math.max(peak,v);dd=Math.min(dd,v-peak);});
+  const setv=(el,txt,cls)=>{const e=$(el);e.textContent=txt;e.className="v num"+(cls?" "+cls:"");};
+  const tone=x=>x>0?"good":x<0?"bad":"";
+  setv("mBal",money(start+cum,true));setv("mPL",money(cum),tone(cum));
+  $("mWL").textContent=wins.length+"W "+losses.length+"L";
+  setv("mBal2",money(start+cum,true));setv("mPL2",money(cum),tone(cum));
+  $("mWL2").textContent=wins.length+" wins · "+losses.length+" losses";
+  $("mBig").textContent=(wins.length?money(Math.max(...wins)):"–")+" / "+(losses.length?money(Math.min(...losses)):"–");
+  $("mPeak").textContent=money(peak)+" / "+money(dd);
+  let all=0;[...new Set(state.spins.map(s=>s.s))].forEach(sid=>{const sq=state.spins.filter(s=>s.s===sid);const d=replay(sq);all+=d[d.length-1].net;});
+  state.adj.forEach(a=>all+=a.amt);
+  const ae=$("mAll");ae.textContent=money(all);ae.className="v num "+tone(all);
+  if(document.activeElement!==bankEl)bankEl.value=start;
+  // sparkline
+  const sv=$("spark"),W=320,H=70,ns="http://www.w3.org/2000/svg";sv.innerHTML="";
+  const css=getComputedStyle(document.documentElement),v=n=>css.getPropertyValue(n).trim();
+  const lo=Math.min(0,...series),hi=Math.max(0,...series),span=(hi-lo)||1;
+  const X=i=>series.length>1?4+i*(W-8)/(series.length-1):W/2,Y=y=>H-6-(y-lo)/span*(H-12);
+  const zero=document.createElementNS(ns,"line");zero.setAttribute("x1",0);zero.setAttribute("x2",W);zero.setAttribute("y1",Y(0));zero.setAttribute("y2",Y(0));zero.setAttribute("stroke",v("--line"));zero.setAttribute("stroke-dasharray","3 3");sv.appendChild(zero);
+  const pl=document.createElementNS(ns,"polyline");pl.setAttribute("points",series.map((y,i)=>X(i)+","+Y(y)).join(" "));pl.setAttribute("fill","none");pl.setAttribute("stroke",cum>=0?v("--good"):v("--bad"));pl.setAttribute("stroke-width","2");sv.appendChild(pl);
+  const dot=document.createElementNS(ns,"circle");dot.setAttribute("cx",X(series.length-1));dot.setAttribute("cy",Y(cum));dot.setAttribute("r","3.5");dot.setAttribute("fill",cum>=0?v("--good"):v("--bad"));sv.appendChild(dot);
+  // other bets list
+  const list=$("adjList");list.innerHTML="";
+  adj.slice(-5).reverse().forEach(a=>{const r=document.createElement("div");r.className="adjrow";const s=document.createElement("span");s.className="num "+tone(a.amt);s.textContent=money(a.amt)+" after spin "+a.i;const b=document.createElement("button");b.type="button";b.className="btn small";b.dataset.t=a.t;b.textContent="Remove";r.append(s,b);list.appendChild(r);});
+}
+
+function buildPad(){
+  const pad=$("pad");pad.innerHTML="";
+  const z=document.createElement("button");z.type="button";z.className="z "+colorClass(0);z.textContent="0";z.dataset.n="0";pad.appendChild(z);
+  const u=document.createElement("button");u.type="button";u.className="undo";u.id="undoBtn";u.textContent="Undo";pad.appendChild(u);
+  for(let n=1;n<=36;n++){const b=document.createElement("button");b.type="button";b.className=colorClass(n)+" num";b.textContent=n;b.dataset.n=n;b.setAttribute("aria-label","Spin result "+n);pad.appendChild(b);}
+  pad.addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    if(b.id==="undoBtn"){const seq=sessionSeq();if(seq.length){const last=seq[seq.length-1];if(last.dir)state.nextDir=last.dir;state.spins.splice(state.spins.lastIndexOf(last),1);save();render();}return;}
+    addSpin(Number(b.dataset.n));
+  });
+}
+
+const LABELS={stop:"Stop · Limit reached",target:"Stop · Target reached",burst:"Burst · Bet",reform:"Re-forming · Bet",forming:"Forming · Bet",pattern:"Pattern · Bet",wait:"Wait",scatter:"Scatter · Wait",neutral:"Wait",cooloff:"Cool-off · Wait",collect:"Collecting",setup:"Screen history"};
+
+function render(){
+  const seq=sessionSeq();
+  const dec=replay(seq);const A=dec[dec.length-1];liveA=A;
+  const live=seq.filter(s=>!s.pre).length;
+  $("count").textContent=seq.length+(seq.length===1?" spin":" spins")+(live!==seq.length?" ("+live+" live)":"");
+  $("exampleBanner").hidden=!state.example;
+  $("setupBanner").hidden=!state.setup;
+  $("setupBtn").classList.toggle("on",!!state.setup);
+  const label=state.setup?"setup":A.label;
+  const betting=!state.setup&&A.rules.main;
+  const pill=$("pill");pill.className="pill "+label;pill.textContent=LABELS[label]+(betting?" "+A.stake+"×":"");
+  const cf=$("conf");cf.innerHTML="";
+  if(A.conf!==null&&!state.setup){
+    const tierTxt={high:"High",medium:"Medium",low:"Low"}[A.tier];
+    cf.append("Confidence "+A.conf+" · "+tierTxt);
+    const mt=document.createElement("span");mt.className="meter";const mi=document.createElement("i");mi.style.width=A.conf+"%";mt.appendChild(mi);cf.appendChild(mt);
+    const st=document.createElement("span");st.className="stake"+(betting&&A.stake===2?" x2":"");
+    const hv=state.heavy?heavyOf(A):[];
+    st.textContent=betting?"Stake "+A.stake+"× = "+money(A.stake*state.unit*(A.bet.length+hv.length),true)+(hv.length?" (incl. extra chip on "+hv.join(" ")+")":""):"No bet";cf.appendChild(st);
+    if(betting||(!state.setup&&(A.rules.spike||A.rules.cycle))){const sk=document.createElement("button");sk.type="button";sk.id="skipBtn";sk.className="btn small"+(skipNext?" warn":"");sk.textContent=skipNext?"Skipping this bet":"Skip this bet";cf.appendChild(sk);}
+  }
+  const pick=$("pick");pick.textContent=A.pick===null?"–":A.pick;
+  pick.className="pick num "+(A.pick===null?"":colorClass(A.pick));pick.style.opacity=betting?1:.5;
+  $("why").textContent=state.setup?"Tap the screen's recent numbers, oldest first, then Done.":A.why+(A.noDouble?" High confidence, but no doubling after 2 losses in a row.":"");
+  const m=$("metric");
+  if(A.J===null)m.textContent="";
+  else{m.innerHTML="";m.append("Avg jump "+A.J.toFixed(1)+" (spread ≈ "+RANDOM_JUMP+")");const mt=document.createElement("span");mt.className="meter";const i=document.createElement("i");i.style.width=Math.max(4,Math.min(100,(1-A.J/18)*100))+"%";mt.appendChild(i);m.appendChild(mt);}
+  const bs=$("betset");bs.innerHTML="";
+  $("nextwhy").textContent=A.bet1&&!state.setup?"Pattern: "+A.nextWhy:"";
+  $("s2lbl").textContent="Sector 2";
+  if(A.form&&A.form.n&&!state.setup)$("nextwhy").textContent="Pattern: "+A.nextWhy+" · last "+A.form.n+" predictions: "+A.form.hits+" landed ("+A.form.exp.toFixed(1)+" expected)";
+  if(A.avoid.length&&!state.setup)$("nextwhy").textContent+=" · leaving out cold "+A.avoid.join(" ");
+  const cls=n=>[A.hotIn.includes(n)?"star":"",A.key&&A.key.includes(n)?"key":""].join(" ").trim();
+  if(A.bet1){const l=document.createElement("span");l.className="lbl";l.textContent="Sector 1 · "+A.in1+" of last 6";bs.appendChild(l);A.bet1.forEach(n=>bs.appendChild(chip(n,cls(n))));}
+  $("s1why").textContent=A.why1&&!state.setup?"Why Sector 1: "+A.why1:"";
+  $("s2why").textContent=A.why2&&!state.setup?"Why Sector 2: "+A.why2:"";
+  // table read panel
+  const rd=!state.setup&&seq.length>0;
+  $("rConf").textContent=rd&&A.conf!==null?A.conf:"–";
+  $("rBurst").textContent=rd&&A.burstPct!=null?A.burstPct+"%":"–";$("rRand").textContent=rd&&A.burstPct!=null?(100-A.burstPct)+"%":"–";
+  const r3=$("r3"),r4=$("r4");r3.innerHTML="";r4.innerHTML="";
+  if(rd&&A.s3){$("r3txt").textContent=A.s3why;A.s3.forEach(x=>r3.appendChild(chip(x)));}else $("r3txt").textContent=rd?"after 4 spins":"";
+  if(rd&&A.dead){$("r4txt").textContent=A.deadHits.h+" of the last "+A.deadHits.n+" spins landed here ("+(A.deadHits.n*A.dead.length/37).toFixed(1)+" expected)";A.dead.forEach(x=>r4.appendChild(chip(x,"dead")));}else $("r4txt").textContent=rd?"after 4 spins":"";
+  const ad=A.adapt;
+  if(rd&&ad){const f=(lab,o)=>lab+" "+(o.t.bets?o.t.hits+"/"+o.t.bets+" ("+o.t.exp.toFixed(1)+" expected)":"no bets yet")+(o.s==="hot"?" ✓":o.s==="cold"?" ✗":"");
+    $("rAdapt").textContent="At this table: "+[f("Model",ad.model),f("Cycle",ad.cycle),f("Old burst",ad.oldmain)].join(" · ")+" → "+
+      (A.leader==="model"?"using the model":A.leader==="oldmain"?"switched to the old burst signal":"model off here")+(ad.cycle.s==="cold"?", cycle bet off":"")+".";}
+  else $("rAdapt").textContent="";
+  bs.style.opacity=betting?1:.5;
+  const p2=$("pick2"),b2=$("betset2");b2.innerHTML="";
+  if(A.bet2&&!state.setup){p2.textContent=A.pick2;p2.className="pick2 num "+colorClass(A.pick2);$("s2txt").textContent=A.in2+" of last 6 spins · "+(betting?"bet "+A.stake+"× with Sector 1":"wait");A.bet2.forEach(n=>b2.appendChild(chip(n,cls(n))));}
+  else{p2.textContent="–";p2.className="pick2 num";$("s2txt").textContent=state.setup?"":"Appears after 4 spins.";}
+  p2.style.opacity=b2.style.opacity=betting?1:.5;
+  // burst cycle
+  const cy=A.cyc,yp=$("ypill"),yb=$("ybet");yb.innerHTML="";
+  const area=c=>WHEEL[c]+" area";
+  if(state.setup||cy.phase==="none"){$("ytxt").textContent=state.setup?"":"Needs 8 spins.";yp.className="pill cwait";yp.textContent="Wait";$("ydot").style.background="var(--felt-3)";}
+  else if(cy.phase==="burst"){$("ytxt").textContent="Burst on: the last 8 spins all landed in the "+area(cy.a)+" and the "+area(cy.b)+". Not betting a burst that is already running.";
+    yp.className="pill wait";yp.textContent="Burst on · Wait";$("ydot").style.background="var(--brass)";}
+  else if(cy.phase==="coming"){$("ytxt").textContent="Burst coming: the last 3 spins hit the old "+area(cy.a)+" and a new "+area(cy.b)+".";
+    if(A.rules.cycle){yp.className="pill pattern";yp.textContent=skipNext?"Skipping":"Bet "+A.cbet.length+" numbers · "+money(A.cbet.length*state.unit,true);}else{yp.className="pill cwait";yp.textContent="Stopped";}
+    $("ydot").style.background="var(--hot)";A.cbet.forEach(x=>yb.appendChild(chip(x)));}
+  else{$("ytxt").textContent=cy.last?"Scatter: "+(cy.since+1)+" spins since the last burst ("+area(cy.last.a)+" + "+area(cy.last.b)+"). Waiting for one of those areas plus a new area.":"Scatter: no burst yet at this table.";
+    yp.className="pill wait";yp.textContent="Scatter · Wait";$("ydot").style.background="var(--felt-3)";}
+  renderAI(seq);
+  // table type and direction
+  const real=state.table==="real";
+  $("tComp").setAttribute("aria-pressed",String(!real));$("tReal").setAttribute("aria-pressed",String(real));
+  $("dirBtn").hidden=!real;$("dirBtn").textContent=state.nextDir==="cw"?"Next spin: ↻ Clockwise":"Next spin: ↺ Anticlockwise";
+  // number spike
+  const sOn=!state.setup&&A.rules.spike;$("spikeBox").hidden=!sOn;
+  if(sOn){$("spill").textContent="Bet "+A.sbet.join(" + ")+" · "+money(A.sbet.length*state.unit,true);
+    $("sdot").style.background=A.sbet.length===1?(A.sbet[0]===0?"var(--zero)":RED.has(A.sbet[0])?"var(--red)":"var(--black)"):"var(--brass)";
+    $("stxt").textContent=A.spike.map(o=>"+"+o.d+" pockets from the last spin has hit "+Math.round(o.c)+" times ("+o.e.toFixed(1)+" expected)").join(" · ");}
+  // colour
+  const cp=$("cpill"),cd=$("cdot");
+  if(!state.setup&&A.colour&&!A.stop&&!A.goal){cp.className="pill bet-"+A.colour;
+    cp.textContent=state.colAmt>0&&skipCol?"Skipping":"Bet "+A.colour+(A.colStake===2?" 2×":"")+(state.colAmt>0?" "+money(state.colAmt*A.colStake,true):"");cd.style.background=A.colour==="red"?"var(--red)":"var(--black)";}
+  else{cp.className="pill cwait";cp.textContent="Wait";cd.style.background="var(--felt-3)";}
+  let ct=A.colourCol?A.colourRun+" "+A.colourCol+" in a row":seq.length?"Zero just broke the streak.":"Waiting for spins.";
+  if(A.colour&&A.colRec){const r=A.colRec;
+    ct+=A.colMode==="switch"?". Bet the switch":". This table is streaky: follow it";
+    ct+=r.n?" (after streaks here: switched "+r.sw+", stayed "+r.fo+" of "+r.n+")":"";
+    if(A.colStake===2)ct+=". Increase to 2×: last colour bet won and this side is winning 60%+.";}
+  else if(A.colourCol)ct+=" (bet from "+state.colN+")";
+  $("ctxt").textContent=ct;
+  // pad
+  const set1=new Set(betting?A.bet1:[]),set2=new Set(betting?A.bet2:[]);const hotSet=new Set(state.hot),coldSet=new Set(A.avoid);
+  document.querySelectorAll("#pad button[data-n]").forEach(b=>{const n=Number(b.dataset.n);b.classList.toggle("inbet",set1.has(n));b.classList.toggle("inbet2",set2.has(n));b.classList.toggle("hotn",hotSet.has(n));b.classList.toggle("coldn",coldSet.has(n));});
+  // strip
+  const st=$("strip");st.innerHTML="";
+  seq.map((s,i)=>({s,A:dec[i]})).slice(-24).reverse().forEach(({s,A:d})=>st.appendChild(chip(s.n,s.pre?"pre":(d.rules.main&&d.hit?"hit":""))));
+  // board inputs
+  for(let i=0;i<4;i++){const el=$("h"+i);if(document.activeElement!==el)el.value=state.hot[i]!==undefined?state.hot[i]:"";}
+  for(let i=0;i<4;i++){const el=$("c"+i),cl=state.cold||[];if(document.activeElement!==el)el.value=cl[i]!==undefined?cl[i]:"";}
+  renderScore();
+  renderMoney(seq,dec);
+  renderSides(seq,A);
+  drawWheel(seq,A,betting);
+  $("csv").value=toCSV();
+}
+
+function renderScore(){
+  const seqs=state.scope==="all"?[...new Set(state.spins.map(s=>s.s))].map(id=>state.spins.filter(s=>s.s===id)):[sessionSeq()];
+  const tot=scoreOf(seqs);
+  $("scopeSession").setAttribute("aria-pressed",state.scope!=="all");$("scopeAll").setAttribute("aria-pressed",state.scope==="all");
+  let bestId=null,bestU=-Infinity;
+  RULES.forEach(r=>{const t=tot[r.id];if(t.bets>=20&&t.units>bestU){bestU=t.units;bestId=r.id;}});
+  const body=$("scoreBody");body.innerHTML="";
+  RULES.forEach(r=>{
+    const t=tot[r.id];const tr=document.createElement("tr");
+    if(r.id==="main")tr.className="mainrow";if(r.id===bestId)tr.classList.add("best");
+    const rate=t.bets?100*t.hits/t.bets:null,chance=t.bets?100*t.exp/t.bets:null;
+    const cells=[r.label,t.bets,rate===null?"–":rate.toFixed(1),chance===null?"–":chance.toFixed(1),(t.units>0?"+":"")+t.units];
+    cells.forEach((v,i)=>{const td=document.createElement("td");td.textContent=v;if(i>0)td.className="num";
+      if(i===2&&rate!==null)td.classList.add(rate>chance?"good":rate<chance?"bad":"x");
+      if(i===4)td.classList.add(t.units>0?"good":t.units<0?"bad":"x");tr.appendChild(td);});
+    body.appendChild(tr);
+  });
+}
+
+function renderSides(seq,A){
+  const nums=seq.map(s=>s.n);const sd=$("sides");sd.innerHTML="";
+  SIDES.forEach(s=>{
+    let gap=nums.length;for(let i=nums.length-1;i>=0;i--){if(sideOf(nums[i])===s){gap=nums.length-1-i;break;}}
+    const missing=nums.length>=8&&gap>=1.5*37/s.len;
+    const d=document.createElement("div");d.className="side"+(missing?" cold":"");
+    d.innerHTML='<b></b><span class="num"></span> <span class="tag"></span>';
+    d.querySelector("b").textContent=s.name;d.querySelector(".num").textContent="last seen "+gap+" spins ago";
+    d.querySelector(".tag").textContent=missing?"Missing":"";sd.appendChild(d);
+  });
+}
+
+function drawWheel(seq,A,betting){
+  const svg=$("wheel"),cx=170,cy=170,R1=160,R2=126,R3=112,R4=96;
+  const ns="http://www.w3.org/2000/svg";svg.innerHTML="";
+  const pt=(r,t)=>[cx+r*Math.sin(t),cy-r*Math.cos(t)];
+  const arc=(ra,rb,t0,t1)=>{const[a1,b1]=pt(ra,t0),[a2,b2]=pt(ra,t1),[a3,b3]=pt(rb,t1),[a4,b4]=pt(rb,t0);const L=(t1-t0)>Math.PI?1:0;return`M${a1},${b1}A${ra},${ra} 0 ${L} 1 ${a2},${b2}L${a3},${b3}A${rb},${rb} 0 ${L} 0 ${a4},${b4}Z`;};
+  const css=getComputedStyle(document.documentElement),v=n=>css.getPropertyValue(n).trim();
+  const step=2*Math.PI/37,off=-step/2;
+  const recent=seq.slice(-state.win).map(s=>s.n);
+  const set1=new Set(betting&&A.bet1?A.bet1:[]),set2=new Set(betting&&A.bet2?A.bet2:[]);
+  WHEEL.forEach((n,i)=>{
+    const t0=off+i*step,t1=t0+step;
+    const p=document.createElementNS(ns,"path");p.setAttribute("d",arc(R1,R2,t0,t1));
+    p.setAttribute("fill",n===0?v("--zero"):RED.has(n)?v("--red"):v("--black"));
+    const inb=set1.has(n)||set2.has(n);
+    p.setAttribute("stroke",set1.has(n)?v("--brass"):set2.has(n)?v("--reform"):v("--felt"));p.setAttribute("stroke-width",inb?"2.5":"1");
+    svg.appendChild(p);
+    const[tx,ty]=pt((R1+R2)/2,t0+step/2);const tt=document.createElementNS(ns,"text");
+    tt.setAttribute("x",tx);tt.setAttribute("y",ty);tt.setAttribute("fill","#fff");tt.setAttribute("font-size","12");
+    tt.setAttribute("font-family","Barlow Condensed, Arial Narrow, sans-serif");tt.setAttribute("font-weight","700");
+    tt.setAttribute("text-anchor","middle");tt.setAttribute("dominant-baseline","central");
+    tt.setAttribute("transform",`rotate(${(t0+step/2)*180/Math.PI},${tx},${ty})`);tt.textContent=n;svg.appendChild(tt);
+    const c=recent.filter(x=>x===n).length;
+    for(let k=0;k<Math.min(c,3);k++){const[dx,dy]=pt(R2-7-k*7,t0+step/2);const d=document.createElementNS(ns,"circle");d.setAttribute("cx",dx);d.setAttribute("cy",dy);d.setAttribute("r","2.6");d.setAttribute("fill",v("--ink"));svg.appendChild(d);}
+  });
+  SIDES.forEach(s=>{const t0=off+s.from*step,t1=t0+s.len*step;const p=document.createElementNS(ns,"path");p.setAttribute("d",arc(R4-16,R4-22,t0+0.02,t1-0.02));p.setAttribute("fill",v("--felt-3"));svg.appendChild(p);});
+  if(A.arcFrom!==null){const t0=off+A.arcFrom*step,t1=t0+ARC*step;const p=document.createElementNS(ns,"path");p.setAttribute("d",arc(R3-10,R4-12,t0,t1));p.setAttribute("fill",v("--hot"));p.setAttribute("fill-opacity",betting?"0.95":"0.45");svg.appendChild(p);}
+  const last=seq.length?seq[seq.length-1].n:null;
+  const ctr=document.createElementNS(ns,"text");ctr.setAttribute("x",cx);ctr.setAttribute("y",cy);ctr.setAttribute("text-anchor","middle");ctr.setAttribute("dominant-baseline","central");
+  ctr.setAttribute("fill",v("--brass"));ctr.setAttribute("font-size","44");ctr.setAttribute("font-weight","700");ctr.setAttribute("font-family","Barlow Condensed, Arial Narrow, sans-serif");
+  ctr.textContent=last===null?"–":last;svg.appendChild(ctr);
+  const lbl=document.createElementNS(ns,"text");lbl.setAttribute("x",cx);lbl.setAttribute("y",cy+30);lbl.setAttribute("text-anchor","middle");lbl.setAttribute("fill",v("--muted"));lbl.setAttribute("font-size","11");lbl.setAttribute("font-family","Barlow, Arial, sans-serif");lbl.textContent="last spin · orange = hot arc";svg.appendChild(lbl);
+}
+
+function toCSV(){
+  const rows=["session,spin,number,colour,screen_history,state,main_bet,stake,confidence,sector1,sector2,main_hit,colour_bet,colour_hit,board_hot,played,cash_change,cash_running,spike_bet,spike_hit,cycle_phase,cycle_bet,cycle_hit,board_cold,colour_mode,colour_stake,burst_on_pct,main_source,dead_sector,claude_picks,claude_hit,claude_bet,direction"];
+  [...new Set(state.spins.map(s=>s.s))].forEach(id=>{
+    const seq=state.spins.filter(s=>s.s===id);const dec=replay(seq);
+    seq.forEach((s,i)=>{const A=dec[i];rows.push([id,i+1,s.n,colourOf(s.n),s.pre?1:0,A.label,A.rules.main?1:0,A.stake,A.conf===null?"":A.conf,'"'+(A.bet1||[]).join(" ")+'"','"'+(A.bet2||[]).join(" ")+'"',
+      (!s.pre&&A.rules.main)?(A.hit?1:0):"",A.colour||"",(!s.pre&&A.colour)?(colourOf(s.n)===A.colour?1:0):"",'"'+(s.hot||[]).join(" ")+'"',s.played===false?0:1,(A.cashMain||0)+(A.cashCol||0)+(A.cashSpike||0)+(A.cashCycle||0)+(A.cashAI||0),A.cashAfter===undefined?"":A.cashAfter,'"'+(A.sbet||[]).join(" ")+'"',(!s.pre&&A.rules.spike)?(A.shit?1:0):"",
+      A.cyc.phase,'"'+A.cbet.join(" ")+'"',(!s.pre&&A.rules.cycle)?(A.chit?1:0):"",'"'+(s.cold||[]).join(" ")+'"',A.colMode||"",A.colour?A.colStake:"",A.burstPct==null?"":A.burstPct,A.leader||"",'"'+(A.dead||[]).join(" ")+'"','"'+(s.ai||[]).join(" ")+'"',s.ai&&s.ai.length?(A.aihit?1:0):"",s.aib?1:"",s.dir||""].join(","));});
+    state.adj.filter(a=>a.s===id).forEach(a=>rows.push([id,"other_bet_after_"+a.i,"","","","manual","","","","","","","","","","",a.amt,""].join(",")));
+  });
+  return rows.join("\n");
+}
+
+/* ---------- controls ---------- */
+let armed=null;
+$("newBtn").addEventListener("click",()=>{
+  const b=$("newBtn");
+  const reset=()=>{
+    if(state.example){state.spins=[];state.example=false;state.session=1;state.adj=[];}
+    else if(sessionSeq().length){
+      const d=replay(sessionSeq()),old=state.session;
+      const bal=(state.banks[old]||0)+d[d.length-1].net+state.adj.filter(a=>a.s===old).reduce((x,a)=>x+a.amt,0);
+      state.session++;state.banks[state.session]=Math.max(0,Math.round(bal*100)/100);
+    }
+    state.hot=[];state.cold=[];state.setup=true;save();render();};
+  if(armed){clearTimeout(armed);armed=null;b.textContent="New session";b.classList.remove("warn");reset();return;}
+  if(state.example||!sessionSeq().length){reset();return;}
+  b.textContent="Tap again: new session";b.classList.add("warn");
+  armed=setTimeout(()=>{armed=null;b.textContent="New session";b.classList.remove("warn");},3000);
+});
+$("doneBtn").addEventListener("click",()=>{state.setup=false;save();render();});
+$("setupBtn").addEventListener("click",()=>{state.setup=!state.setup;save();render();});
+for(let i=0;i<4;i++){$("h"+i).addEventListener("change",()=>{
+  const vals=[];for(let j=0;j<4;j++){const v=$("h"+j).value;const n=Number(v);if(v!==""&&Number.isInteger(n)&&n>=0&&n<=36&&!vals.includes(n))vals.push(n);}
+  state.hot=vals;save();render();});}
+for(let i=0;i<4;i++){$("c"+i).addEventListener("change",()=>{
+  const vals=[];for(let j=0;j<4;j++){const v=$("c"+j).value;const n=Number(v);if(v!==""&&Number.isInteger(n)&&n>=0&&n<=36&&!vals.includes(n))vals.push(n);}
+  state.cold=vals;save();render();});}
+$("scopeSession").addEventListener("click",()=>{state.scope="session";save();renderScore();});
+$("scopeAll").addEventListener("click",()=>{state.scope="all";save();renderScore();});
+$("kSel").addEventListener("change",e=>{state.k=Number(e.target.value);save();render();});
+$("winIn").addEventListener("change",e=>{let w=Math.round(Number(e.target.value));if(!(w>=6&&w<=60))w=12;state.win=w;e.target.value=w;save();render();});
+$("overSel").addEventListener("change",e=>{state.overN=Number(e.target.value);save();render();});
+$("colSel").addEventListener("change",e=>{state.colN=Number(e.target.value);save();render();});
+let wipeArmed=null;
+$("wipeBtn").addEventListener("click",()=>{
+  const b=$("wipeBtn");
+  if(wipeArmed){clearTimeout(wipeArmed);wipeArmed=null;state.run=newRun();state.spins=[];state.session=1;state.example=false;state.hot=[];state.setup=false;state.adj=[];state.banks={};b.textContent="Clear all history";save();render();return;}
+  b.textContent="Tap again to erase "+state.spins.length+" spins";
+  wipeArmed=setTimeout(()=>{wipeArmed=null;b.textContent="Clear all history";},3000);
+});
+$("copyBtn").addEventListener("click",()=>{
+  const ta=$("csv"),msg=$("copyMsg");
+  const fallback=()=>{ta.focus();ta.select();msg.textContent="Selected. Use your phone's Copy.";};
+  try{navigator.clipboard.writeText(ta.value).then(()=>{msg.textContent="Copied "+state.spins.length+" spins.";},fallback);}catch(e){fallback();}
+});
+
+let wake=null;
+function requestWake(){if(wake)return;try{navigator.wakeLock&&navigator.wakeLock.request("screen").then(l=>{wake=l;l.addEventListener("release",()=>{wake=null;});}).catch(()=>{});}catch(e){}}
+
+/* ---------- cloud copy: every session is mirrored to the artifact's db so Claude can read it.
+   The phone copy stays the master; cleared history keeps its old cloud docs under the old run id. ---------- */
+let cdb=null,cloudTimer=null,cloudBusy=false,cloudAgain=false,cloudState="connecting",cloudAt=0;
+const CHUNK=400,CLOUDKEY=KEY+".cloud";
+let cloudSent={};try{cloudSent=JSON.parse(localStorage.getItem(CLOUDKEY)||"{}")||{};}catch(e){}
+function newRun(){return Date.now().toString(36);}
+const hashStr=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h+":"+s.length;};
+function cloudMsg(){
+  const el=$("cloudMsg");if(!el)return;
+  const t=cloudAt?new Date(cloudAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"";
+  el.textContent=cloudState==="ok"?"Saved"+(t?" "+t:""):cloudState==="retry"?"No signal yet. Spins are safe on this phone and will upload later.":
+    cloudState==="full"?"Cloud storage is full. Spins are still saved on this phone.":cloudState==="off"?"Not available in this view (spins are saved on this phone).":"Connecting…";
+}
+function cloudQueue(){if(!cdb)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1500);}
+async function cloudPush(){
+  if(!cdb||state.example)return;
+  if(cloudBusy){cloudAgain=true;return;}
+  cloudBusy=true;
+  try{
+    const ids=[...new Set(state.spins.map(s=>s.s))];
+    for(const s of ids){
+      const all=state.spins.filter(x=>x.s===s);
+      for(let p=0;p*CHUNK<Math.max(all.length,1);p++){
+        const id=state.run+"_"+s+"_"+p;
+        const body={run:state.run,session:s,part:p,from:p*CHUNK,spins:all.slice(p*CHUNK,(p+1)*CHUNK),
+          adj:state.adj.filter(a=>a.s===s),bank:state.banks[s]!==undefined?state.banks[s]:null,unit:state.unit,colAmt:state.colAmt,app:"v11"};
+        const sig=hashStr(JSON.stringify(body));
+        if(cloudSent[id]===sig)continue;
+        body.updated=Date.now();
+        await cdb.doc("sessions/"+id).set(body);
+        cloudSent[id]=sig;try{localStorage.setItem(CLOUDKEY,JSON.stringify(cloudSent));}catch(e){}
+      }
+    }
+    cloudState="ok";cloudAt=Date.now();
+  }catch(e){
+    cloudState=e&&e.code==="quota_exceeded"?"full":"retry";
+    if(cloudState==="retry"){clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,30000);}
+  }
+  cloudBusy=false;cloudMsg();
+  if(cloudAgain){cloudAgain=false;cloudQueue();}
+}
+window.addEventListener("online",()=>cloudQueue());
+
+load();
+if(!state.run){state.run=newRun();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+const useDb=window.claude&&typeof window.claude.use==="function"?window.claude.use("db"):Promise.resolve(null);
+useDb.then(d=>{cdb=d;if(!d){cloudState="off";cloudMsg();return;}cloudPush();},()=>{cloudState="off";cloudMsg();});
+const useSample=window.claude&&typeof window.claude.use==="function"?window.claude.use("sample"):Promise.resolve(null);
+useSample.then(s=>{aiSample=s||null;if(aiSample)render();},()=>{});
+$("aiBtn").addEventListener("click",askClaude);
+$("revBtn").addEventListener("click",reviewTable);
+$("revStop").addEventListener("click",()=>{if(revCtl)revCtl.abort();});
+$("tComp").addEventListener("click",()=>{state.table="computer";save();render();});
+$("tReal").addEventListener("click",()=>{state.table="real";save();render();});
+$("dirBtn").addEventListener("click",()=>{state.nextDir=state.nextDir==="cw"?"ccw":"cw";save();render();});
+$("aiStop").addEventListener("click",()=>{if(aiCtl)aiCtl.abort();});
+$("aiBetBtn").addEventListener("click",()=>{if(aiLive&&aiLive.status==="done"){aiLive.bet=!aiLive.bet;render();}});
+const numIn=(id,key,min)=>{const el=$(id);el.value=state[key];el.addEventListener("change",()=>{let v=Number(el.value);if(!(v>=min))v=min;state[key]=v;el.value=v;save();render();});};
+numIn("unitIn","unit",MIN_CHIP);
+{const el=$("colAmtIn");el.value=state.colAmt;el.addEventListener("change",()=>{let v=Number(el.value);if(!(v>0))v=0;else if(v<MIN_COL)v=MIN_COL;state.colAmt=v;el.value=v;save();render();});}
+{const el=$("heavyIn");el.checked=!!state.heavy;el.addEventListener("change",()=>{state.heavy=el.checked;save();render();});}numIn("limitIn","limit",0);numIn("targetIn","target",0);
+const bankEl=$("bankIn");bankEl.addEventListener("change",()=>{let v=Number(bankEl.value);if(!(v>=0))v=0;state.banks[state.session]=v;save();render();});
+const addAdj=sign=>{const el=$("adjIn");const v=Math.abs(Number(el.value));if(!(v>0))return;state.adj.push({s:state.session,t:Date.now(),amt:sign*v,i:sessionSeq().length});el.value="";save();render();};
+$("adjWin").addEventListener("click",()=>addAdj(1));$("adjLoss").addEventListener("click",()=>addAdj(-1));
+$("adjList").addEventListener("click",e=>{const b=e.target.closest("button[data-t]");if(!b)return;state.adj=state.adj.filter(a=>String(a.t)!==b.dataset.t);save();render();});
+$("conf").addEventListener("click",e=>{if(e.target.closest("#skipBtn")){skipNext=!skipNext;render();}});
+$("cpill").addEventListener("click",()=>{if(state.colAmt>0){skipCol=!skipCol;render();}});
+$("kSel").value=String(state.k);$("winIn").value=state.win;$("overSel").value=String(state.overN);$("colSel").value=String(state.colN);
+buildPad();render();
+})();
+</script>
+
+</body></html>
