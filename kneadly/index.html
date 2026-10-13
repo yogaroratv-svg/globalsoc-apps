@@ -1,0 +1,602 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Kneadly</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ebe6dd; --phone:#f7f4ef; --card:#ffffff; --ink:#1b2220; --muted:#6c7671; --line:#e7e1d6;
+  --brand:#1f5c4a; --brand-2:#2c7a62; --brand-soft:#e3efe9; --accent:#e5603a; --accent-soft:#fde8df;
+  --chip:#efeae2; --shadow:0 1px 2px rgba(20,30,25,.06),0 6px 18px rgba(20,30,25,.07);
+  --land:#f1eee6; --water:#b9d9e6; --park:#cfe3c6; --road:#ffffff; --grid:#e6e1d4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1312; --phone:#151a19; --card:#1d2422; --ink:#eef2f0; --muted:#97a39e; --line:#2a3330;
+    --brand:#5cc29f; --brand-2:#7fd3b5; --brand-soft:#1f3a31; --accent:#ff8a63; --accent-soft:#3a2219;
+    --chip:#232b29; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.35);
+    --land:#1a201f; --water:#16313d; --park:#1e3a2c; --road:#2c3634; --grid:#232a29; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1312; --phone:#151a19; --card:#1d2422; --ink:#eef2f0; --muted:#97a39e; --line:#2a3330;
+  --brand:#5cc29f; --brand-2:#7fd3b5; --brand-soft:#1f3a31; --accent:#ff8a63; --accent-soft:#3a2219;
+  --chip:#232b29; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.35);
+  --land:#1a201f; --water:#16313d; --park:#1e3a2c; --road:#2c3634; --grid:#232a29; color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit}
+.stage{min-height:100%;display:flex;align-items:center;justify-content:center;gap:48px;padding:32px 16px}
+.side{max-width:300px}
+.side h1{font-size:30px;letter-spacing:-.02em;line-height:1.1}
+.side p{color:var(--muted);margin-top:12px;line-height:1.5;font-size:14px}
+.side .warn{margin-top:18px;background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45}
+.phone{position:relative;width:390px;height:844px;background:var(--phone);border-radius:52px;overflow:hidden;
+  box-shadow:0 0 0 11px #111,0 0 0 12px #333,0 30px 80px rgba(0,0,0,.35);flex:none}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#000;border-radius:20px;z-index:60}
+.status{position:absolute;top:0;left:0;right:0;height:50px;display:flex;justify-content:space-between;align-items:center;padding:6px 32px 0;font-weight:600;font-size:15px;z-index:55;pointer-events:none}
+.status .icons{display:flex;gap:6px;align-items:center}
+@media (max-width:760px){
+  .side{display:none}
+  .stage{padding:0}
+  .phone{width:100vw;height:100dvh;border-radius:0;box-shadow:none}
+  .island,.status{display:none}
+}
+.view{position:absolute;inset:0;overflow-y:auto;padding:58px 0 96px;scrollbar-width:none}
+.view::-webkit-scrollbar{display:none}
+@media (max-width:760px){.view{padding-top:max(16px,env(safe-area-inset-top))}}
+.pad{padding:0 18px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:84px;background:color-mix(in srgb,var(--phone) 88%,transparent);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);display:flex;justify-content:space-around;padding-top:8px;z-index:40}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--muted);width:72px}
+.tab svg{width:24px;height:24px}
+.tab.on{color:var(--brand)}
+.badge-dot{position:relative}
+.badge-dot b{position:absolute;top:-4px;right:-8px;background:var(--accent);color:#fff;font-size:10px;border-radius:9px;padding:1px 5px}
+
+/* explore */
+.hello{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.loc{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:4px}
+.title{font-size:28px;font-weight:800;letter-spacing:-.03em;margin-top:2px}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700}
+.demo-strip{margin:12px 18px 0;font-size:11.5px;background:var(--accent-soft);border-radius:10px;padding:8px 10px;line-height:1.4}
+.search{margin:14px 18px 0;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow)}
+.search input{border:0;outline:0;background:none;flex:1;font-size:15px}
+.search svg{width:18px;height:18px;color:var(--muted)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:14px 18px 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:8px 14px;border-radius:999px;background:var(--chip);font-size:13px;font-weight:600;white-space:nowrap}
+.chip.on{background:var(--ink);color:var(--phone)}
+.slots .chip{display:flex;flex-direction:column;align-items:flex-start;padding:8px 14px;border-radius:14px;min-width:84px}
+.slots .chip small{font-weight:500;font-size:11px;opacity:.7}
+.slots .chip.on{background:var(--brand);color:#fff}
+.section-h{display:flex;justify-content:space-between;align-items:baseline;margin:20px 18px 10px}
+.section-h h2{font-size:18px;letter-spacing:-.01em}
+.section-h span{font-size:12.5px;color:var(--muted)}
+.card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;margin:0 18px 14px;cursor:pointer;transition:transform .15s}
+.card:active{transform:scale(.985)}
+.hero{height:118px;position:relative;display:flex;align-items:flex-end;padding:12px 14px;color:#fff}
+.hero .mono{position:absolute;right:14px;top:12px;font-size:40px;font-weight:800;opacity:.22;letter-spacing:-.04em}
+.pct{background:#fff;color:var(--accent);font-weight:800;font-size:13px;padding:5px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.heart{position:absolute;left:12px;top:12px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center}
+.cbody{padding:12px 14px 14px}
+.cname{font-weight:700;font-size:16px}
+.cmeta{font-size:12.5px;color:var(--muted);margin-top:2px}
+.dealrow{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+.dealrow::-webkit-scrollbar{display:none}
+.dpill{flex:none;border:1.5px solid var(--line);border-radius:10px;padding:5px 9px;font-size:12px;line-height:1.25;text-align:center}
+.dpill b{display:block;color:var(--accent);font-size:13px}
+.dpill.hot{border-color:var(--accent);background:var(--accent-soft)}
+.empty{margin:30px 18px;text-align:center;color:var(--muted);font-size:14px}
+
+/* map */
+#map{position:absolute;inset:0;z-index:1;background:var(--water)}
+#map svg{width:100%;height:100%;display:block}
+#map .lbl{font:600 9px Inter,sans-serif;fill:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+#map .water-lbl{font:italic 600 10px Inter,sans-serif;fill:#4f7f93;letter-spacing:.05em}
+#map .pg{cursor:pointer}
+#map .pg rect{fill:var(--accent)}
+#map .pg.sel rect{fill:var(--brand)}
+#map .pg text{font:800 10px Inter,sans-serif;fill:#fff}
+.map-top{position:absolute;top:58px;left:0;right:0;z-index:5;pointer-events:none}
+.map-top>*{pointer-events:auto}
+@media (max-width:760px){.map-top{top:12px}}
+.pin{background:var(--accent);color:#fff;font:800 12px Inter,sans-serif;padding:5px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.25);position:relative;transform:translate(-50%,-100%);display:inline-block}
+.pin:after{content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border:6px solid transparent;border-bottom:0;border-top-color:var(--accent)}
+.pin.sel{background:var(--brand)}
+.pin.sel:after{border-top-color:var(--brand)}
+.me{width:16px;height:16px;border-radius:50%;background:#2f80ed;border:3px solid #fff;box-shadow:0 0 0 6px rgba(47,128,237,.25)}
+.map-card{position:absolute;left:14px;right:14px;bottom:98px;z-index:5;margin:0}
+
+/* sheets */
+.sheet{position:absolute;inset:0;z-index:70;background:var(--phone);transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1);overflow-y:auto;scrollbar-width:none}
+.sheet::-webkit-scrollbar{display:none}
+.sheet.open{transform:none}
+.vhero{height:250px;position:relative;color:#fff;padding:0 20px 18px;display:flex;flex-direction:column;justify-content:flex-end}
+.vhero .mono{position:absolute;right:20px;top:70px;font-size:90px;font-weight:800;opacity:.18;letter-spacing:-.05em}
+.vhero h1{font-size:28px;letter-spacing:-.02em;line-height:1.1}
+.vhero p{opacity:.9;font-size:13.5px;margin-top:4px}
+.back{position:absolute;top:56px;left:16px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.9);color:#111;display:grid;place-items:center;z-index:2}
+@media (max-width:760px){.back{top:max(14px,env(safe-area-inset-top))}}
+.back svg{width:20px;height:20px}
+.plain-head{display:flex;align-items:center;gap:10px;padding:58px 16px 6px}
+@media (max-width:760px){.plain-head{padding-top:max(14px,env(safe-area-inset-top))}}
+.plain-head .back{position:static;background:var(--chip);color:var(--ink)}
+.plain-head h2{font-size:20px}
+.block{background:var(--card);border-radius:18px;box-shadow:var(--shadow);margin:14px 16px;padding:14px}
+.block h3{font-size:14px;margin-bottom:10px;display:flex;justify-content:space-between}
+.block h3 span{font-weight:500;color:var(--muted);font-size:12px}
+.slotgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slotbtn{border:1.5px solid var(--line);border-radius:12px;padding:9px 6px;text-align:center;font-size:12px;line-height:1.3}
+.slotbtn b{display:block;font-size:17px;color:var(--accent)}
+.slotbtn small{color:var(--muted)}
+.slotbtn.on{border-color:var(--brand);background:var(--brand-soft)}
+.slotbtn:disabled{opacity:.4}
+.svc{display:flex;align-items:center;gap:12px;padding:11px 2px;border-top:1px solid var(--line);cursor:pointer}
+.svc:first-of-type{border-top:0}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center}
+.on>.radio,.svc.on .radio,.pm.on .radio{border-color:var(--brand)}
+.on>.radio:after,.svc.on .radio:after,.pm.on .radio:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--brand)}
+.svc .n{flex:1;font-size:14.5px;font-weight:600}
+.svc .n small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.price{text-align:right;font-size:14px}
+.price s{color:var(--muted);font-size:12px;display:block}
+.price b{color:var(--accent)}
+.info-row{display:flex;gap:10px;font-size:13px;color:var(--muted);padding:6px 0;align-items:center}
+.info-row a{color:var(--brand);font-weight:600;text-decoration:none}
+.cta-bar{position:sticky;bottom:0;padding:12px 16px 28px;background:linear-gradient(transparent,var(--phone) 30%);margin-top:6px}
+.cta{width:100%;background:var(--brand);color:#fff;border-radius:16px;padding:16px;font-weight:700;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.cta:disabled{opacity:.45}
+.cta.black{background:#000;color:#fff;justify-content:center;gap:6px}
+.line{display:flex;justify-content:space-between;font-size:14px;padding:5px 0}
+.line.save{color:var(--accent)}
+.line.total{font-weight:800;font-size:17px;border-top:1px solid var(--line);margin-top:6px;padding-top:11px}
+.pm{display:flex;align-items:center;gap:12px;padding:12px 2px;border-top:1px solid var(--line);cursor:pointer}
+.pm:first-of-type{border-top:0}
+.pm .logo{width:42px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
+.pm .n{flex:1;font-size:14.5px;font-weight:600}
+.pm .n small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.promo{display:flex;gap:8px}
+.promo input{flex:1;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:none;outline:0;text-transform:uppercase}
+.promo button{background:var(--chip);border-radius:12px;padding:0 16px;font-weight:700}
+.note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.4}
+.ok{color:var(--brand-2)}
+
+/* apple pay mock */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:90;opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.open{opacity:1;pointer-events:auto}
+.applesheet{position:absolute;left:8px;right:8px;bottom:8px;background:#f2f2f7;color:#000;border-radius:34px;padding:18px 20px 26px;z-index:91;transform:translateY(110%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.applesheet.open{transform:none}
+.applesheet .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #d8d8de;font-size:14px}
+.applesheet .side-btn{text-align:center;margin-top:18px;font-size:13px;color:#555}
+.applesheet .face{width:56px;height:56px;margin:14px auto 0;border-radius:14px;border:3px solid #0a84ff;display:grid;place-items:center;color:#0a84ff;font-size:24px}
+
+/* voucher */
+.voucher{margin:16px;background:var(--card);border-radius:24px;box-shadow:var(--shadow);overflow:hidden}
+.vtop{background:var(--brand);color:#fff;padding:18px 20px}
+.vtop .big{font-size:40px;font-weight:800;letter-spacing:-.03em}
+.vcut{height:0;border-top:2px dashed var(--line);margin:0 18px;position:relative}
+.vbody{padding:18px 20px;text-align:center}
+.code{font-family:ui-monospace,Menlo,monospace;font-size:22px;font-weight:700;letter-spacing:.12em;margin-top:10px}
+.qr{width:170px;height:170px;margin:0 auto;display:block;background:#fff;padding:8px;border-radius:10px}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left;margin-top:16px;font-size:13px}
+.vgrid div{background:var(--chip);border-radius:12px;padding:9px 11px}
+.vgrid small{display:block;color:var(--muted);font-size:11px}
+.timer{display:inline-block;margin-top:12px;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px}
+.check{width:64px;height:64px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;margin:8px auto 0;font-size:30px}
+
+/* profile */
+.plus{margin:16px 18px;border-radius:22px;padding:18px;color:#fff;background:linear-gradient(135deg,#1f5c4a,#2c7a62 55%,#e5603a)}
+.plus h3{font-size:20px}
+.plus p{font-size:13px;opacity:.92;margin-top:4px;line-height:1.4}
+.plus button{margin-top:12px;background:#fff;color:#1f5c4a;border-radius:12px;padding:10px 16px;font-weight:700}
+.list-item{display:flex;align-items:center;gap:12px;padding:13px 2px;border-top:1px solid var(--line);font-size:14.5px}
+.list-item:first-of-type{border-top:0}
+.list-item .n{flex:1}
+.list-item .n small{display:block;color:var(--muted);font-size:12px}
+.toast{position:absolute;left:50%;bottom:100px;transform:translate(-50%,20px);background:var(--ink);color:var(--phone);padding:10px 16px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;transition:.25s;z-index:99;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+<div class="stage">
+  <div class="side">
+    <h1>Kneadly</h1>
+    <p>Clickable iOS prototype: find massage deals around Melbourne by time slot, book, pay in-app or at the venue, and show the voucher at reception.</p>
+    <p>Try it: pick a time slot → open a venue → choose a deal and treatment → pay with Apple Pay, card, PayPal, Afterpay or at the venue.</p>
+    <div class="warn"><b>Demo only.</b> Every venue, discount and price here is fictional. Venues sit in real Melbourne suburbs, but their names don't belong to real businesses. No payment is taken.</div>
+  </div>
+
+  <div class="phone" id="phone">
+    <div class="island"></div>
+    <div class="status"><span id="clock">9:41</span><span class="icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2.5" width="3" height="9.5" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>
+      <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><rect x="24" y="4" width="2" height="4" rx="1" fill="currentColor" opacity=".4"/></svg></span></div>
+
+    <div class="view" id="view"></div>
+
+    <nav class="tabbar" id="tabbar"></nav>
+    <div class="sheet" id="sheet"></div>
+    <div class="sheet" id="sheet2"></div>
+    <div class="scrim" id="scrim"></div>
+    <div class="applesheet" id="applesheet"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- Data: FICTIONAL venues placed in real Melbourne suburbs; demo deals & prices ---------- */
+const VENUES = [
+  {id:"izumi", name:"Hanami Shiatsu House", area:"Melbourne CBD", addr:"Melbourne CBD", cats:["Shiatsu","Day spa"], lat:-37.8127, lng:144.9627, g:["#2b4c7e","#5f88c9"],
+   blurb:"Quiet Japanese-style rooms for shiatsu, reflexology and hot stone.",
+   deals:[[11,14,30,4],[14,17,40,3],[19,21,20,6]], svcs:[["Shiatsu massage",60,110],["Hot stone massage",90,175],["Foot reflexology",45,80]]},
+  {id:"sensu", name:"Kumo Float & Massage", area:"Melbourne CBD", addr:"Melbourne CBD", cats:["Shiatsu","Day spa"], lat:-37.8117, lng:144.9656, g:["#3c2f5c","#8a6fc1"],
+   blurb:"Float pods, infrared sauna and relaxation massage.",
+   deals:[[10,13,25,5],[13,16,35,2],[17,20,15,8]], svcs:[["Japanese relaxation massage",60,120],["Float + massage",90,185],["Infrared sauna + back massage",60,105]]},
+  {id:"orchid", name:"Laneway Day Spa", area:"Melbourne CBD", addr:"Melbourne CBD", cats:["Day spa","Relaxation"], lat:-37.8126, lng:144.9592, g:["#7a2d5a","#d06a9c"],
+   blurb:"A laneway hideaway for body treatments, hot stone and facials.",
+   deals:[[9,12,20,6],[12,15,35,3],[15,18,45,2]], svcs:[["Relaxation massage",60,115],["Hot stone therapy",75,150],["Massage + facial package",120,240]]},
+  {id:"you", name:"Collins Calm Day Spa", area:"Melbourne CBD", addr:"Melbourne CBD", cats:["Day spa","Couples"], lat:-37.8159, lng:144.9662, g:["#8a4b22","#e09a5b"],
+   blurb:"Massage, body wraps, facials and couples packages.",
+   deals:[[10,13,30,4],[16,19,25,5],[19,21,40,2]], svcs:[["Swedish massage",60,105],["Couples massage (2 people)",60,220],["Body wrap + massage",90,170]]},
+  {id:"vspa", name:"Spencer Spa Rooms", area:"Melbourne CBD", addr:"Melbourne CBD (west end)", cats:["Day spa","Relaxation"], lat:-37.8172, lng:144.9537, g:["#20403f","#4f8f8c"],
+   blurb:"Calm treatment rooms a short walk from Southern Cross.",
+   deals:[[11,14,20,7],[14,17,30,3]], svcs:[["Body massage",60,120],["Body massage",90,165],["Back, neck & shoulder",30,70]]},
+  {id:"parkclub", name:"Garden Terrace Day Spa", area:"East Melbourne", addr:"East Melbourne", cats:["Day spa","Couples"], lat:-37.8104, lng:144.9739, g:["#294a2a","#6c9f5e"],
+   blurb:"Day spa near the Fitzroy Gardens with couples suites.",
+   deals:[[9,12,25,5],[12,15,20,6],[18,21,35,2]], svcs:[["Full body massage",60,130],["Romance couples package",90,330],["Remedial massage",60,125]]},
+  {id:"chuan", name:"Riverside Lux Spa", area:"Southbank", addr:"Southbank", cats:["Day spa","Luxury"], lat:-37.8206, lng:144.9653, g:["#5b4524","#c9a05a"],
+   blurb:"Luxury spa rituals overlooking the Yarra.",
+   deals:[[10,13,15,3],[13,16,25,2]], svcs:[["Signature massage",60,185],["Signature massage",90,255],["Hot stone ritual",90,270]]},
+  {id:"saltair", name:"Bayside Salt Spa", area:"Port Melbourne", addr:"Port Melbourne", cats:["Day spa","Relaxation"], lat:-37.8396, lng:144.9410, g:["#1d5470","#4fa3c7"],
+   blurb:"Bayside day spa with massage and pamper packages.",
+   deals:[[9,12,35,4],[12,15,30,5],[15,18,20,6]], svcs:[["Relaxation massage",60,110],["Pregnancy massage",60,115],["Day spa package",150,290]]},
+  {id:"aroma", name:"Lotus Thai Massage", area:"Fitzroy", addr:"Fitzroy", cats:["Thai","Remedial"], lat:-37.7976, lng:144.9784, g:["#7d3b16","#e2763a"],
+   blurb:"Traditional Thai, oil and remedial massage in Fitzroy.",
+   deals:[[10,13,40,5],[13,16,30,6],[18,21,25,4]], svcs:[["Traditional Thai massage",60,85],["Aromatherapy oil massage",60,90],["Foot massage",30,45]]},
+  {id:"tomjones", name:"Smith & Knead", area:"Collingwood", addr:"Collingwood", cats:["Remedial","Thai","Relaxation"], lat:-37.7994, lng:144.9838, g:["#2c3e50","#5d7a96"],
+   blurb:"Remedial, relaxation and deep-tissue massage.",
+   deals:[[11,14,30,4],[14,17,20,6],[17,20,35,3]], svcs:[["Remedial massage",60,100],["Relaxation massage",60,90],["Deep tissue",90,140]]},
+  {id:"pukkai", name:"Siam Garden Thai", area:"South Yarra", addr:"South Yarra", cats:["Thai","Remedial"], lat:-37.8393, lng:144.9903, g:["#5a2a6e","#b062c9"],
+   blurb:"Remedial and traditional Thai massage.",
+   deals:[[10,13,30,5],[13,16,45,2],[16,19,25,5]], svcs:[["Thai massage",60,90],["Remedial massage",60,100],["Thai herbal compress",90,140]]},
+  {id:"stable", name:"Seabreeze Massage Co.", area:"St Kilda", addr:"St Kilda", cats:["Remedial","Thai"], lat:-37.8622, lng:144.9799, g:["#145a4a","#3fa087"],
+   blurb:"Remedial and sports massage near the beach.",
+   deals:[[9,12,25,6],[12,15,35,4],[18,21,30,3]], svcs:[["Remedial massage",60,95],["Thai massage",60,90],["Sports massage",45,80]]},
+  {id:"88thai", name:"Bangkok Breeze Thai", area:"Richmond", addr:"Richmond", cats:["Thai"], lat:-37.8234, lng:144.9985, g:["#8c1d2c","#e05264"],
+   blurb:"Traditional Thai oil or dry massage.",
+   deals:[[11,14,35,5],[14,17,40,3],[17,20,20,7]], svcs:[["Thai dry massage",60,80],["Thai oil massage",60,85],["Back & shoulder",30,50]]},
+];
+const ME = {lat:-37.8183, lng:144.9671}; // Flinders St Station
+const CATS = ["All","Thai","Remedial","Shiatsu","Day spa","Relaxation","Couples","Luxury"];
+const SLOTS = [
+  {id:"all", label:"All today", sub:"Every deal"},
+  {id:"now", label:"Now", sub:"On right now"},
+  {id:"am", label:"Morning", sub:"9am–12pm"},
+  {id:"lunch", label:"Lunch", sub:"12–3pm"},
+  {id:"arvo", label:"Afternoon", sub:"3–6pm"},
+  {id:"eve", label:"Evening", sub:"6–9pm"},
+];
+const SLOT_RANGE = {am:[9,12], lunch:[12,15], arvo:[15,18], eve:[18,21]};
+const PROMOS = {WELCOME10:{type:"pct",v:10,label:"Welcome 10% off"}, MELB5:{type:"amt",v:5,label:"$5 off"}};
+
+/* ---------- State ---------- */
+const S = {tab:"explore", slot:"all", cat:"All", q:"", fav:new Set(), vouchers:[], pay:"apple", plus:false,
+  book:null, selVenue:null};
+try { const saved = JSON.parse(localStorage.getItem("kneadly") || "null"); if (saved){ S.vouchers = saved.vouchers||[]; S.plus=!!saved.plus; S.fav=new Set(saved.fav||[]);} } catch(e){}
+function save(){ try{ localStorage.setItem("kneadly", JSON.stringify({vouchers:S.vouchers, plus:S.plus, fav:[...S.fav]})); }catch(e){} }
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const money = n => "$" + (Math.round(n*100)/100).toFixed(n % 1 ? 2 : 0);
+const hr = h => { const p = h>=12?"pm":"am"; const x = h%12||12; return x+p; };
+const span = d => hr(d[0])+"–"+hr(d[1]);
+// Outside 9am–8pm the demo pretends it is 10:30am so there are always deals to browse
+const nowH = () => { const d=new Date(), h=d.getHours()+d.getMinutes()/60; return (h>=9 && h<20) ? h : 10.5; };
+function dist(v){ const R=6371, toR=x=>x*Math.PI/180; const dLa=toR(v.lat-ME.lat), dLo=toR(v.lng-ME.lng);
+  const a=Math.sin(dLa/2)**2+Math.cos(toR(ME.lat))*Math.cos(toR(v.lat))*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(a)); }
+const km = v => { const d = dist(v); return d < 1 ? Math.round(d*1000)+" m" : d.toFixed(1)+" km"; };
+const initials = n => n.split(/\s+/).filter(w=>/^[A-Z0-9]/.test(w)).slice(0,2).map(w=>w[0]).join("");
+const grad = v => `linear-gradient(135deg,${v.g[0]},${v.g[1]})`;
+function dealOk(d){
+  if (S.slot === "all") return d[1] > nowH();
+  if (S.slot === "now") return d[0] <= nowH() && d[1] > nowH();
+  const [a,b] = SLOT_RANGE[S.slot]; return d[0] < b && d[1] > a && d[1] > nowH();
+}
+const live = d => d[1] > nowH();
+function visible(){
+  const q = S.q.trim().toLowerCase();
+  return VENUES.filter(v => (S.cat==="All" || v.cats.includes(S.cat))
+      && (!q || (v.name+" "+v.area+" "+v.cats.join(" ")).toLowerCase().includes(q))
+      && v.deals.some(dealOk))
+    .sort((a,b)=> Math.max(...b.deals.filter(dealOk).map(d=>d[2])) - Math.max(...a.deals.filter(dealOk).map(d=>d[2])) || dist(a)-dist(b));
+}
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),1800); }
+const ICON = {
+  explore:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>',
+  deals:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9a2 2 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2 2 0 0 1 0-6V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg>',
+  profile:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 5-7 7 7 7"/></svg>',
+  heart:'<svg width="16" height="16" viewBox="0 0 24 24" fill="FILL" stroke="#fff" stroke-width="2"><path d="M12 21s-7.5-4.6-9.5-9.3C1 8 3.5 4.5 7 4.5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3.5 0 6 3.5 4.5 7.2C19.5 16.4 12 21 12 21z"/></svg>',
+};
+
+/* ---------- Tab bar ---------- */
+function renderTabs(){
+  const n = S.vouchers.filter(v=>!v.used).length;
+  $("#tabbar").innerHTML = [["explore","Explore"],["map","Map"],["deals","My deals"],["profile","Profile"]].map(([id,l]) =>
+    `<button class="tab ${S.tab===id?"on":""}" onclick="go('${id}')"><span class="badge-dot">${ICON[id]}${id==="deals"&&n?`<b>${n}</b>`:""}</span>${l}</button>`).join("");
+}
+function go(t){ S.tab=t; render(); }
+
+/* ---------- Venue card ---------- */
+function venueCard(v, extraCls=""){
+  const ds = v.deals.filter(dealOk); const best = Math.max(...ds.map(d=>d[2]));
+  return `<div class="card ${extraCls}" onclick="openVenue('${v.id}')">
+    <div class="hero" style="background:${grad(v)}">
+      <button class="heart" onclick="event.stopPropagation();toggleFav('${v.id}')">${ICON.heart.replace("FILL", S.fav.has(v.id)?"#fff":"none")}</button>
+      <span class="mono">${initials(v.name)}</span>
+      <span class="pct">Up to ${best}% off</span>
+    </div>
+    <div class="cbody">
+      <div class="cname">${v.name}</div>
+      <div class="cmeta">${v.area} · ${km(v)} · ${v.cats.join(", ")}</div>
+      <div class="dealrow">${ds.map(d=>`<span class="dpill ${d[2]===best?"hot":""}"><b>${d[2]}%</b>${span(d)}</span>`).join("")}</div>
+    </div></div>`;
+}
+function toggleFav(id){ S.fav.has(id)?S.fav.delete(id):S.fav.add(id); save(); render(); }
+
+/* ---------- Explore ---------- */
+function filtersHTML(){
+  return `<div class="chips slots">${SLOTS.map(s=>`<button class="chip ${S.slot===s.id?"on":""}" onclick="S.slot='${s.id}';render()">${s.label}<small>${s.sub}</small></button>`).join("")}</div>
+  <div class="chips">${CATS.map(c=>`<button class="chip ${S.cat===c?"on":""}" onclick="S.cat='${c}';render()">${c}</button>`).join("")}</div>`;
+}
+function renderExplore(){
+  const list = visible();
+  $("#view").innerHTML = `
+  <div class="pad hello"><div><div class="loc">📍 Melbourne CBD</div><div class="title">Massage deals</div></div><div class="avatar">Y</div></div>
+  <div class="demo-strip"><b>Demo:</b> fictional venues and offers. No payment is taken.</div>
+  <label class="search">${ICON.explore}<input id="q" placeholder="Search venue, suburb or style" value="${S.q.replace(/"/g,"&quot;")}"></label>
+  ${filtersHTML()}
+  <div class="section-h"><h2>${S.slot==="now"?"On right now":"Today's deals"}</h2><span>${list.length} venue${list.length===1?"":"s"}</span></div>
+  ${list.length ? list.map(v=>venueCard(v)).join("") : `<div class="empty">No deals in this slot. Try another time${nowH()>=21?" (today's deals have ended, so check back tomorrow)":""}.</div>`}`;
+  const q = $("#q"); q.oninput = e => { S.q = e.target.value; const pos=q.selectionStart; renderExplore(); const n=$("#q"); n.focus(); n.setSelectionRange(pos,pos); };
+}
+
+/* ---------- Map ---------- */
+// Hand-drawn inner-Melbourne basemap (approximate geography), projected from lat/lng
+const MW=460, MH=1000, LAT0=-37.752, LATS=0.128, LNG0=144.932, LNGS=0.074;
+const P = (la,ln) => [((ln-LNG0)/LNGS*MW).toFixed(1), ((LAT0-la)/LATS*MH).toFixed(1)];
+const pts = a => a.map(([la,ln])=>P(la,ln).join(",")).join(" ");
+const MAPGEO = {
+  bay:[[-37.836,144.920],[-37.841,144.935],[-37.845,144.946],[-37.849,144.955],[-37.855,144.963],[-37.862,144.970],[-37.868,144.974],[-37.877,144.981],[-37.890,144.990],[-37.900,144.990],[-37.900,144.920]],
+  yarra:[[-37.822,144.925],[-37.8225,144.940],[-37.8215,144.950],[-37.8205,144.958],[-37.8195,144.964],[-37.8188,144.970],[-37.8195,144.976],[-37.822,144.981],[-37.8255,144.985],[-37.828,144.990],[-37.8305,144.995],[-37.832,145.000],[-37.828,145.006],[-37.820,145.012]],
+  parks:[
+    [[-37.836,144.962],[-37.837,144.975],[-37.852,144.979],[-37.856,144.968],[-37.846,144.960]],
+    [[-37.822,144.970],[-37.822,144.983],[-37.836,144.984],[-37.836,144.973]],
+    [[-37.810,144.978],[-37.810,144.982],[-37.8155,144.982],[-37.8155,144.978]],
+    [[-37.803,144.969],[-37.803,144.973],[-37.808,144.973],[-37.808,144.969]],
+    [[-37.816,144.980],[-37.816,144.988],[-37.823,144.988],[-37.822,144.980]],
+    [[-37.776,144.955],[-37.776,144.966],[-37.792,144.966],[-37.792,144.955]],
+  ],
+  roads:[
+    [[-37.818,144.968],[-37.836,144.973],[-37.856,144.982],[-37.880,144.988]],
+    [[-37.780,144.991],[-37.822,144.990]],[[-37.822,144.986],[-37.870,144.985]],
+    [[-37.808,144.977],[-37.760,144.979]],[[-37.808,144.983],[-37.760,144.984]],
+    [[-37.808,144.974],[-37.760,144.976]],[[-37.805,144.967],[-37.760,144.968]],
+    [[-37.807,144.959],[-37.760,144.957]],[[-37.795,144.966],[-37.792,145.006]],
+    [[-37.808,144.970],[-37.809,145.006]],[[-37.825,144.985],[-37.826,145.006]],
+    [[-37.818,144.991],[-37.819,145.006]],[[-37.838,144.976],[-37.840,145.006]],
+    [[-37.848,144.980],[-37.850,145.006]],[[-37.830,144.996],[-37.875,144.996]],
+    [[-37.856,144.977],[-37.861,144.972]],[[-37.840,144.942],[-37.828,144.948]],
+    [[-37.823,144.955],[-37.832,144.945]],[[-37.832,144.958],[-37.845,144.958]],
+  ],
+  grid:[[-37.8212,144.9553],[-37.8156,144.9738],[-37.8095,144.9722],[-37.8150,144.9530]],
+  labels:[["CBD",-37.8128,144.9555],["Carlton",-37.795,144.962],["Fitzroy",-37.788,144.9815],["Collingwood",-37.8045,144.9905],
+    ["East Melb",-37.8125,144.9865],["Richmond",-37.8165,145.0005],["Southbank",-37.8265,144.959],["South Melb",-37.833,144.952],
+    ["Port Melb",-37.8335,144.937],["Albert Park",-37.8465,144.9655],["South Yarra",-37.8465,144.9985],["St Kilda",-37.871,144.981]],
+};
+function mapSVG(){
+  const g=MAPGEO, [a,b,c,d]=g.grid, mix=(p,q,t)=>[p[0]+(q[0]-p[0])*t, p[1]+(q[1]-p[1])*t];
+  let grid="";
+  for(let i=0;i<=4;i++){ const s=mix(a,d,i/4), e=mix(b,c,i/4); grid+=`<polyline points="${pts([s,e])}"/>`; }
+  for(let j=0;j<=8;j++){ const s=mix(a,b,j/8), e=mix(d,c,j/8); grid+=`<polyline points="${pts([s,e])}"/>`; }
+  const [mx,my]=P(ME.lat,ME.lng);
+  return `<svg viewBox="0 0 ${MW} ${MH}" preserveAspectRatio="xMidYMid slice" onclick="if(event.target.closest('.pg'))return;S.selVenue=null;$('#mapcard').innerHTML='';drawPins()">
+    <rect width="${MW}" height="${MH}" fill="var(--land)"/>
+    ${g.parks.map(p=>`<polygon points="${pts(p)}" fill="var(--park)"/>`).join("")}
+    <ellipse cx="${P(-37.846,144.970)[0]}" cy="${P(-37.846,144.970)[1]}" rx="9" ry="34" fill="var(--water)"/>
+    <polygon points="${pts(g.grid)}" fill="var(--grid)"/>
+    <g stroke="var(--road)" stroke-width="1.6" fill="none">${grid}</g>
+    <g stroke="var(--road)" stroke-width="4" stroke-linecap="round" fill="none">${g.roads.map(r=>`<polyline points="${pts(r)}"/>`).join("")}</g>
+    <polygon points="${pts(g.bay)}" fill="var(--water)"/>
+    <polyline points="${pts(g.yarra)}" fill="none" stroke="var(--water)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text class="water-lbl" x="${P(-37.874,144.952)[0]}" y="${P(-37.874,144.952)[1]}">Port Phillip Bay</text>
+    <text class="water-lbl" x="${P(-37.8268,144.931)[0]}" y="${P(-37.8268,144.931)[1]}">Yarra River</text>
+    ${g.labels.map(([t,la,ln])=>{const [x,y]=P(la,ln);return `<text class="lbl" x="${x}" y="${y}" text-anchor="middle">${t}</text>`}).join("")}
+    <circle cx="${mx}" cy="${my}" r="11" fill="#2f80ed" opacity=".2"/><circle cx="${mx}" cy="${my}" r="5.5" fill="#2f80ed" stroke="#fff" stroke-width="2.5"/>
+    <g id="pins"></g></svg>`;
+}
+function renderMap(){
+  $("#view").innerHTML = `<div id="map">${mapSVG()}</div>
+    <div class="map-top"><label class="search" style="margin-top:0">${ICON.explore}<input id="mapq" placeholder="Search this area" oninput="S.q=this.value;drawPins()"></label>${filtersHTML()}</div>
+    <div id="mapcard"></div>`;
+  $("#view").style.padding = "0";
+  drawPins();
+}
+function drawPins(){
+  const sel = S.selVenue;
+  $("#pins").innerHTML = visible().sort((x,y)=>(x.id===sel)-(y.id===sel)).map(v=>{
+    const best = Math.max(...v.deals.filter(dealOk).map(d=>d[2])), [x,y]=P(v.lat,v.lng);
+    return `<g class="pg ${sel===v.id?"sel":""}" transform="translate(${x},${y})" onclick="pickPin('${v.id}')">
+      <rect x="-17" y="-25" width="34" height="18" rx="7"/><path d="M-5 -8 L0 -2 L5 -8z" style="fill:${sel===v.id?"var(--brand)":"var(--accent)"}"/>
+      <text y="-12.5" text-anchor="middle">${best}%</text></g>`;
+  }).join("");
+}
+function pickPin(id){ S.selVenue=id; drawPins(); $("#mapcard").innerHTML = venueCard(VENUES.find(v=>v.id===id),"map-card"); }
+
+/* ---------- My deals ---------- */
+function renderDeals(){
+  const act = S.vouchers.filter(v=>!v.used);
+  $("#view").innerHTML = `<div class="pad"><div class="title" style="margin-top:6px">My deals</div></div>
+   ${act.length ? act.map((x)=>{ const v=VENUES.find(z=>z.id===x.venue); return `
+     <div class="card" onclick="openVoucher('${x.code}')"><div class="cbody" style="display:flex;gap:12px;align-items:center">
+       <div style="width:54px;height:54px;border-radius:14px;background:${grad(v)};color:#fff;display:grid;place-items:center;font-weight:800">${x.pct}%</div>
+       <div style="flex:1"><div class="cname">${v.name}</div><div class="cmeta">${x.svc} · ${span(x.slot)} today</div>
+       <div class="cmeta" style="color:${x.method==="venue"?"var(--accent)":"var(--brand-2)"};font-weight:600">${x.method==="venue"?"Pay at venue · "+money(x.total):"Paid · "+money(x.total)}</div></div>
+       <span style="font-family:ui-monospace,monospace;font-weight:700;font-size:12px">${x.code}</span></div></div>`;}).join("")
+     : `<div class="empty">No deals yet.<br><br><button class="chip on" onclick="go('explore')">Find a deal</button></div>`}`;
+}
+
+/* ---------- Profile ---------- */
+function renderProfile(){
+  $("#view").innerHTML = `<div class="pad"><div class="title" style="margin-top:6px">Profile</div></div>
+  <div class="plus"><h3>Kneadly Plus ${S.plus?"✓":""}</h3><p>An extra 10% off every deal, early access to evening slots and no booking fees. $7.99/month (demo).</p>
+    <button onclick="S.plus=!S.plus;save();render();toast(S.plus?'Plus activated (demo)':'Plus cancelled')">${S.plus?"Cancel membership":"Try free for 30 days"}</button></div>
+  <div class="block"><h3>Payment methods <span>Demo, nothing stored</span></h3>${payList(false)}</div>
+  <div class="block"><h3>Account</h3>
+    <div class="list-item"><span class="n">Favourites<small>${S.fav.size} saved venue${S.fav.size===1?"":"s"}</small></span></div>
+    <div class="list-item"><span class="n">Deal history<small>${S.vouchers.length} booking${S.vouchers.length===1?"":"s"}</small></span></div>
+    <div class="list-item"><span class="n">Notifications<small>Alert me when a favourite drops a 40%+ deal</small></span></div>
+    <div class="list-item"><button class="n" style="text-align:left;color:var(--accent);font-weight:600" onclick="S.vouchers=[];S.fav.clear();S.plus=false;save();render();toast('Demo data reset')">Reset demo data</button></div>
+  </div>`;
+}
+
+/* ---------- Venue sheet ---------- */
+function openVenue(id){
+  const v = VENUES.find(x=>x.id===id);
+  const first = v.deals.filter(dealOk)[0] || v.deals.find(live);
+  S.book = {venue:id, slot:first ? v.deals.indexOf(first) : null, svc:0};
+  renderVenue(); $("#sheet").scrollTop=0; $("#sheet").classList.add("open");
+}
+function renderVenue(){
+  const v = VENUES.find(x=>x.id===S.book.venue), b=S.book, d = b.slot!=null ? v.deals[b.slot] : null;
+  const mapsUrl = "https://www.google.com/maps/search/?api=1&query="+v.lat+","+v.lng;
+  $("#sheet").innerHTML = `
+   <div class="vhero" style="background:${grad(v)}"><button class="back" onclick="closeSheet('#sheet')">${ICON.back}</button>
+     <span class="mono">${initials(v.name)}</span><h1>${v.name}</h1><p>${v.area} · ${km(v)} away</p></div>
+   <div class="block"><div style="font-size:14px;line-height:1.45">${v.blurb}</div>
+     <div class="info-row">📍 ${v.addr} · <a href="${mapsUrl}" target="_blank" rel="noopener">Directions</a></div>
+     <div class="info-row">🏷️ ${v.cats.join(" · ")}</div></div>
+   <div class="block"><h3>1. Pick a deal time <span>Today</span></h3><div class="slotgrid">
+     ${v.deals.map((x,i)=>`<button class="slotbtn ${b.slot===i?"on":""}" ${live(x)?"":"disabled"} onclick="S.book.slot=${i};renderVenue()"><b>${x[2]}%</b>${span(x)}<br><small>${live(x)?x[3]+" left":"Ended"}</small></button>`).join("")}</div></div>
+   <div class="block"><h3>2. Choose a treatment <span>Sample prices</span></h3>
+     ${v.svcs.map((s,i)=>`<div class="svc ${b.svc===i?"on":""}" onclick="S.book.svc=${i};renderVenue()"><span class="radio"></span>
+       <span class="n">${s[0]}<small>${s[1]} min</small></span>
+       <span class="price">${d?`<s>${money(s[2])}</s><b>${money(s[2]*(1-d[2]/100))}</b>`:money(s[2])}</span></div>`).join("")}</div>
+   <div class="cta-bar"><button class="cta" ${d?"":"disabled"} onclick="openCheckout()"><span>${d?"Book "+d[2]+"% off":"No deals left today"}</span><span>${d?money(v.svcs[b.svc][2]*(1-d[2]/100))+" →":""}</span></button></div>`;
+}
+function closeSheet(sel){ $(sel).classList.remove("open"); }
+
+/* ---------- Checkout ---------- */
+const APPLE = '<svg width="13" height="15" viewBox="0 0 17 20" style="vertical-align:-1px;margin-right:2px" fill="currentColor"><path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 2 5.8 1.1 7.4c-1.9 3.2-.5 8 1.3 10.6.9 1.3 2 2.7 3.3 2.7 1.3-.1 1.8-.9 3.4-.9s2 .9 3.4.8c1.4 0 2.3-1.3 3.1-2.6 1-1.5 1.4-2.9 1.4-3-.1 0-2.9-1.1-2.9-4.4zM11.5 3c.7-.9 1.2-2 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.1.1 2.3-.6 3-1.5z"/></svg>';
+const PAYS = [
+  {id:"apple", name:"Apple Pay", sub:"Face ID", logo:`<span class="logo" style="background:#000;color:#fff">${APPLE}Pay</span>`},
+  {id:"card", name:"Visa •••• 4242", sub:"Demo test card", logo:'<span class="logo" style="background:#1a1f71;color:#fff;font-style:italic">VISA</span>'},
+  {id:"paypal", name:"PayPal", sub:"Log in to pay", logo:'<span class="logo" style="background:#ffc439;color:#003087">PayPal</span>'},
+  {id:"afterpay", name:"Afterpay", sub:"4 interest-free payments", logo:'<span class="logo" style="background:#b2fce4;color:#000">after</span>'},
+  {id:"venue", name:"Pay at venue", sub:"Lock in the deal now, pay at reception", logo:'<span class="logo" style="background:var(--chip);font-size:16px">🏪</span>'},
+];
+function payList(selectable, total){
+  return PAYS.map(p=>`<div class="pm ${selectable&&S.pay===p.id?"on":""}" ${selectable?`onclick="S.pay='${p.id}';renderCheckout()"`:""}>
+    ${selectable?'<span class="radio"></span>':""}${p.logo}<span class="n">${p.name}<small>${p.id==="afterpay"&&total?"4 × "+money(total/4)+" fortnightly":p.sub}</small></span></div>`).join("")
+    + (selectable?"":`<div class="pm" onclick="toast('Card entry is disabled in this demo')"><span class="logo" style="background:var(--chip)">＋</span><span class="n">Add card<small>Disabled in demo</small></span></div>`);
+}
+function calc(){
+  const v = VENUES.find(x=>x.id===S.book.venue), d=v.deals[S.book.slot], s=v.svcs[S.book.svc];
+  const base=s[2], deal=base*d[2]/100; let after=base-deal;
+  const plus = S.plus ? after*0.10 : 0; after-=plus;
+  let promo=0; const P=S.book.promo&&PROMOS[S.book.promo]; if(P) promo = P.type==="pct"? after*P.v/100 : Math.min(P.v,after); after-=promo;
+  const fee = S.plus||S.pay==="venue" ? 0 : 0.99;
+  return {v,d,s,base,deal,plus,promo,P,fee,total:Math.round((after+fee)*100)/100};
+}
+function openCheckout(){ S.book.promo=null; renderCheckout(); $("#sheet2").scrollTop=0; $("#sheet2").classList.add("open"); }
+function renderCheckout(){
+  const c = calc();
+  $("#sheet2").innerHTML = `
+   <div class="plain-head"><button class="back" onclick="closeSheet('#sheet2')">${ICON.back}</button><h2>Checkout</h2></div>
+   <div class="block"><div style="display:flex;gap:12px;align-items:center">
+     <div style="width:50px;height:50px;border-radius:14px;background:${grad(c.v)};color:#fff;display:grid;place-items:center;font-weight:800">${c.d[2]}%</div>
+     <div><div class="cname">${c.v.name}</div><div class="cmeta">${c.s[0]} · ${c.s[1]} min · Arrive ${span(c.d)} today</div></div></div></div>
+   <div class="block"><h3>Summary</h3>
+     <div class="line"><span>${c.s[0]}</span><span>${money(c.base)}</span></div>
+     <div class="line save"><span>Deal discount (${c.d[2]}%)</span><span>−${money(c.deal)}</span></div>
+     ${c.plus?`<div class="line save"><span>Kneadly Plus (10%)</span><span>−${money(c.plus)}</span></div>`:""}
+     ${c.promo?`<div class="line save"><span>${c.P.label}</span><span>−${money(c.promo)}</span></div>`:""}
+     <div class="line"><span>Booking fee</span><span>${c.fee?money(c.fee):"Free"}</span></div>
+     <div class="line total"><span>${S.pay==="venue"?"Pay at venue":"Total"}</span><span>${money(c.total)}</span></div>
+     <div class="note">You save ${money(c.deal+c.plus+c.promo)}.${S.pay==="venue"?" The deal is held for your arrival window. Show the voucher at reception and pay there.":""}</div></div>
+   <div class="block"><h3>Promo code</h3><div class="promo"><input id="promo" placeholder="e.g. WELCOME10" value="${S.book.promo||""}"><button onclick="applyPromo()">Apply</button></div>
+     <div class="note ${S.book.promo?"ok":""}">${S.book.promo?"✓ "+PROMOS[S.book.promo].label+" applied":"Demo codes: WELCOME10, MELB5"}</div></div>
+   <div class="block"><h3>Pay with</h3>${payList(true,c.total)}</div>
+   ${S.plus?"":`<div class="block" style="background:var(--brand-soft);box-shadow:none"><div style="font-size:13px"><b>Get another ${money(c.base*(1-c.d[2]/100)*0.1)} off</b> and no booking fee with Kneadly Plus. <a href="#" onclick="S.plus=true;save();renderCheckout();toast('Plus activated (demo)');return false" style="color:var(--brand);font-weight:700">Try free</a></div></div>`}
+   <div class="cta-bar">${S.pay==="apple"
+     ? `<button class="cta black" onclick="applePay()">Pay with <b style="font-size:18px">${APPLE}Pay</b></button>`
+     : `<button class="cta" onclick="pay()"><span>${S.pay==="venue"?"Reserve deal":S.pay==="afterpay"?"Continue with Afterpay":S.pay==="paypal"?"Continue to PayPal":"Pay now"}</span><span>${money(S.pay==="afterpay"?c.total/4:c.total)}${S.pay==="afterpay"?" today":""}</span></button>`}</div>`;
+}
+function applyPromo(){ const v=$("#promo").value.trim().toUpperCase(); if(PROMOS[v]){S.book.promo=v; renderCheckout();} else toast(v?"Code not valid":"Enter a code"); }
+function applePay(){
+  const c = calc();
+  $("#applesheet").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:20px">${APPLE}Pay</b><button onclick="cancelApple()" style="color:#0a84ff">Cancel</button></div>
+    <div class="row" style="margin-top:10px"><span style="color:#777">Card</span><span>Demo card •••• 4242</span></div>
+    <div class="row"><span style="color:#777">Pay</span><span><b>KNEADLY (DEMO) ${money(c.total)}</b></span></div>
+    <div class="face">☺</div><div class="side-btn" id="apstatus">Confirm with side button</div>`;
+  $("#scrim").classList.add("open"); $("#applesheet").classList.add("open");
+  setTimeout(()=>{ const s=$("#apstatus"); if(s) s.innerHTML='<b style="color:#34c759">✓ Done</b>'; },1300);
+  setTimeout(()=>{ cancelApple(); pay(); },2000);
+}
+function cancelApple(){ $("#scrim").classList.remove("open"); $("#applesheet").classList.remove("open"); }
+function pay(){
+  const c = calc();
+  const code = "KN-" + Math.random().toString(36).slice(2,7).toUpperCase();
+  const voucher = {code, venue:c.v.id, svc:c.s[0], mins:c.s[1], slot:c.d, pct:c.d[2], total:c.total, method:S.pay, at:Date.now()};
+  S.vouchers.unshift(voucher); save();
+  closeSheet("#sheet2"); closeSheet("#sheet");
+  openVoucher(code, true);
+}
+
+/* ---------- Voucher ---------- */
+function qrSVG(seed){
+  let h=0; for(const ch of seed) h=(h*31+ch.charCodeAt(0))>>>0;
+  const rnd=()=>{h^=h<<13;h^=h>>>17;h^=h<<5;return (h>>>0)/4294967296;};
+  const N=25, cells=[]; const finder=(x,y)=>[[x,y,7,7,"#000"],[x+1,y+1,5,5,"#fff"],[x+2,y+2,3,3,"#000"]];
+  const inF=(i,j)=>(i<8&&j<8)||(i>N-9&&j<8)||(i<8&&j>N-9);
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++) if(!inF(i,j)&&rnd()>.52) cells.push(`<rect x="${i}" y="${j}" width="1" height="1"/>`);
+  const f=[...finder(0,0),...finder(N-7,0),...finder(0,N-7)].map(r=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" fill="${r[4]}"/>`).join("");
+  return `<svg class="qr" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges">${cells.join("")}${f}</svg>`;
+}
+function openVoucher(code, fresh){
+  const x=S.vouchers.find(z=>z.code===code), v=VENUES.find(z=>z.id===x.venue);
+  const left=Math.max(0,(x.slot[1]-nowH())*3.6e6), h=Math.floor(left/3.6e6), m=Math.floor(left%3.6e6/6e4);
+  $("#sheet").innerHTML = `
+   <div class="plain-head"><button class="back" onclick="closeSheet('#sheet');S.tab='deals';render()">${ICON.back}</button><h2>${fresh?"You're booked":"Your voucher"}</h2></div>
+   ${fresh?`<div class="check">✓</div><p style="text-align:center;margin-top:10px;font-size:14px;color:var(--muted)">${x.method==="venue"?"Deal reserved. Pay at reception.":"Payment successful (demo)."}</p>`:""}
+   <div class="voucher">
+     <div class="vtop"><div style="font-size:13px;opacity:.85">${v.name}</div><div class="big">${x.pct}% off</div><div style="font-size:13px;opacity:.9">${x.svc} · ${x.mins} min</div></div>
+     <div class="vbody">${qrSVG(x.code)}<div class="code">${x.code}</div>
+       <div class="note">Show this at reception. The QR code is a placeholder in this demo.</div>
+       <span class="timer">${left?`Arrive ${span(x.slot)} · ${h}h ${m}m left`:"Arrival window has ended"}</span>
+       <div class="vgrid"><div><small>Where</small>${v.addr}</div><div><small>When</small>Today, ${span(x.slot)}</div>
+         <div><small>${x.method==="venue"?"Pay at venue":"Paid"}</small>${money(x.total)}</div><div><small>Method</small>${PAYS.find(p=>p.id===x.method).name}</div></div>
+     </div></div>
+   <div style="padding:0 16px 30px;display:flex;gap:10px">
+     <a class="cta" style="justify-content:center;text-decoration:none;flex:1" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${v.lat},${v.lng}">Directions</a>
+     <button class="cta" style="justify-content:center;flex:1;background:var(--chip);color:var(--ink)" onclick="redeem('${x.code}')">Mark redeemed</button></div>`;
+  $("#sheet").scrollTop=0; $("#sheet").classList.add("open"); renderTabs();
+}
+function redeem(code){ const x=S.vouchers.find(z=>z.code===code); x.used=true; save(); closeSheet("#sheet"); S.tab="deals"; render(); toast("Enjoy your massage!"); }
+
+/* ---------- Render ---------- */
+function render(){
+  $("#view").style.padding=""; $("#view").scrollTop=0;
+  ({explore:renderExplore, map:renderMap, deals:renderDeals, profile:renderProfile})[S.tab]();
+  renderTabs();
+}
+function tick(){ const d=new Date(); $("#clock").textContent=d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); }
+tick(); setInterval(tick,30000);
+function fit(){ const p=$("#phone"); p.style.zoom = innerWidth>760 ? Math.min(1,(innerHeight-48)/868) : 1; }
+fit(); addEventListener("resize",fit);
+render();
+</script>
+
+
+</body></html>
