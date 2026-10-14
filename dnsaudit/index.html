@@ -134,7 +134,9 @@ td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
 .cta{margin-top:28px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:22px;padding:26px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
 .cta h3{font-size:20px}.cta p{opacity:.85;font-size:14.5px}
 .cta .btn{background:#fff;color:#0b3b4a}
-.alert{margin-top:18px;background:linear-gradient(135deg,#c8372d,#e05a4f);color:#fff;border-radius:16px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 8px 26px rgba(200,55,45,.28)}
+.alert{margin-top:18px;background:linear-gradient(135deg,#c8372d,#e05a4f);color:#fff;border-radius:16px;padding:18px 20px;box-shadow:0 8px 26px rgba(200,55,45,.28)}
+.alertrow{display:flex;gap:14px;align-items:flex-start}
+.alertrow+.alertrow{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.22)}
 .alert .ic{font-size:26px;line-height:1.1;flex:none}
 .alert h3{font-size:18px;margin:0 0 4px;color:#fff}
 .alert p{margin:0;opacity:.96;font-size:14px;line-height:1.5}
@@ -203,7 +205,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   <div class="radar"><canvas id="radar" aria-hidden="true"></canvas><div class="rl"><b id="qc">0</b><span>DNS queries</span></div></div>
 </div>
 <div class="wrap" style="padding-bottom:40px">
-  <div class="checks"><span>DNSSEC</span><span>SPF</span><span>DMARC</span><span>DKIM</span><span>MTA-STS</span><span>TLS-RPT</span><span>DANE</span><span>CAA</span><span>Name servers</span><span>SOA</span><span>Registrar lock</span><span>Expiry</span><span>Subdomain takeover</span><span>Lookalike domains</span><span>Wildcards</span><span>Exposed records</span></div>
+  <div class="checks"><span>DNSSEC</span><span>SPF</span><span>DMARC</span><span>DKIM</span><span>MTA-STS</span><span>TLS-RPT</span><span>DANE</span><span>CAA</span><span>Name servers</span><span>SOA</span><span>Registrar lock</span><span>Expiry</span><span>Subdomain takeover</span><span>Attack surface</span><span>Open ports</span><span>Known CVEs</span><span>Lookalike domains</span><span>Wildcards</span><span>Exposed records</span></div>
 </div>
 </section>
 
@@ -275,7 +277,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const T={A:1,NS:2,CNAME:5,SOA:6,MX:15,TXT:16,AAAA:28,DS:43,DNSKEY:48,TLSA:52,HTTPS:65,CAA:257};
 const TN=Object.fromEntries(Object.entries(T).map(([k,v])=>[v,k]));
 const RC={0:'NOERROR',1:'FORMERR',2:'SERVFAIL',3:'NXDOMAIN',5:'REFUSED','-1':'ERROR'};
-const CATS={reg:['Registration','🏷️'],ns:['Name servers','🧭'],soa:['SOA & zone','📜'],dnssec:['DNSSEC','🔏'],web:['Web & certificates','🌐'],mx:['Mail servers','📮'],spf:['SPF','✉️'],dmarc:['DMARC','🛡️'],dkim:['DKIM & mail transport','🔑'],sub:['Subdomains & takeover','🧩'],typo:['Lookalike domains','🎭'],hyg:['Hygiene & exposure','🧹']};
+const CATS={reg:['Registration','🏷️'],ns:['Name servers','🧭'],soa:['SOA & zone','📜'],dnssec:['DNSSEC','🔏'],web:['Web & certificates','🌐'],mx:['Mail servers','📮'],spf:['SPF','✉️'],dmarc:['DMARC','🛡️'],dkim:['DKIM & mail transport','🔑'],sub:['Subdomains & takeover','🧩'],surf:['Attack surface','📡'],typo:['Lookalike domains','🎭'],hyg:['Hygiene & exposure','🧹']};
 const W={fail:{high:15,med:8,low:4},warn:{high:8,med:4,low:2}};
 const ORDER={fail:0,warn:1,pass:2,info:3};
 const SEVO={high:0,med:1,low:2};
@@ -576,6 +578,7 @@ async function chkSub(c){
   const res=await Promise.all(names.map(async n=>{const r=await dq(n,'A');const cn=r.ans.filter(a=>a.type===5).map(a=>nd(a.data));const ips=R(r,'A');let v6=[];
     if(r.status===0&&!ips.length&&cn.length)v6=R(await dq(n,'AAAA'),'AAAA');return {n,status:r.status,cn,ips,v6}}));
   const live=res.filter(x=>x.status===0&&(x.ips.length||x.v6.length||x.cn.length)&&!(wildcard&&!x.cn.length&&x.ips.slice().sort().join(',')===wkey));
+  ctx.surfIPs=[...new Set([...MAP.ip.map(x=>x.label),...[].concat(...live.map(x=>x.ips))])].filter(ip=>/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)&&!isPriv(ip)).slice(0,24);
   const dang=res.filter(x=>x.cn.length&&(x.status===3||(x.status===0&&!x.ips.length&&!x.v6.length)));
   await Promise.all(dang.map(async x=>{const tgt=x.cn[x.cn.length-1],svc=takeSvc(x.cn),fix=`Delete the CNAME for ${x.n}, or re-create the resource it points to.`;
     if(x.status!==3){add('sub','warn',`CNAME target has no address: ${x.n}`,`Points to ${tgt}, which exists but has no A/AAAA record.${svc?` It is hosted on ${svc}; check the resource still exists.`:''}`,{sev:svc?'med':'low',fix});return}
@@ -607,6 +610,27 @@ function chkHyg(c){
 }
 
 /* ---------- run ---------- */
+/* ---------- external attack surface (passive, via backend Shodan InternetDB) ---------- */
+const PORTN={21:'FTP',22:'SSH',23:'Telnet',25:'SMTP',53:'DNS',80:'HTTP',110:'POP3',135:'MS-RPC',139:'NetBIOS',143:'IMAP',161:'SNMP',443:'HTTPS',445:'SMB',465:'SMTPS',587:'SMTP',993:'IMAPS',995:'POP3S',1433:'MSSQL',1521:'Oracle DB',2375:'Docker API',3306:'MySQL',3389:'RDP',5432:'PostgreSQL',5601:'Kibana',5900:'VNC',5984:'CouchDB',6379:'Redis',8080:'HTTP-alt',8443:'HTTPS-alt',9200:'Elasticsearch',11211:'Memcached',27017:'MongoDB'};
+const RISKYP=new Set([21,23,135,139,445,161,1433,1521,2375,3306,3389,5432,5601,5900,5984,6379,9200,11211,27017]);
+async function chkSurface(){
+  const ips=ctx.surfIPs||[],N={node:''};
+  if(!ips.length)return;
+  let data=null;
+  try{const resp=await fetchT(API+'/surface',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ips})},40000);data=resp.ok?await resp.json():null}catch(e){}
+  if(!data||!Array.isArray(data.hosts)){return}
+  const hosts=data.hosts;
+  const vulnAll=[...new Set([].concat(...hosts.map(h=>h.vulns||[])))];
+  const riskyAll=[...new Set([].concat(...hosts.map(h=>(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p))))];
+  ctx.surface={hosts:hosts.length,vulns:vulnAll,risky:riskyAll};
+  if(!hosts.length){add('surf','pass','No notable exposure in public scan data',`Checked ${ips.length} internet-facing address${ips.length>1?'es':''} against Shodan's public scan database. Nothing notable is exposed, or these hosts aren't indexed.`,N);return}
+  const fmt=h=>(h.ports||[]).map(p=>PORTN[p]?`${p} (${PORTN[p]})`:`${p}`).join(', ');
+  const vulnHosts=hosts.filter(h=>h.vulns&&h.vulns.length),riskyHosts=hosts.filter(h=>(h.ports||[]).some(p=>RISKYP.has(p)));
+  add('surf','info',`${hosts.length} internet-facing host${hosts.length>1?'s':''} seen in public scans`,hosts.map(h=>`${h.ip}${h.hostnames&&h.hostnames.length?' ('+h.hostnames[0]+')':''}: ${fmt(h)||'—'}`).join('\n')+'\nFrom Shodan\'s public internet scans (not a scan by us). Each is reachable from anywhere — make sure it\'s meant to be.',N);
+  if(vulnHosts.length)add('surf','fail','Known vulnerabilities on an exposed host',vulnHosts.map(h=>`${h.ip}: ${h.vulns.slice(0,8).join(', ')}${h.vulns.length>8?` +${h.vulns.length-8} more`:''}`).join('\n')+'\nShodan matched the software banners on these hosts to published CVEs. These are potential, not confirmed — verify the version, then patch.',{sev:'high',fix:'Identify the service on each host, confirm its version, and apply the vendor patch or mitigation. If it doesn\'t need to be public, put it behind a VPN or an IP allow-list.',...N});
+  if(riskyHosts.length)add('surf','warn','Sensitive service exposed to the internet',riskyHosts.map(h=>`${h.ip}: ${(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p).join(', ')}`).join('\n')+'\nRemote-access, database and admin services are prime ransomware entry points and should rarely face the public internet.',{sev:'high',fix:'Restrict these to a VPN or IP allow-list, require MFA, and keep them patched. Databases and remote-access ports should not be internet-facing.',...N});
+  if(!vulnHosts.length&&!riskyHosts.length)add('surf','pass','Only standard web services exposed','Exposed hosts serve normal web ports with no flagged vulnerabilities in the scan data.',N);
+}
 /* ---------- lookalike / typosquat domains ---------- */
 const TYSUF=['com','com.au','net','net.au','org','org.au','co','io','app','online','site','xyz','info','biz'];
 const HOMO=[['o','0'],['l','1'],['i','1'],['i','l'],['l','i'],['e','3'],['s','5'],['b','6'],['g','9'],['u','v'],['m','rn'],['w','vv'],['cl','d'],['n','m'],['rn','m']];
@@ -643,7 +667,7 @@ async function chkTypo(){
   if(live.length)add('typo','warn','Look-alike domain hosts a live website',live.map(x=>x.d).join(', ')+'. A look-alike with a website can host a phishing copy of your login or payment page.',{sev:'med',fix:'Check what it serves. If it imitates you, report it and consider a takedown request.',...N});
   if(parked.length)add('typo','info','Look-alike domains parked',parked.map(x=>x.d).join(', ')+'. No email or website yet — often held by squatters, or registered defensively.',N);
 }
-const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web & CAA','Mail servers','SPF','DMARC','DKIM & transport','Subdomains & takeover','Lookalike domains','Server-side tests','Hygiene'];
+const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web & CAA','Mail servers','SPF','DMARC','DKIM & transport','Subdomains & takeover','Attack surface','Lookalike domains','Server-side tests','Hygiene'];
 async function chkServer(){
   const r=await ctx.srvP;
   if(!r||!Array.isArray(r.checks)){ctx.srv=false;return}
@@ -686,6 +710,7 @@ async function run(input){
   await Promise.all([step('Registration',chkReg),step('Name servers',()=>chkNS(c)),step('SOA',()=>chkSOA(c)),step('DNSSEC',()=>chkDNSSEC(c)),step('Web & CAA',()=>chkWeb(c))]);
   await step('Mail servers',()=>chkMX(c));
   await Promise.all([step('SPF',()=>chkSPF(c)),step('DMARC',()=>chkDMARC(c)),step('DKIM & transport',()=>chkDKIM(c)),step('Subdomains & takeover',()=>chkSub(c))]);
+  await step('Attack surface',chkSurface);
   await step('Lookalike domains',chkTypo);
   await step('Server-side tests',chkServer);
   await step('Hygiene',()=>chkHyg(c));
@@ -750,8 +775,13 @@ function render(){
   $('#rmeta').textContent=`${new Date(LAST.date).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})} · ${LAST.queries} queries${LAST.server?' + server-side tests':''} · ${LAST.seconds}s`;
   const n=s=>CK.filter(c=>c.status===s).length;
   $('#counts').innerHTML=[['fail','Fix now'],['warn','Improve'],['pass','Good'],['info','Info']].map(([s,l])=>`<div><b style="color:var(--${s})">${n(s)}</b><span>${l}</span></div>`).join('');
-  const tmx=(ctx.typo&&ctx.typo.mx)||[],al=$('#alert');
-  if(al){if(tmx.length){al.style.display='';al.innerHTML=`<div class="ic">⚠️</div><div><h3>Look-alike domains are set up to send email as you</h3><p>These near-copies of <b>${esc(D)}</b> have mail servers configured, so someone could send convincing phishing that looks like it came from your business:</p><div class="doms">${tmx.map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>If you don't own these, report them to <a href="https://www.cyber.gov.au/report" target="_blank" rel="noopener">ACSC ReportCyber</a> and the registrar, warn your staff and customers, and consider registering the most convincing ones yourself. <a onclick="document.querySelector('[data-p=all]').click();const g=document.getElementById('g-typo');if(g){g.open=true;g.scrollIntoView({behavior:'smooth'})}">See details ↓</a></p></div>`}else al.style.display='none'}
+  const al=$('#alert');
+  if(al){
+    const tmx=(ctx.typo&&ctx.typo.mx)||[],svuln=(ctx.surface&&ctx.surface.vulns)||[],jump=g=>`<a onclick="document.querySelector('[data-p=all]').click();const g=document.getElementById('g-${g}');if(g){g.open=true;g.scrollIntoView({behavior:'smooth'})}">See details ↓</a>`,rows=[];
+    if(svuln.length)rows.push(`<div class="ic">⚠️</div><div><h3>An internet-facing host has known vulnerabilities</h3><p>Public scan data matched exposed service(s) on <b>${esc(D)}</b> to published CVEs:</p><div class="doms">${svuln.slice(0,12).map(v=>`<span>${esc(v)}</span>`).join('')}</div><p>Confirm the affected versions and patch urgently, or take the service off the public internet. ${jump('surf')}</p></div>`);
+    if(tmx.length)rows.push(`<div class="ic">⚠️</div><div><h3>Look-alike domains are set up to send email as you</h3><p>These near-copies of <b>${esc(D)}</b> have mail servers configured, so someone could send convincing phishing that looks like it came from your business:</p><div class="doms">${tmx.map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>If you don't own these, report them to <a href="https://www.cyber.gov.au/report" target="_blank" rel="noopener">ACSC ReportCyber</a> and the registrar, warn your staff and customers, and consider registering the most convincing ones yourself. ${jump('typo')}</p></div>`);
+    if(rows.length){al.style.display='';al.innerHTML=rows.map(r=>`<div class="alertrow">${r}</div>`).join('')}else al.style.display='none';
+  }
   $('#cats').innerHTML=Object.entries(CATS).filter(([k])=>CK.some(c=>c.cat===k)).map(([k,[l,ic]])=>{const s=scoreOf(CK.filter(c=>c.cat===k),3);return `<div class="cat" data-cat="${k}"><span>${ic}</span><span>${l}</span><em>${s}</em><div class="bar"><i style="background:${colOf(s)}" data-w="${s}"></i></div></div>`}).join('');
   requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll('.cat .bar i').forEach(i=>i.style.width=i.dataset.w+'%')));
   document.querySelectorAll('.cat').forEach(el=>el.onclick=()=>{tab('all');const g=document.getElementById('g-'+el.dataset.cat);if(g){g.open=true;g.scrollIntoView({behavior:'smooth',block:'start'})}});
@@ -761,7 +791,7 @@ function render(){
     return `<details class="group" id="g-${k}" ${L.some(c=>c.status==='fail')?'open':''}><summary>${ic} ${l}<span class="sc">${cnt}</span></summary><div class="items">${L.map(c=>`<div class="item"><div class="st ${c.status}">${ICON[c.status]}</div><div><h4>${esc(c.title)}</h4><p>${esc(c.detail)}</p>${c.fix?`<p class="fix"><b style="color:var(--accent)">Fix:</b> ${esc(c.fix)}</p>`:''}${snip(c.snip)}</div></div>`).join('')}</div></details>`}).join('');
   $('#raw').innerHTML=`<table><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Data</th></tr></thead><tbody>${RAW.filter(r=>r.ans.length||r.status!==3).sort((a,b)=>a.name.localeCompare(b.name)||a.type.localeCompare(b.type)).map(r=>`<tr><td class="d">${esc(r.name)}</td><td>${esc(r.type)}</td><td>${esc(RC[r.status]||r.status)}</td><td class="d">${r.ans.map(a=>`${esc(TN[a.type]||a.type)} ${esc(a.data)} <span style="color:var(--muted)">TTL ${a.TTL}</span>`).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`;
   renderServices();
-  try{fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,services:detectServices(),typo:ctx.typo||null})},8000).catch(()=>{})}catch(e){}
+  try{fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,services:detectServices(),typo:ctx.typo||null,surface:ctx.surface||null})},8000).catch(()=>{})}catch(e){}
   drawMap();
   document.querySelectorAll('.snip button').forEach(b=>b.onclick=()=>copyText(b.parentElement.querySelector('code').textContent));
   tab('recs');
