@@ -136,7 +136,7 @@ td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
 .cta .btn{background:#fff;color:#0b3b4a}
 .learn{margin-top:28px}
 .learn h3{font-size:19px;margin-bottom:4px}.learn>p{color:var(--muted);font-size:14.5px;margin-bottom:14px}
-.learn .lg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.learn .lg{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
 .learn a{display:block;text-decoration:none;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px 16px;transition:border-color .15s,transform .15s}
 .learn a:hover{border-color:var(--accent);transform:translateY(-2px)}
 .learn a b{display:block;font-size:15px;margin-bottom:2px}.learn a span{font-size:13px;color:var(--muted);line-height:1.4;display:block}
@@ -228,7 +228,8 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
       <div class="lg">
         <a href="/blog/how-to-read-dns-audit-report/"><em>KNOWLEDGE BASE</em><b>How to read your report</b><span>The grade, the labels, every section, and the findings people ask about most.</span></a>
         <a href="/blog/dmarc-explained/"><em>EMAIL SECURITY</em><b>DMARC explained</b><span>How SPF, DKIM and DMARC work together, with a hands-on lab.</span></a>
-        <a href="/blog/read-your-email-dns/"><em>HOW IT WORKS</em><b>What your DNS says about you</b><span>What each record means, what should be public, and what to clean up.</span></a>
+        <a href="/blog/read-your-email-dns/"><em>HOW IT WORKS</em><b>What your DNS exposes</b><span>Email, web and subdomain records: what should be public, and what to clean up.</span></a>
+        <a href="/blog/dns-saas-footprint/"><em>SAAS &amp; VENDORS</em><b>The software in your DNS</b><span>How SPF, DKIM and verification records list your tools, and how to tidy them.</span></a>
       </div></div>
     <div class="panel mon" id="mon"><div><h3>📬 Get an email if this changes</h3><p>We'll re-check <b id="mondom">this domain</b> every morning and email you only when something gets worse or gets fixed: an expiring certificate or domain, a removed DMARC record, a new risky subdomain and more. Free.</p><p class="fine">Your email is stored in Azure (Australia) only for these alerts. One-click unsubscribe in every email. <a href="/privacy.html">Privacy policy</a>.</p></div>
       <form id="monf" novalidate><input type="email" id="mone" placeholder="you@company.com.au" autocomplete="email" aria-label="Email address" required><input type="text" id="monhp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px"><button class="btn" id="monb">Monitor</button></form>
