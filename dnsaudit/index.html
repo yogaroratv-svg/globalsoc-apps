@@ -143,6 +143,14 @@ td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
 .alert .doms{margin:10px 0 6px;display:flex;flex-wrap:wrap;gap:7px}
 .alert .doms span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.34);border-radius:8px;padding:4px 11px;font-size:13.5px;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace}
 .alert a{color:#fff;text-decoration:underline;font-weight:700;cursor:pointer}
+.comp{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+.comp th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
+.comp td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+.comp .s{white-space:nowrap;font-weight:700;font-size:12.5px;padding:3px 10px;border-radius:99px;display:inline-block}
+.comp .ref{color:var(--muted);font-size:12.5px}
+.compsum{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 14px}
+.compsum div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;font-size:13.5px}
+.compsum b{font-size:18px;margin-right:6px}
 .svc{margin-top:18px}
 .svc .ph2 h2{font-size:18px}
 .svc-sub{color:var(--muted);font-size:13.5px;margin:2px 0 14px;line-height:1.5}
@@ -235,10 +243,11 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
     <div class="alert" id="alert" style="display:none"></div>
     <div class="panel svc" id="svc" style="display:none"></div>
     <div class="tabs" role="tablist">
-      <button class="on" data-p="recs">Recommendations</button><button data-p="all">All checks</button><button data-p="map">DNS map</button><button data-p="raw">Raw records</button>
+      <button class="on" data-p="recs">Recommendations</button><button data-p="all">All checks</button><button data-p="comp">Frameworks</button><button data-p="map">DNS map</button><button data-p="raw">Raw records</button>
     </div>
     <div class="pane on" id="p-recs"></div>
     <div class="pane" id="p-all"></div>
+    <div class="pane" id="p-comp"></div>
     <div class="pane" id="p-map"><div class="mapwrap" id="map"></div><div class="legend"><span class="dot" style="--c:var(--pass)">Good</span><span class="dot" style="--c:var(--warn)">Improve</span><span class="dot" style="--c:var(--fail)">Fix now</span><span class="dot" style="--c:var(--info)">Info</span></div></div>
     <div class="pane" id="p-raw"><div class="tblwrap" id="raw"></div></div>
 
@@ -778,6 +787,31 @@ function servicesText(){
   if(d.saas.length)p.push('Domain verified with: '+d.saas.join(', '));
   return p.length?'\n== Services detected (from public records) ==\n'+p.join('\n')+'\n':'';
 }
+/* ---------- framework / compliance mapping ---------- */
+const CTRLS=[
+  {n:'Email sender authentication — SPF',ref:'NIST SP 800-177; ASD ISM',sel:c=>c.cat==='spf'},
+  {n:'Email signing — DKIM',ref:'NIST SP 800-177',sel:c=>c.cat==='dkim'&&/DKIM/i.test(c.title)},
+  {n:'Anti-spoofing policy — DMARC',ref:'ACSC "Combat fake emails"; NIST SP 800-177',sel:c=>c.cat==='dmarc'},
+  {n:'Email transport encryption — MTA-STS / TLS-RPT / DANE',ref:'NIST SP 800-177',sel:c=>c.cat==='dkim'&&/MTA-STS|TLS-RPT|TLS reporting|DANE/i.test(c.title)},
+  {n:'DNS data integrity — DNSSEC',ref:'NIST SP 800-81; ASD ISM',sel:c=>c.cat==='dnssec'},
+  {n:'Website encryption — HTTPS / TLS',ref:'NIST SP 800-52; ASD ISM',sel:c=>c.cat==='web'&&/HTTPS|TLS|HSTS|redirect|encrypt/i.test(c.title)},
+  {n:'Certificate management',ref:'ASD ISM',sel:c=>c.cat==='web'&&/certificate/i.test(c.title)},
+  {n:'Web application hardening',ref:'NIST SP 800-53 (SC); OWASP',sel:c=>c.cat==='web'&&/header|CSP|Content-Security|clickjack|cookie|mixed content/i.test(c.title)},
+  {n:'Certificate issuance control — CAA',ref:'ASD ISM',sel:c=>c.cat==='web'&&/CAA/i.test(c.title)},
+  {n:'External attack surface & patching',ref:'ACSC Essential Eight — Patch apps/OS',sel:c=>c.cat==='surf'},
+  {n:'Domain & brand protection (look-alikes)',ref:'ACSC "Protect against phishing"',sel:c=>c.cat==='typo'},
+  {n:'Public information exposure hygiene',ref:'ASD ISM',sel:c=>c.cat==='hyg'||c.cat==='sub'},
+  {n:'Domain registration resilience',ref:'ASD ISM — availability',sel:c=>c.cat==='reg'||c.cat==='ns'}
+];
+function ctrlStatus(items){const rel=items.filter(c=>c.status!=='info');if(!rel.length)return items.length?'info':'na';if(rel.some(c=>c.status==='fail'))return 'gap';if(rel.some(c=>c.status==='warn'))return 'partial';return 'met'}
+const CST={met:['Met','var(--pass)'],partial:['Partial','var(--warn)'],gap:['Gap','var(--fail)'],info:['Info','var(--info)']};
+function renderCompliance(){
+  const rows=CTRLS.map(c=>({...c,st:ctrlStatus(CK.filter(c.sel))})).filter(r=>r.st!=='na');
+  const n=s=>rows.filter(r=>r.st===s).length;
+  $('#p-comp').innerHTML=`<p style="color:var(--muted);font-size:13.5px;margin:0 0 6px">How this domain's results map to common Australian (ACSC Essential Eight, ASD ISM) and US (NIST) security guidance. This is an indicative mapping to help prioritise, not a formal certification or audit.</p>
+  <div class="compsum">${['gap','partial','met'].map(s=>`<div><b style="color:${CST[s][1]}">${n(s)}</b>${CST[s][0]}</div>`).join('')}</div>
+  <table class="comp"><thead><tr><th>Control area</th><th>Status</th><th>Guidance</th></tr></thead><tbody>${rows.sort((a,b)=>({gap:0,partial:1,met:2,info:3}[a.st])-({gap:0,partial:1,met:2,info:3}[b.st])).map(r=>`<tr><td><b>${esc(r.n)}</b></td><td><span class="s" style="background:color-mix(in srgb,${CST[r.st][1]} 15%,transparent);color:${CST[r.st][1]}">${CST[r.st][0]}</span></td><td class="ref">${esc(r.ref)}</td></tr>`).join('')}</tbody></table>`;
+}
 function render(){
   const score=scoreOf(CK),g=gradeOf(score);
   $('#results').classList.add('on');
@@ -803,6 +837,7 @@ function render(){
     return `<details class="group" id="g-${k}" ${L.some(c=>c.status==='fail')?'open':''}><summary>${ic} ${l}<span class="sc">${cnt}</span></summary><div class="items">${L.map(c=>`<div class="item"><div class="st ${c.status}">${ICON[c.status]}</div><div><h4>${esc(c.title)}</h4><p>${esc(c.detail)}</p>${c.fix?`<p class="fix"><b style="color:var(--accent)">Fix:</b> ${esc(c.fix)}</p>`:''}${snip(c.snip)}</div></div>`).join('')}</div></details>`}).join('');
   $('#raw').innerHTML=`<table><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Data</th></tr></thead><tbody>${RAW.filter(r=>r.ans.length||r.status!==3).sort((a,b)=>a.name.localeCompare(b.name)||a.type.localeCompare(b.type)).map(r=>`<tr><td class="d">${esc(r.name)}</td><td>${esc(r.type)}</td><td>${esc(RC[r.status]||r.status)}</td><td class="d">${r.ans.map(a=>`${esc(TN[a.type]||a.type)} ${esc(a.data)} <span style="color:var(--muted)">TTL ${a.TTL}</span>`).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`;
   renderServices();
+  renderCompliance();
   try{fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,services:detectServices(),typo:ctx.typo||null,surface:ctx.surface||null})},8000).catch(()=>{})}catch(e){}
   drawMap();
   document.querySelectorAll('.snip button').forEach(b=>b.onclick=()=>copyText(b.parentElement.querySelector('code').textContent));
