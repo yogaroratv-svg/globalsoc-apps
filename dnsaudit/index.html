@@ -536,7 +536,7 @@ async function chkSPF(c){
   // SPF include takeover: is any authorised sender domain unregistered? Anyone could register it and send as you.
   const orgs=[...new Set([...st.targets].map(t=>orgDomain(t)))].filter(o=>o&&o!==D);
   if(orgs.length){const chk=await Promise.all(orgs.map(async o=>{const r=await dq(o,'SOA');const r2=r.status===3?await dq(o,'NS'):null;return {o,nx:r.status===3&&(!r2||r2.status===3)}}));
-    const unreg=chk.filter(x=>x.nx).map(x=>x.o);
+    const unreg=chk.filter(x=>x.nx).map(x=>x.o);ctx.spfUnreg=unreg;
     if(unreg.length)add('spf','fail','SPF authorises an unregistered domain (spoofing risk)',`Your SPF record delegates sending authority to ${unreg.join(', ')}, which ${unreg.length>1?'are':'is'} not registered. Anyone can register ${unreg.length>1?'them':'it'}, publish their own SPF record, and send email that passes SPF as ${D} — without ever touching your DNS. This is a direct email-spoofing and phishing risk.`,{sev:'high',fix:`Remove the include for ${unreg.length>1?'these domains':'this domain'} from your SPF record now. If you still use that service, contact the provider; otherwise delete the entry. Consider registering the lapsed domain yourself if it was yours.`,...N});
   }
   if(st.wide.length)add('spf','warn','SPF authorises a very large IP range',st.wide.join(', ')+'. Anyone on those networks can send as you.',{sev:'med',fix:'Narrow the ranges to the servers you actually use.',...N});
@@ -863,7 +863,8 @@ function render(){
   renderCompliance();
   try{const recs=CK.filter(c=>c.status==='fail'||c.status==='warn').sort((a,b)=>ORDER[a.status]-ORDER[b.status]||SEVO[a.sev]-SEVO[b.sev]).slice(0,15).map(c=>({s:c.status,cat:c.cat,title:c.title,fix:c.fix}));
   const compliance=CTRLS.map(c=>({n:c.n,st:ctrlStatus(CK.filter(c.sel))})).filter(r=>r.st!=='na');
-  fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,pass:CK.filter(c=>c.status==='pass').length,info:CK.filter(c=>c.status==='info').length,services:detectServices(),typo:ctx.typo||null,surface:ctx.surface||null,recs,compliance})},8000).catch(()=>{})}catch(e){}
+  const findings=CK.map(c=>({s:c.status,c:c.cat,v:c.sev,t:c.title,d:(c.detail||'').replace(/\s+/g,' ').slice(0,300),f:c.fix||''}));
+  fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,pass:CK.filter(c=>c.status==='pass').length,info:CK.filter(c=>c.status==='info').length,services:detectServices(),typo:ctx.typo||null,surface:ctx.surface||null,spfUnreg:ctx.spfUnreg||[],recs,compliance,findings})},8000).catch(()=>{})}catch(e){}
   drawMap();
   document.querySelectorAll('.snip button').forEach(b=>b.onclick=()=>copyText(b.parentElement.querySelector('code').textContent));
   tab('recs');
