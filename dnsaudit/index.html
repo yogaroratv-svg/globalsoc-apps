@@ -510,7 +510,7 @@ async function spfWalk(d,depth,st){
     const mech=m[1].toLowerCase(),val=m[2],cidr=m[3];
     if(['include','a','mx','ptr','exists','redirect'].includes(mech))st.count++;
     if(mech==='ptr')st.ptr=true;
-    if((mech==='include'||mech==='redirect')&&val&&!val.includes('%'))kids.push(val.toLowerCase());
+    if((mech==='include'||mech==='redirect')&&val&&!val.includes('%')){kids.push(val.toLowerCase());st.targets.add(val.toLowerCase())}
     if(depth===0&&mech==='ip4'&&cidr&&+cidr<16)st.wide.push(term);
     if(depth===0&&mech==='ip6'&&cidr&&+cidr<32)st.wide.push(term);
   }
@@ -522,7 +522,7 @@ async function chkSPF(c){
   if(!sp.length){add('spf','fail','No SPF record',ctx.mail?'Receiving servers cannot tell which servers may send email for this domain, which makes spoofing easy.':'Anyone can send email pretending to be this domain. Domains that never send email should still publish SPF.',{sev:'high',fix:ctx.mail?'Publish one SPF record listing every service that sends your email, ending in -all (or ~all while testing).':'Publish an SPF record that authorises nobody.',snip:ctx.mail?`${D}. TXT "v=spf1 include:<your-mail-provider> -all"`:`${D}. TXT "v=spf1 -all"`,...N});return}
   if(sp.length>1)add('spf','fail','Multiple SPF records',`Found ${sp.length}. RFC 7208 makes this a permanent error, so SPF fails for all your email.`,{sev:'high',fix:'Merge them into a single TXT record that starts with v=spf1.',...N});
   const rec=sp[0];add('spf','info','SPF record',rec,N);ctx.spfInc=(rec.match(/include:[^\s]+/gi)||[]).map(x=>x.slice(8).toLowerCase());
-  const st={count:0,seen:new Set(),voids:[],tree:[],ptr:false,wide:[]};await spfWalk(D,0,st);
+  const st={count:0,seen:new Set(),voids:[],tree:[],ptr:false,wide:[],targets:new Set()};await spfWalk(D,0,st);
   const am=rec.match(/(?:^|\s)([+\-~?]?)all(?:\s|$)/i),q=am?(am[1]||'+'):null,redir=/redirect=/i.test(rec);
   if(q==='+')add('spf','fail','SPF allows anyone to send (+all)','"+all" authorises every server on the internet to send as your domain.',{sev:'high',fix:'Replace +all with -all (or ~all).',...N});
   else if(q==='?')add('spf','warn','SPF ends in ?all (neutral)','Neutral gives receivers no guidance, so spoofed mail is treated like normal mail.',{sev:'med',fix:'End the record with -all, or ~all while you confirm every sender is listed.',...N});
@@ -533,6 +533,12 @@ async function chkSPF(c){
   else add('spf',st.count>=9?'warn':'pass',`${st.count} of 10 DNS lookups used`,st.tree.join('\n'),st.count>=9?{sev:'low',fix:'You are close to the limit. Adding one more service will break SPF.',...N}:N);
   if(st.ptr)add('spf','warn','Deprecated ptr mechanism','ptr is slow, unreliable and deprecated by RFC 7208.',{sev:'low',fix:'Replace ptr with explicit ip4/ip6 or include mechanisms.',...N});
   if(st.voids.length)add('spf','warn','SPF include has no SPF record',st.voids.join(', ')+' returned no SPF record. Too many empty lookups make SPF fail.',{sev:'med',fix:'Remove includes that no longer exist.',...N});
+  // SPF include takeover: is any authorised sender domain unregistered? Anyone could register it and send as you.
+  const orgs=[...new Set([...st.targets].map(t=>orgDomain(t)))].filter(o=>o&&o!==D);
+  if(orgs.length){const chk=await Promise.all(orgs.map(async o=>{const r=await dq(o,'SOA');const r2=r.status===3?await dq(o,'NS'):null;return {o,nx:r.status===3&&(!r2||r2.status===3)}}));
+    const unreg=chk.filter(x=>x.nx).map(x=>x.o);
+    if(unreg.length)add('spf','fail','SPF authorises an unregistered domain (spoofing risk)',`Your SPF record delegates sending authority to ${unreg.join(', ')}, which ${unreg.length>1?'are':'is'} not registered. Anyone can register ${unreg.length>1?'them':'it'}, publish their own SPF record, and send email that passes SPF as ${D} — without ever touching your DNS. This is a direct email-spoofing and phishing risk.`,{sev:'high',fix:`Remove the include for ${unreg.length>1?'these domains':'this domain'} from your SPF record now. If you still use that service, contact the provider; otherwise delete the entry. Consider registering the lapsed domain yourself if it was yours.`,...N});
+  }
   if(st.wide.length)add('spf','warn','SPF authorises a very large IP range',st.wide.join(', ')+'. Anyone on those networks can send as you.',{sev:'med',fix:'Narrow the ranges to the servers you actually use.',...N});
 }
 
