@@ -550,7 +550,7 @@ function analyze(nums,hist,hot,lockIn,ctx){
   let c2=cur;
   if(pdist(c1,cur)<2*k+1){let s2=-1;c2=(c1+18)%37;for(let c=0;c<37;c++){if(pdist(c,c1)<2*k+1)continue;const sc=pull(c,hot);if(sc>s2){s2=sc;c2=c;}}}
   const win=c=>{const w=[];for(let j=-k;j<=k;j++)w.push(WHEEL[(c+j+37)%37]);return w;};
-  A.pick=WHEEL[c1];A.pick2=WHEEL[c2];A.bet1=win(c1);A.bet2=win(c2);
+  A.pick=WHEEL[c1];A.pick2=WHEEL[c2];A.bet1=win(c1);A.bet2=win(c2);A.oldSecC=[c1,c2];A.secC=[c1,c2];
   A.s2cur=c2===cur;
   A.bet=A.bet1.concat(A.bet2);
   A.hotIn=hot.filter(h=>A.bet.includes(h));
@@ -589,7 +589,7 @@ function analyze(nums,hist,hot,lockIn,ctx){
     const ws=c=>{let s=0;for(let j=-k;j<=k;j++)s+=D.p[(c+j+37)%37];return s;};
     let m1=0,b1=-1;for(let c=0;c<37;c++){const v=ws(c);if(v>b1){b1=v;m1=c;}}
     let m2=(m1+18)%37,b2=-1;for(let c=0;c<37;c++){if(pdist(c,m1)<2*k+1)continue;const v=ws(c);if(v>b2){b2=v;m2=c;}}
-    A.pick=WHEEL[m1];A.pick2=WHEEL[m2];A.bet1=win(m1).filter(x=>!avoid.includes(x));A.bet2=win(m2).filter(x=>!avoid.includes(x));A.bet=A.bet1.concat(A.bet2);
+    A.pick=WHEEL[m1];A.pick2=WHEEL[m2];A.secC=[m1,m2];A.bet1=win(m1).filter(x=>!avoid.includes(x));A.bet2=win(m2).filter(x=>!avoid.includes(x));A.bet=A.bet1.concat(A.bet2);
     A.hotIn=hot.filter(h=>A.bet.includes(h));
     A.in1=last6.filter(x=>A.bet1.includes(x)).length;A.in2=last6.filter(x=>A.bet2.includes(x)).length;
     const base=A.bet.length/37;A.P=A.bet.reduce((s,x)=>s+D.p[POS[x]],0);A.base=base;
@@ -624,15 +624,20 @@ function analyze(nums,hist,hot,lockIn,ctx){
     A.key=keys(A.bet1).concat(keys(A.bet2));
   }else{A.nextWhy="Learning the table: "+(MODEL_MIN-(M?M.seen:0))+" more spins";
     A.bet1=A.bet1.filter(x=>!avoid.includes(x));A.bet2=A.bet2.filter(x=>!avoid.includes(x));A.bet=A.bet1.concat(A.bet2);}
-  // Sector 4: the dead area (lowest model chance, or fewest recent hits before the model starts); kept out of the cycle bet
-  {const sc=c=>{let s=0;
+  // per-table scores (also used by the switching below): needed here so Sector 4 knows which sectors the main card will show
+  const TL=ctx.tally||{},tst=id=>{const t=TL[id]||{bets:0,hits:0,exp:0};if(t.bets<ADAPT_MIN)return {s:"learning",t};const e=(t.hits-t.exp)/t.bets;return {s:e>=ADAPT_EDGE?"hot":e<=-ADAPT_EDGE?"cold":"ok",t};};
+  const willOld=tst("model").s==="cold"&&tst("oldmain").s==="hot";
+  // Sector 4: the dead area (lowest model chance, or fewest recent hits before the model starts); kept out of the cycle bet.
+  // It never shares a number with Sector 1 or 2; if no 9-number area is clear of both, there is no dead sector.
+  {const prot=willOld?A.oldSecC:A.secC;
+    const sc=c=>{let s=0;
       if(A.dist){for(let j=-k;j<=k;j++)s+=A.dist[(c+j+37)%37];}
       else{const l=nums.slice(-30);l.forEach((x,i)=>{if(pdist(c,POS[x])<=k)s+=Math.pow(0.97,l.length-1-i);});}
       return s;};
     // an area hit in the last 4 spins is never called dead
-    const l4=nums.slice(-4);let dc=0,dv=Infinity;
-    for(let c=0;c<37;c++){if(l4.some(x=>pdist(c,POS[x])<=k))continue;const v=sc(c);if(v<dv){dv=v;dc=c;}}
-    A.dead=win(dc);const l30=nums.slice(-30);A.deadHits={h:l30.filter(x=>A.dead.includes(x)).length,n:l30.length};}
+    const l4=nums.slice(-4);let dc=null,dv=Infinity;
+    for(let c=0;c<37;c++){if(l4.some(x=>pdist(c,POS[x])<=k))continue;if(prot.some(p=>pdist(c,p)<2*k+1))continue;const v=sc(c);if(v<dv){dv=v;dc=c;}}
+    A.dead=dc===null?[]:win(dc);const l30=nums.slice(-30);A.deadHits={h:l30.filter(x=>A.dead.includes(x)).length,n:l30.length};}
   // burst-on %
   // one stray spin is normal inside a burst: it costs at most 10 points (score without the newest spin, minus 10)
   const burstOf=xs=>{const w=xs.map((x,i)=>Math.pow(0.85,xs.length-1-i)),tw=w.reduce((a,b)=>a+b,0);let bb=0,pr=null;
@@ -686,7 +691,6 @@ function analyze(nums,hist,hot,lockIn,ctx){
   //      and a clearly winning old burst signal can take over the main card when the model is losing here ----
   A.raw={model:A.rules.main,oldmain:A.rules.oldmain,cycle:A.rules.cycle};A.modelBet=A.bet;
   A.rules.modelRaw=!!A.raw.model;A.ruleBet.modelRaw=A.modelBet;
-  const TL=ctx.tally||{},tst=id=>{const t=TL[id]||{bets:0,hits:0,exp:0};if(t.bets<ADAPT_MIN)return {s:"learning",t};const e=(t.hits-t.exp)/t.bets;return {s:e>=ADAPT_EDGE?"hot":e<=-ADAPT_EDGE?"cold":"ok",t};};
   A.adapt={model:tst("model"),oldmain:tst("oldmain"),cycle:tst("cycle")};A.leader="model";
   if(A.adapt.model.s==="cold"){
     if(A.adapt.oldmain.s==="hot"){A.leader="oldmain";A.rules.main=A.rules.oldmain&&!A.stop&&!A.goal;
@@ -993,7 +997,8 @@ function render(){
   $("rBurst").textContent=rd&&A.burstPct!=null?A.burstPct+"%":"–";$("rRand").textContent=rd&&A.burstPct!=null?(100-A.burstPct)+"%":"–";
   const r3=$("r3"),r4=$("r4");r3.innerHTML="";r4.innerHTML="";
   if(rd&&A.s3){$("r3txt").textContent=A.s3why;A.s3.forEach(x=>r3.appendChild(chip(x)));}else $("r3txt").textContent=rd?"after 4 spins":"";
-  if(rd&&A.dead){$("r4txt").textContent=A.deadHits.h+" of the last "+A.deadHits.n+" spins landed here ("+(A.deadHits.n*A.dead.length/37).toFixed(1)+" expected)";A.dead.forEach(x=>r4.appendChild(chip(x,"dead")));}else $("r4txt").textContent=rd?"after 4 spins":"";
+  if(rd&&A.dead&&!A.dead.length)$("r4txt").textContent="none: no area is clear of Sectors 1 and 2 and the last 4 spins";
+  else if(rd&&A.dead){$("r4txt").textContent=A.deadHits.h+" of the last "+A.deadHits.n+" spins landed here ("+(A.deadHits.n*A.dead.length/37).toFixed(1)+" expected)";A.dead.forEach(x=>r4.appendChild(chip(x,"dead")));}else $("r4txt").textContent=rd?"after 4 spins":"";
   const ad=A.adapt;
   if(rd&&ad){const f=(lab,o)=>lab+" "+(o.t.bets?o.t.hits+"/"+o.t.bets+" ("+o.t.exp.toFixed(1)+" expected)":"no bets yet")+(o.s==="hot"?" ✓":o.s==="cold"?" ✗":"");
     $("rAdapt").textContent="At this table: "+[f("Model",ad.model),f("Cycle",ad.cycle),f("Old burst",ad.oldmain)].join(" · ")+" → "+
