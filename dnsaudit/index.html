@@ -679,12 +679,14 @@ async function chkSurface(){
   const groups={};ips.forEach(ip=>{const a=AS[ip];const k=a?a.asn:'?';(groups[k]=groups[k]||{a,ips:[]}).ips.push(ip)});
   const gl=Object.entries(groups).sort((x,y)=>y[1].ips.length-x[1].ips.length);
   if(gl.length&&Object.keys(AS).length){
-    const own=gl.filter(([k,g])=>g.a&&!g.a.cloud);
+    const own=gl.filter(([k,g])=>g.a&&!g.a.cloud),cl=gl.filter(([k,g])=>g.a&&g.a.cloud),pn=g=>(g.a.name||'').split(',')[0].trim();
+    if(cl.length){const prov=[...new Set(cl.map(([k,g])=>(g.a.name.match(CLOUDN)||[''])[0]))].map(s=>s[0].toUpperCase()+s.slice(1)).join(', ');
+      add('surf',own.length?'info':'pass',own.length?`Partly behind ${prov}: ${cl.reduce((n,[k,g])=>n+g.ips.length,0)} of ${ips.length} IPs`:`No direct egress: ${D} is fronted by ${prov}`,`${cl.map(([k,g])=>g.ips.map(ip=>`${ip}${nm(ip).length?' ← '+nm(ip).slice(0,3).join(', '):''}  →  AS${k} ${pn(g)}`).join('\n')).join('\n')}\n\nThese addresses belong to ${prov}, not to ${D}. The organisation doesn't do direct egress from its own network on these hosts: internet traffic terminates at the provider's edge, which hides the origin servers.${own.length?' The other addresses below sit outside a cloud/CDN provider and are directly exposed.':''} Open ports or CVEs reported against these IPs normally describe the provider's shared edge, not ${D}'s own systems.`,N)}
     add('surf','info',`Network map: ${ips.length} IP${ips.length>1?'s':''} across ${gl.length} network${gl.length>1?'s':''} (ASN)`,gl.map(([k,g])=>`${g.a?`AS${k} ${g.a.name||''}${g.a.cloud?' [cloud/CDN provider]':''}`:'Unknown network'}\n`+g.ips.map(ip=>{const a=AS[ip],n=nm(ip);return `   ${ip}${a?' in '+a.prefix+' ('+a.cc+')':''}${n.length?' ← '+n.slice(0,3).join(', '):''}`}).join('\n')).join('\n\n')+`\n\nShows which organisation's network each of ${D}'s internet-facing addresses sits in. ${own.length?'Networks not tagged as cloud/CDN may be self-hosted or with a smaller provider: these are usually yours to patch.':'Everything is on cloud/CDN providers. Exposure on shared provider edge IPs (e.g. a CDN) usually belongs to the provider, not you.'} Source: Team Cymru IP-to-ASN (public DNS lookups).`,N);
   }
   if(!data||!Array.isArray(data.hosts)){return}
   const hosts=data.hosts;
-  const asl=ip=>{const a=AS[ip];return a?` [AS${a.asn} ${(a.name||'').split(',')[0]}]`:''};
+  const asl=ip=>{const a=AS[ip];return a?` [AS${a.asn} ${(a.name||'').split(',')[0]}${a.cloud?' — provider edge, no direct egress':''}]`:''};
   const lbl=h=>{const n=nm(h.ip);return (n.length?`${n.join(', ')} → ${h.ip}`:`${h.ip}${h.hostnames&&h.hostnames.length?' ('+h.hostnames[0]+')':''}`)+asl(h.ip)};
   const fmt=h=>(h.ports||[]).map(p=>PORTN[p]?`${p} (${PORTN[p]})`:`${p}`).join(', ');
   const cv=v=>(typeof v==='string')?{id:v,cvss:null}:v;
