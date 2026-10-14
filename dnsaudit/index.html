@@ -143,6 +143,16 @@ td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
 .alert .doms{margin:10px 0 6px;display:flex;flex-wrap:wrap;gap:7px}
 .alert .doms span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.34);border-radius:8px;padding:4px 11px;font-size:13.5px;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace}
 .alert a{color:#fff;text-decoration:underline;font-weight:700;cursor:pointer}
+.etest{margin-top:26px;border-left:5px solid var(--accent)}
+.etest h2{font-size:21px;margin-bottom:6px}.etest>p{color:var(--muted);font-size:14.5px;margin-bottom:14px;max-width:640px}
+.etaddr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 14px}
+.etaddr code{background:var(--codebg);padding:8px 12px;border-radius:10px;font-size:15px;font-weight:600;word-break:break-all}
+.etstep{margin:8px 0;font-size:14.5px}
+.etrow{display:flex;gap:10px;align-items:flex-start;margin:8px 0;font-size:15px}
+.etic{font-size:18px;font-weight:800;line-height:1.2}
+.etverdict{margin:14px 0 4px;font-weight:600;font-size:15px}
+.etres h3{font-size:17px;margin-bottom:10px}
+.dim{color:var(--muted)}
 .comp{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
 .comp th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line)}
 .comp td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -263,6 +273,13 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
       <p class="msg" id="monmsg" role="status"></p></div>
     <div class="cta"><div><h3>Want these fixed for you?</h3><p>Global SOC is a security-first studio in Glen Waverley, Melbourne. We can harden your DNS and email in a day.</p></div><a class="btn" href="/#contact">Talk to us →</a></div>
   </div>
+
+  <div class="wrap" style="padding:0 0 10px"><div class="panel etest" id="etest">
+    <h2>📨 Test your real email deliverability</h2>
+    <p>DNS records show what <i>should</i> happen. This checks what <i>actually</i> happens: send one email from the mailbox you want to test, and we'll show whether SPF, DKIM and DMARC pass and align on your live email — the gap that record checks miss.</p>
+    <button class="btn" id="etStart">Start email test →</button>
+    <div id="etBox" style="display:none"></div>
+  </div></div>
 
   <div class="how">
     <h2>What the audit looks at</h2>
@@ -910,7 +927,38 @@ function showRecent(){const r=getRecent();$('#recent').innerHTML=r.length?'Recen
     if(!reduce)requestAnimationFrame(frame)}
   requestAnimationFrame(frame)})();
 
+/* ---------- email deliverability test ---------- */
+function renderEmailResult(r,box){
+  const row=(label,pass,extra)=>`<div class="etrow"><span class="etic" style="color:var(--${pass?'pass':'fail'})">${pass?'✓':'✕'}</span><div><b>${label}</b> ${pass?'pass':'fail'}${extra?` <span class="dim">· ${esc(extra)}</span>`:''}</div></div>`;
+  const verdict=r.dmarcPass?'✅ Your email passes DMARC — it authenticates properly and is hard to spoof.':(r.spfAligned||r.dkimAligned)?'⚠️ Your email only partly authenticates. Tighten alignment and move DMARC to enforcement to reach more inboxes.':'❌ Your email is failing authentication — it is likely to be marked as spam, and your domain can be spoofed.';
+  box.innerHTML=`<div class="etres"><h3>Result for ${esc(r.from||r.fromDomain||'your email')}</h3>
+  ${row('SPF',r.spf==='pass',r.spf==='pass'?(r.spfAligned?'aligned to your domain':'passes, but not aligned to your From domain'):'did not pass'+(r.mailfrom?` (${r.mailfrom})`:''))}
+  ${row('DKIM',r.dkim==='pass',r.dkim==='pass'?(r.dkimDomain?`signed by ${r.dkimDomain}${r.dkimAligned?', aligned':', not aligned'}`:'signed'):'no valid signature')}
+  ${row('DMARC',r.dmarcPass,r.dmarcPass?'':'fails or not enforced')}
+  <p class="etverdict">${verdict}</p>
+  <p class="dim" style="font-size:12.5px;margin-top:6px">From the authentication results our mail server recorded for your message. <a href="/blog/dmarc-explained/">What do these mean?</a> · <button class="btn ghost sm" id="etAgain" style="margin-left:6px">Test again</button></p></div>`;
+  const a=$('#etAgain');if(a)a.onclick=()=>{$('#etBox').style.display='none';$('#etStart').style.display='';};
+}
+async function startEmailTest(){
+  const b=$('#etStart');b.disabled=true;b.textContent='Starting…';
+  let j=null;try{const r=await fetchT(API+'/emailtest',{method:'POST',headers:{'content-type':'application/json'},body:'{}'},15000);j=r.ok?await r.json():null}catch(e){}
+  b.disabled=false;b.textContent='Start email test →';
+  const box=$('#etBox');box.style.display='';
+  if(!j||!j.address){box.innerHTML='<p style="color:var(--fail)">Could not start the test right now. Please try again shortly.</p>';return}
+  b.style.display='none';
+  box.innerHTML=`<div class="etstep"><b>Step 1.</b> From the mailbox you want to test, send any email (any subject, any text) to this address:</div>
+  <div class="etaddr"><code id="etAddr">${esc(j.address)}</code><button class="btn ghost sm" id="etCopy">Copy</button></div>
+  <div class="etstep"><b>Step 2.</b> Keep this page open — the result appears automatically, usually within a minute. <span id="etWait" class="dim">Waiting for your email…</span></div>`;
+  const cp=$('#etCopy');if(cp)cp.onclick=()=>copyText(j.address);
+  const t0=Date.now();
+  const poll=setInterval(async()=>{
+    if(Date.now()-t0>30*60000){clearInterval(poll);const w=$('#etWait');if(w)w.textContent='Timed out — start again when you\'re ready.';return}
+    let r=null;try{const resp=await fetchT(API+'/emailresult?t='+encodeURIComponent(j.token),{},10000);r=resp.ok?await resp.json():null}catch(e){}
+    if(r&&r.status==='done'){clearInterval(poll);renderEmailResult(r,box)}
+  },4000);
+}
 /* ---------- wire up ---------- */
+{const e=$('#etStart');if(e)e.onclick=startEmailTest;}
 $('#f').onsubmit=e=>{e.preventDefault();run($('#d').value)};
 document.querySelectorAll('.ex > button').forEach(b=>b.onclick=()=>run(b.dataset.d));
 showRecent();
