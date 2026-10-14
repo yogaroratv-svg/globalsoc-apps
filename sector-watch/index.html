@@ -339,7 +339,7 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
   <p class="note"><b>Key numbers</b> (gold ring) are the 3 numbers in each sector the model rates highest. <b>Why Sector 1 / 2</b> says which part of the model picked the area, how many of the last 12 spins landed there, and the model's chance for those numbers.</p>
   <p class="note"><b>Switching per table</b>: the app scores the model, the cycle bet and the old burst signal at this table. Once one has 12+ bets and is 10+ points below chance here, it switches off. If the model is switched off and the old burst signal is 10+ points above chance, the main card uses the old burst signal instead. The "At this table" line shows the scores. Colour switches between switch and follow the same way.</p>
   <p class="note"><b>Table type</b> (above the number pad): <b>Computerised</b> ignores direction. <b>Real wheel</b> shows a direction button: set it to the direction of the next spin once, and it flips by itself after every spin you enter (tap it to correct; Undo puts it back). The model then also learns the jump pattern separately for clockwise and anticlockwise spins, and trusts that part more only when it predicts better; the line under Sector 1 shows how much it trusts it.</p>
-  <p class="note"><b>Ask Claude</b> (from 50 spins at a table, screen history included): tap Ask and Claude reads this table's spins, board hot and cold numbers, and picks 6 numbers for the next spin with a short reason. It uses your Claude usage and can take up to a minute. Picks count only for the next spin you enter. They are always scored ("Ask Claude picks" row); money counts only if you tap Bet these (1 chip each).</p>
+  <p class="note"><b>Ask Claude</b> (from 50 spins at a table, screen history included): tap Ask and Claude reads this table's spins, board hot and cold numbers, and picks 15 numbers for the next spin using its own reasoning, which it explains. It uses your Claude usage and can take up to a minute. Picks count only for the next spin you enter. They are always scored ("Ask Claude picks" row); money counts only if you tap Bet these (1 chip each).</p>
   <p class="note"><b>Minimums</b>: $2.50 a number and $25 on red/black are built in. Each spin keeps the chip and colour amounts it was played at, so changing them later never rewrites past money. <b>Bet heavy</b> (Money section) adds 1 extra chip on the key numbers in the bet.</p>
   <p class="note"><b>Cold numbers</b>: enter the 4 coldest from the screen's last 250 spins. They are left out of the model's sectors and the cycle bet until they land, then they come back in. The scorecard row "Cold numbers" shows how often they land anyway.</p>
   <p class="note"><b>Number spike</b>: the app counts exactly how many pockets clockwise each spin lands from the one before. If one exact jump keeps repeating far more than chance (at least 6 times and well above the 1-in-37 expected), it shows the single number that jump points to from the last spin. Bet 1 chip on it (35:1). It switches off by itself if the jump stops repeating. Skip this bet skips the spike bet too.</p>
@@ -806,8 +806,8 @@ function chip(n,extra){const c=document.createElement("span");c.className="chip 
 const sessionSeq=()=>state.spins.filter(s=>s.s===state.session);
 
 let skipNext=false,skipCol=false,liveA=null;
-/* ---------- Ask Claude: on a tap, sends this table's spins to Claude and gets 6 numbers for the next spin ---------- */
-const AI_MIN=50,AI_N=6;
+/* ---------- Ask Claude: on a tap, sends this table's spins to Claude and gets 15 numbers and its reasoning for the next spin ---------- */
+const AI_MIN=50,AI_N=15;
 let aiSample=null,aiLive=null,aiCtl=null;
 function aiPrompt(seq){
   const real=state.table==="real";
@@ -819,8 +819,8 @@ function aiPrompt(seq){
     (real?"The next spin will be "+(state.nextDir==="cw"?"clockwise":"anticlockwise")+".\n":"")+
     (state.hot.length?"Board's hottest 4 numbers over the last 250 spins: "+state.hot.join(" ")+"\n":"")+
     ((state.cold||[]).length?"Board's coldest 4 numbers over the last 250 spins: "+state.cold.join(" ")+"\n":"")+
-    "Look at the spins for any pattern you find useful (wheel areas, repeats, jumps between wheel positions, recent clusters) and pick exactly "+AI_N+" different numbers (0-36) for the next spin.\n"+
-    'Reply with only JSON: {"numbers":[6 integers],"reason":"one or two short sentences a player can read at a glance"}';
+    "Use your own judgement: study the spins however you think best and pick exactly "+AI_N+" different numbers (0-36) for the next spin. You decide the method; nothing about the app's own signals is assumed.\n"+
+    'Reply with only JSON: {"numbers":['+AI_N+' integers],"reason":"your reasoning in your own words: what you saw in these spins and why it led to these numbers, 3-5 short sentences for a phone screen"}';
 }
 function aiErr(c,what){what=what||"picks";const again=what==="picks"?"Tap Ask":"Tap Review this table";return c==="not_granted"||c==="sampling_disabled"||c==="not_declared"?"Claude isn't allowed for this page. Allow it in the page's permissions to use this.":
   c==="rate_limited"?"Too many requests, or your Claude usage limit is reached. Try again later.":c==="session_expired"?"Sign in to Claude again.":"Couldn't get "+what+" this time. "+again+" to try again.";}
@@ -832,7 +832,7 @@ async function askClaude(){
     let nums=Array.isArray(r&&r.numbers)?r.numbers.map(Number).filter(x=>Number.isInteger(x)&&x>=0&&x<=36):[];
     nums=[...new Set(nums)].slice(0,AI_N);
     if(!nums.length)throw {code:"invalid_json"};
-    aiLive=sessionSeq().length===forLen?{status:"done",forLen,nums,reason:String((r&&r.reason)||"").slice(0,300),bet:false}:null;
+    aiLive=sessionSeq().length===forLen?{status:"done",forLen,nums,reason:String((r&&r.reason)||"").slice(0,700),bet:false}:null;
   }catch(e){const c=e&&e.code;aiLive=c==="cancelled"?null:{status:"error",forLen,msg:aiErr(c)};}
   render();
 }
