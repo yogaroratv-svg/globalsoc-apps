@@ -171,6 +171,7 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
 .qty button{width:42px;height:42px;border:0;background:transparent;color:var(--ink);font:700 20px var(--body);cursor:pointer}
 .qty input{width:70px;border:0;text-align:center;border-radius:0;padding:8px 0;font-variant-numeric:tabular-nums}
 .sizegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.szhead{grid-column:1/-1;font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:4px}
 .sz{display:grid;gap:4px;text-align:center;border:1.5px solid var(--line);border-radius:8px;padding:8px 6px;background:var(--card)}
 .sz.on{border-color:var(--ink)}
 .sz label{font:700 13px/1 var(--mono)}
@@ -380,6 +381,8 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
             <details class="sguide" id="sguide"><summary>Size guide (chest width, cm)</summary>
               <div class="ptable-wrap"><table class="pt sg"><thead><tr><th scope="col">Size</th><th scope="col">XS</th><th scope="col">S</th><th scope="col">M</th><th scope="col">L</th><th scope="col">XL</th><th scope="col">2XL</th><th scope="col">3XL</th><th scope="col">4XL</th><th scope="col">5XL</th></tr></thead>
               <tbody><tr><th scope="row">T-shirt</th><td>48</td><td>51</td><td>54</td><td>57</td><td>60</td><td>63</td><td>66</td><td>69</td><td>72</td></tr><tr><th scope="row">Hoodie</th><td>51</td><td>54</td><td>57</td><td>60</td><td>63</td><td>66</td><td>69</td><td>72</td><td>75</td></tr></tbody></table></div>
+              <div class="ptable-wrap" style="margin-top:8px"><table class="pt sg"><thead><tr><th scope="col">Kids (age)</th><th scope="col">2</th><th scope="col">4</th><th scope="col">6</th><th scope="col">8</th><th scope="col">10</th><th scope="col">12</th><th scope="col">14</th></tr></thead>
+              <tbody><tr><th scope="row">T-shirt</th><td>32</td><td>35</td><td>38</td><td>41</td><td>44</td><td>47</td><td>50</td></tr><tr><th scope="row">Hoodie</th><td>34</td><td>37</td><td>40</td><td>43</td><td>46</td><td>49</td><td>52</td></tr></tbody></table></div>
               <p class="small" style="margin-top:8px">Measured flat across the chest, 2.5 cm below the armpit. Between sizes? Size up, or ask to try samples at a meet-up.</p>
             </details>
           </div>
@@ -434,7 +437,7 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
           <div class="extras">
             <span><b>+$6</b> second print location (apparel)</span>
             <span><b>+$15</b> express 48-hour, per order</span>
-            <span><b>Sizes XS–5XL:</b> +$3 each for 3XL–5XL</span>
+            <span><b>Sizes:</b> kids 2–14 and adults XS–5XL, +$3 each for 3XL–5XL</span>
             <span><b>+$3</b> 15oz large mug</span>
             <span><b>100+ units:</b> ask for a custom quote</span>
             <span><b>Free</b> pickup in Glen Waverley</span>
@@ -746,17 +749,19 @@ cv.addEventListener('pointermove', e => { if (!drag) return; const [x,y] = pt(e)
 ['pointerup','pointercancel'].forEach(t => cv.addEventListener(t, () => { drag = null; cv.classList.remove('dragging'); }));
 
 /* sizes */
-const SIZES = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'], BIG = new Set(['3XL','4XL','5XL']);
+const ADULT = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'], KIDS = ['K2','K4','K6','K8','K10','K12','K14'], SIZES = [...ADULT, ...KIDS], BIG = new Set(['3XL','4XL','5XL']);
+const szLabel = k => k[0]==='K' ? 'Kids ' + k.slice(1) : k;
 S.sizes = {M:1}; S.mug = '11oz';
 const sizeTotal = () => SIZES.reduce((n,k)=>n+(S.sizes[k]||0),0);
-const sizeList = () => SIZES.filter(k=>S.sizes[k]>0).map(k=>`${k}×${S.sizes[k]}`).join(', ');
+const sizeList = () => SIZES.filter(k=>S.sizes[k]>0).map(k=>`${szLabel(k)}×${S.sizes[k]}`).join(', ');
+const szCell = k => `<div class="sz${S.sizes[k]>0?' on':''}"><label for="sz-${k}">${k[0]==='K'?k.slice(1):k}</label><input type="number" id="sz-${k}" data-k="${k}" min="0" max="999" value="${S.sizes[k]||0}" inputmode="numeric" aria-label="${szLabel(k)} quantity"></div>`;
 function renderSizes(){
   const mug = S.p==='mug';
   $('#sizegrid').hidden = mug; $('#sguide').hidden = mug; $('#mugsize').hidden = !mug;
   $('#qtybox').hidden = !mug; $('#qtytotal').hidden = mug;
-  $('#sizenote').textContent = mug ? 'Both sizes are dishwasher and microwave safe.' : 'Unisex fit. Enter how many of each size. 3XL–5XL add $3 each.';
+  $('#sizenote').textContent = mug ? 'Both sizes are dishwasher and microwave safe.' : 'Unisex fit. Enter how many of each size; mix adults and kids in one order. 3XL–5XL add $3 each.';
   if (mug) return;
-  $('#sizegrid').innerHTML = SIZES.map(k=>`<div class="sz${S.sizes[k]>0?' on':''}"><label for="sz-${k}">${k}</label><input type="number" id="sz-${k}" data-k="${k}" min="0" max="999" value="${S.sizes[k]||0}" inputmode="numeric"></div>`).join('');
+  $('#sizegrid').innerHTML = `<span class="szhead">Adults</span>${ADULT.map(szCell).join('')}<span class="szhead">Kids (age)</span>${KIDS.map(szCell).join('')}`;
   $('#sizegrid').querySelectorAll('input').forEach(i=>i.oninput = ()=>{ const v = Math.max(0, Math.min(999, Math.round(+i.value)||0)); S.sizes[i.dataset.k] = v; i.parentElement.classList.toggle('on', v>0); S.qty = sizeTotal(); draw(); });
   S.qty = sizeTotal();
 }
