@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reverse Shells and ssh -R Explained | Global SOC</title>
+<meta name="description" content="What a reverse shell, ssh -R tunnel and reverse RDP are, how fake CAPTCHA (ClickFix) websites trick people into running them, and the small-business checklist and Defender queries that stop them.">
+<meta name="author" content="Yogesh">
+<meta property="og:title" content="Reverse shells and reverse tunnels: how one click becomes remote access">
+<meta property="og:description" content="Why firewalls don't stop reverse shells, ssh -R and reverse RDP, and the settings that do.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/reverse-shells-explained/">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#06222c,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.88;max-width:620px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px}
+article h2{font-size:27px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px}
+article h3{font-size:19px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:4px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 10px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.f{color:var(--fail)}.w{color:var(--warn)}.p{color:var(--pass)}.i{color:var(--info)}
+.grades{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0 20px}
+.grades div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;border-top:4px solid var(--c)}
+.grades b{display:block;font-size:26px;line-height:1.1;color:var(--c)}
+.grades span{font-size:12.5px;color:var(--muted)}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}.grades{grid-template-columns:repeat(5,minmax(58px,1fr))}}
+</style>
+</head>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav><a href="/blog/">All posts</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">THREATS EXPLAINED · ENDPOINT SECURITY</span>
+  <h1>Reverse shells and reverse tunnels: how one click becomes remote access</h1>
+  <p class="lede">You may have heard that hackers can get a "reverse shell" or "reverse RDP" when someone opens a website. Here's what that actually means, why firewalls don't stop it, and the handful of settings that do.</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 9 min read</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<div class="toc"><b>In this post</b><ol>
+<li><a href="#short">The short answer: can a website hack you?</a></li>
+<li><a href="#reverse">Why "reverse" gets past your firewall</a></li>
+<li><a href="#shell">What a reverse shell is</a></li>
+<li><a href="#sshr">ssh -R: a sysadmin tool turned back door</a></li>
+<li><a href="#rdp">"Reverse RDP" and remote-support tools</a></li>
+<li><a href="#signs">Warning signs</a></li>
+<li><a href="#prevent">How to prevent it: a small-business checklist</a></li>
+<li><a href="#detect">For IT: how to detect it</a></li>
+<li><a href="#happened">If you think it's happened</a></li>
+</ol></div>
+
+<h2 id="short">The short answer: can a website hack you?</h2>
+<p>Simply opening a web page almost never gives anyone control of your computer. Modern browsers run websites in a locked box (a "sandbox"), and a site can't start programs on your machine by itself. For an attacker to get a shell, <b>some code has to run on your computer first</b>. Websites are how they get you to run it. There are three common ways:</p>
+<ol>
+<li><b>You're tricked into running a command.</b> This is the big one right now, often called <b>ClickFix</b>. A page shows a fake CAPTCHA or error ("Verify you are human"), quietly copies a command to your clipboard, and tells you to press <code>Win + R</code>, then <code>Ctrl + V</code>, then <code>Enter</code>. That pastes and runs the attacker's command. You did the hacking for them.</li>
+<li><b>You download and open something.</b> A fake browser update, a "missing font" or video codec, or a fake Zoom or Teams installer from a search ad that looks like the real download page.</li>
+<li><b>A browser bug (rare).</b> Occasionally a flaw lets a malicious page escape the sandbox. These are expensive, get fixed quickly, and are mostly used against high-value targets. Keeping your browser updated closes them.</li>
+</ol>
+<div class="callout"><b>The one rule to teach everyone</b>No genuine website, CAPTCHA, IT team or bank will ever ask you to paste something into the Run box, PowerShell, Command Prompt or Terminal. If a page asks, close it.</div>
+
+<h2 id="reverse">Why "reverse" gets past your firewall</h2>
+<p>Your office or home router lets traffic <i>out</i> freely (so you can browse) but blocks unsolicited traffic coming <i>in</i>. So an attacker on the internet can't just connect to your PC.</p>
+<p>A reverse connection flips it around: the malicious code on your PC <b>calls out</b> to the attacker's server. To your firewall, that looks like any other outbound connection, the same as opening a website, so it's allowed. Once that connection is up, the attacker sends commands back down it.</p>
+<pre><code>Normal attack (blocked)
+  Attacker ──────────► your firewall  ✖  your PC
+
+Reverse connection (allowed)
+  your PC ──────────► your firewall ──────────► attacker's server
+          ◄══════ attacker's commands come back down the same connection ══════</code></pre>
+<p>Attackers usually make this connection over port 443, the same port as normal HTTPS web traffic, so it blends in even more.</p>
+
+<h2 id="shell">What a reverse shell is</h2>
+<p>A <b>shell</b> is a command prompt: the text window where you type commands and the computer runs them. A <b>reverse shell</b> is that command prompt handed to someone else over a reverse connection. With it, the attacker can do anything you could do from a command prompt: look through files, steal saved passwords and browser sessions, install more tools, and move on to other computers on your network.</p>
+<p>It's usually only the first step. The goal is to settle in quietly, steal credentials, and work towards the valuable systems: email, accounting, file servers and, in the worst case, deploying ransomware.</p>
+
+<h2 id="sshr">ssh -R: a sysadmin tool turned back door</h2>
+<p><b>SSH</b> is the standard secure way IT people log in to servers. Since 2018 an SSH client (<code>ssh.exe</code>) has been built into Windows 10 and 11, and it's always been on macOS and Linux. That's convenient for admins, and convenient for attackers, because they don't need to bring their own tools. Security people call this "living off the land".</p>
+<p>The <code>-R</code> option is <b>remote port forwarding</b>. It tells the SSH connection: "open a door on the remote server, and send anything that comes through it back down this connection to a place on my side." Admins use it legitimately, for example to reach a home lab while travelling. In the documentation it looks like this:</p>
+<pre><code>ssh -R &lt;port on the remote server&gt;:&lt;destination on this side&gt;:&lt;port&gt; user@remote-server</code></pre>
+<p>When an attacker runs it from a victim's PC, the "remote server" is theirs, and the "destination on this side" can be the victim's own PC or <b>any machine on the victim's internal network</b>, such as a file server or a domain controller. The attacker now has a private doorway from their server straight into your network, carried inside an encrypted SSH connection that your firewall let out.</p>
+<div class="callout key"><b>Why this matters for small businesses</b>Most small offices allow any PC to make outbound SSH connections on port 22, because nobody ever thought to block it. One ClickFix click can run a single <code>ssh -R</code> command that opens a tunnel into the whole office network.</div>
+
+<h2 id="rdp">"Reverse RDP" and remote-support tools</h2>
+<p><b>RDP</b> (Remote Desktop) lets you see and control a Windows PC's screen remotely. Exposing RDP directly to the internet is a well-known ransomware entry point, so most firewalls block it coming in. "Reverse RDP" gets around that the same way as above: the victim's PC tunnels its own RDP port <i>out</i> to the attacker, often using <code>ssh -R</code>, so the attacker gets a full remote desktop even though RDP was never opened on the firewall.</p>
+<p>Attackers also use:</p>
+<ul>
+<li><b>Tunnelling services</b> such as ngrok or Cloudflare Tunnel, which developers use legitimately to share a local app, set up to publish the victim's RDP port to the internet.</li>
+<li><b>Legitimate remote-support tools</b> such as AnyDesk, ScreenConnect or TeamViewer, installed silently or by talking the victim into it ("This is Microsoft support, please install this so we can fix your PC"). Because these are real, signed programs, antivirus often lets them run.</li>
+</ul>
+
+<h2 id="signs">Warning signs</h2>
+<ul>
+<li>A website asked you to press <code>Win + R</code>, open PowerShell or Terminal, or paste anything. Assume it ran something.</li>
+<li>A black command window flashed open and closed after you clicked something.</li>
+<li>Your mouse moves on its own, or windows open that you didn't open.</li>
+<li>A remote-access app you don't recognise appears in your Start menu, system tray or installed programs.</li>
+<li>Your computer is suddenly slow or the fans are busy while you're doing nothing.</li>
+<li>Password-reset or "new sign-in" emails you didn't ask for. Stolen browser sessions get used quickly.</li>
+</ul>
+
+<h2 id="prevent">How to prevent it: a small-business checklist</h2>
+<p>None of these need expensive tools. Together they break the attack at several points, which is the idea behind the ACSC's <b>Essential Eight</b>.</p>
+<div class="tw"><table>
+<tr><th>Do this</th><th>Why it helps</th></tr>
+<tr><td><b>Block outbound SSH (TCP port 22)</b> from staff PCs at the firewall. Allow it only from the few admin machines that need it.</td><td>Stops the <code>ssh -R</code> tunnel from connecting out. Most staff never need SSH.</td></tr>
+<tr><td><b>Remove the OpenSSH client</b> from PCs that don't need it (Settings → System → Optional features → OpenSSH Client → Remove), or block <code>ssh.exe</code> with application control.</td><td>No tool, no tunnel. Application control is Essential Eight strategy #1.</td></tr>
+<tr><td><b>Turn on application control</b> (Windows App Control/WDAC, AppLocker, or Intune policies) so only approved programs run.</td><td>Blocks unknown remote-access tools, tunnelling apps and fake installers, even if someone runs them.</td></tr>
+<tr><td><b>Pick one approved remote-support tool</b> and block the rest (AnyDesk, ngrok and so on) with web/DNS filtering.</td><td>Removes the attacker's favourite "legitimate" back doors.</td></tr>
+<tr><td><b>Remove the Run box for standard users</b> (Group Policy: "Remove Run menu from Start Menu") and limit PowerShell for non-IT staff.</td><td>Breaks the ClickFix "Win + R, paste, Enter" trick.</td></tr>
+<tr><td><b>Never expose RDP to the internet.</b> Use a VPN with MFA, and require Network Level Authentication.</td><td>Closes the direct route as well as the reverse one.</td></tr>
+<tr><td><b>Keep browsers and Windows updated</b> automatically, and run an EDR such as Microsoft Defender for Business.</td><td>Patches the rare browser escapes and flags suspicious behaviour like a browser-launched PowerShell.</td></tr>
+<tr><td><b>Use protective DNS</b> such as Quad9, Cloudflare for Families or your firewall's DNS filtering.</td><td>Blocks known malicious and newly registered domains that ClickFix pages and command servers use.</td></tr>
+<tr><td><b>Remove local admin rights</b> from everyday accounts.</td><td>Limits what anything that does run can install or change.</td></tr>
+<tr><td><b>Train staff on the one rule</b> above, with a two-minute demo of a fake CAPTCHA.</td><td>The attack depends on someone pressing Enter. People who've seen it once don't fall for it.</td></tr>
+</table></div>
+
+<h2 id="detect">For IT: how to detect it</h2>
+<h3>Check a single PC</h3>
+<p>The Run box keeps a history of what was typed or pasted into it. ClickFix commands often show up here:</p>
+<pre><code>reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU"</code></pre>
+<p>Look for entries containing <code>powershell</code>, <code>mshta</code>, <code>curl</code>, <code>ssh</code> or a web address. Then check whether the SSH client is installed and whether anything is connected out over SSH right now:</p>
+<pre><code>Get-WindowsCapability -Online -Name OpenSSH.Client*
+Get-NetTCPConnection -State Established -RemotePort 22 |
+  Select-Object LocalAddress, RemoteAddress, OwningProcess,
+    @{n='Process';e={(Get-Process -Id $_.OwningProcess).Path}}</code></pre>
+
+<h3>Hunt across the business (Microsoft Defender / Sentinel)</h3>
+<p>SSH run with remote port forwarding on a workstation is rare and worth a look every time:</p>
+<pre><code>DeviceProcessEvents
+| where FileName =~ "ssh.exe"
+| where ProcessCommandLine matches regex @"(^|\s)-[A-Za-z]*R\s"
+| project Timestamp, DeviceName, AccountName, ProcessCommandLine,
+          InitiatingProcessFileName, InitiatingProcessCommandLine</code></pre>
+<p>Outbound SSH from staff PCs to the internet:</p>
+<pre><code>DeviceNetworkEvents
+| where RemotePort == 22 and RemoteIPType == "Public"
+| summarize Connections = count(), Targets = make_set(RemoteIP, 10)
+    by DeviceName, InitiatingProcessFileName
+| order by Connections desc</code></pre>
+<p>ClickFix leaves its mark in the Run history in the registry:</p>
+<pre><code>DeviceRegistryEvents
+| where RegistryKey has @"Explorer\RunMRU"
+| where RegistryValueData has_any ("powershell", "mshta", "curl", "ssh", "http")
+| project Timestamp, DeviceName, InitiatingProcessAccountName, RegistryValueData</code></pre>
+<p>Also alert on remote-access and tunnelling tools you haven't approved (AnyDesk, ngrok, cloudflared and similar) appearing in process or network events, and on PowerShell or <code>cmd.exe</code> started by <code>explorer.exe</code> straight after a browser was active.</p>
+
+<h2 id="happened">If you think it's happened</h2>
+<ol>
+<li><b>Disconnect the computer from the network</b>: unplug the cable and turn off Wi-Fi. Don't shut it down, so evidence in memory is kept.</li>
+<li><b>From a different, clean device</b>, change the passwords for email, banking and anything saved in that browser, and sign out of all sessions. Turn on MFA where it's off.</li>
+<li><b>Tell your IT provider</b> (or us) straight away. The sooner the tunnel and any installed tools are found, the less spreads.</li>
+<li><b>Report it</b> to the Australian Cyber Security Centre at <a href="https://www.cyber.gov.au/report-and-recover/report" target="_blank" rel="noopener">cyber.gov.au/report</a>, or call 1300 CYBER1 (1300 292 371) for urgent help.</li>
+</ol>
+
+<div class="cta"><h3>Want us to check your office?</h3><p>We'll review your firewall's outbound rules, remote-access tools and PC settings, set up the checklist above, and give your team the two-minute ClickFix demo. Local to Glen Waverley, happy to come to you.</p><a href="/#contact">Talk to Yogesh</a><a href="/dnsaudit/">Run a free DNS Audit →</a></div>
+
+<div class="author"><div class="av">Y</div><div><b style="color:var(--ink)">Yogesh</b> runs Global SOC, a security-first app and IT studio in Glen Waverley, Melbourne, helping small businesses build software and keep it secure.</div></div>
+</article></main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
