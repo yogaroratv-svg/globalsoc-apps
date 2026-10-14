@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your DNS and Your SaaS Tools | Global SOC</title>
+<meta name="description" content="Your DNS records quietly list the software your business uses: email platforms, marketing tools, CRMs and more. How to read them, why it matters, and how to clean them up.">
+<meta name="author" content="Yogesh">
+<meta property="og:title" content="What your DNS reveals about the software you use">
+<meta property="og:description" content="Your DNS records list the SaaS tools connected to your domain. Here is how to read them and tidy them up.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/dns-saas-footprint/">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#06222c,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.88;max-width:620px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px}
+article h2{font-size:27px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px}
+article h3{font-size:19px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:4px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 10px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.f{color:var(--fail)}.w{color:var(--warn)}.p{color:var(--pass)}.i{color:var(--info)}
+.grades{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0 20px}
+.grades div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;border-top:4px solid var(--c)}
+.grades b{display:block;font-size:26px;line-height:1.1;color:var(--c)}
+.grades span{font-size:12.5px;color:var(--muted)}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}.grades{grid-template-columns:repeat(5,minmax(58px,1fr))}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav><a href="/blog/">All posts</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">DNS AUDIT · SAAS &amp; VENDORS</span>
+  <h1>What your DNS reveals about the software you use</h1>
+  <p class="lede">Every time your business connects a tool to its domain, a record gets added to DNS, and almost none are ever removed. Read together, they form an inventory of your software, including tools you've forgotten.</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 8 min read</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<div class="toc"><b>In this post</b><ol>
+<li><a href="#why">Why DNS keeps a list of your tools</a></li>
+<li><a href="#where">Four places to look</a></li>
+<li><a href="#cheat">Cheat sheet: common services and their records</a></li>
+<li><a href="#matters">Why it matters</a></li>
+<li><a href="#inventory">Build your inventory in five steps</a></li>
+<li><a href="#limits">What DNS can't tell you</a></li>
+<li><a href="#lab">Check your own domain</a></li>
+</ol></div>
+
+<h2 id="why">Why DNS keeps a list of your tools</h2>
+<p>Software that sends email as you, or that needs to prove you own your domain, has to ask you to publish something in DNS. A marketing platform wants an SPF entry and a signing key. A document-signing service wants a verification code. A Microsoft 365 rollout adds a handful of helper records. Each is a small, one-off change that someone makes in a hurry.</p>
+<p>Years later, the records are still there. That makes your DNS zone an unplanned, public history of the software your business has used. It's useful for you, because it's a fast way to find tools nobody's tracking. It's also why tidying it matters: a record for a service you cancelled can still give that service, or whoever takes over the account, standing to act as your domain.</p>
+<div class="callout key"><b>Read it as a checklist for your own domain</b>These records show what a domain <i>has published</i>. They can't show who uses a tool today or how well it's configured, so treat every item as a question to ask your team, not as a conclusion.</div>
+
+<h2 id="where">Four places to look</h2>
+<div class="tw"><table>
+<tr><th>Where</th><th>What it lists</th><th>Example</th></tr>
+<tr><td><b>1. SPF includes</b><br><span style="color:var(--muted);font-size:13px">TXT record on your domain</span></td><td>Every service allowed to send email as you: CRM, marketing, helpdesk, finance, HR and anything that sends receipts or notifications.</td><td><code>include:_spf.salesforce.com</code><br><code>include:sendgrid.net</code><br><code>include:servers.mcsv.net</code></td></tr>
+<tr><td><b>2. DKIM selectors</b><br><span style="color:var(--muted);font-size:13px"><code>selector._domainkey</code></span></td><td>The services that digitally sign your mail. The selector name often shows which service it belongs to.</td><td><code>selector1</code> / <code>selector2</code> (Microsoft 365)<br><code>k1</code> (Mailchimp), <code>s1</code> (SendGrid)</td></tr>
+<tr><td><b>3. Verification TXT records</b><br><span style="color:var(--muted);font-size:13px">TXT record on your domain</span></td><td>Services that asked you to prove you own the domain, often when an account was first set up.</td><td><code>google-site-verification=…</code><br><code>atlassian-domain-verification=…</code><br><code>docusign=…</code></td></tr>
+<tr><td><b>4. Helper CNAMEs and MX</b><br><span style="color:var(--muted);font-size:13px">Names under your domain</span></td><td>How deeply a platform is set up, such as Microsoft 365 with managed devices and Teams calling.</td><td><code>autodiscover</code>, <code>enterpriseenrollment</code>, <code>lyncdiscover</code>, <code>sip</code></td></tr>
+</table></div>
+<p>The mail routing itself also tells you the platform: an MX record at <code>*.mail.protection.outlook.com</code> is Microsoft 365, and <code>aspmx.l.google.com</code> is Google Workspace.</p>
+
+<h2 id="cheat">Cheat sheet: common services and their records</h2>
+<p>The patterns below are the usual ones, but they vary by plan and setup, so treat a match as a strong hint rather than proof.</p>
+<div class="tw"><table>
+<tr><th>Service</th><th>What you'll usually see</th></tr>
+<tr><td><b>Microsoft 365</b></td><td>MX <code>*.mail.protection.outlook.com</code>; SPF <code>include:spf.protection.outlook.com</code>; DKIM selectors <code>selector1</code> and <code>selector2</code>; CNAME <code>autodiscover</code>; a TXT starting <code>MS=</code>. A CNAME for <code>enterpriseenrollment</code> suggests Intune device management, and <code>lyncdiscover</code> or <code>sip</code> suggests Teams or older Skype for Business.</td></tr>
+<tr><td><b>Google Workspace</b></td><td>MX <code>aspmx.l.google.com</code> and its alternates; SPF <code>include:_spf.google.com</code>; DKIM selector <code>google</code>; TXT <code>google-site-verification=</code>.</td></tr>
+<tr><td><b>Mailchimp</b></td><td>SPF <code>include:servers.mcsv.net</code>; DKIM selectors <code>k1</code>, <code>k2</code>, <code>k3</code>.</td></tr>
+<tr><td><b>SendGrid</b></td><td>SPF <code>include:sendgrid.net</code>; DKIM selectors <code>s1</code> and <code>s2</code> pointing at SendGrid.</td></tr>
+<tr><td><b>Salesforce</b></td><td>SPF <code>include:_spf.salesforce.com</code>.</td></tr>
+<tr><td><b>Zendesk</b></td><td>SPF <code>include:mail.zendesk.com</code>.</td></tr>
+<tr><td><b>HubSpot, Xero and similar</b></td><td>An SPF include with the vendor's name in it, plus DKIM CNAMEs they ask you to publish.</td></tr>
+<tr><td><b>Atlassian, DocuSign, Adobe, Zoom, Facebook, Apple</b></td><td>TXT verification records such as <code>atlassian-domain-verification=</code>, <code>docusign=</code>, <code>adobe-idp-site-verification=</code>, <code>facebook-domain-verification=</code> and <code>apple-domain-verification=</code>.</td></tr>
+<tr><td><b>A DMARC reporting service</b></td><td>The <code>rua=</code> address in your DMARC record points at the provider (for example dmarcian, Valimail, Red Sift, Proofpoint or Postmark).</td></tr>
+<tr><td><b>Cloudflare Email Routing</b></td><td>MX <code>*.mx.cloudflare.net</code>; SPF <code>include:_spf.mx.cloudflare.net</code>. (This is what globalsoc.com.au uses.)</td></tr>
+</table></div>
+
+<h2 id="matters">Why it matters</h2>
+<ul>
+<li><b>Offboarding.</b> When a tool is cancelled, nobody thinks to remove its DNS records. Anyone who later controls that vendor account might be able to send mail that appears to come from your domain.</li>
+<li><b>The SPF 10-lookup limit.</b> Every include costs a lookup, and nested includes count too. Stale ones push you towards the limit, and over it, SPF fails for all your mail.</li>
+<li><b>DMARC readiness.</b> You can't safely move to <code>p=reject</code> until every legitimate sender is accounted for. Your SPF includes and DKIM selectors are the first draft of that list.</li>
+<li><b>Supplier and privacy risk.</b> The list shows which outside companies handle email or data on your behalf, which is exactly what a privacy or supplier review needs.</li>
+<li><b>Shadow IT.</b> Tools a team signed up for without telling IT show up here before they show up on any spreadsheet.</li>
+<li><b>Insurance and audits.</b> Questionnaires increasingly ask which third parties send email as you, and whether DMARC is enforced.</li>
+</ul>
+
+<h2 id="inventory">Build your inventory in five steps</h2>
+<ol>
+<li><b>Export your records.</b> Copy the TXT records for your domain, your DMARC record, and the DKIM selectors that exist. Your DNS host's control panel, or our <a href="/dnsaudit/">DNS Audit</a>, can list them.</li>
+<li><b>Name every entry.</b> For each include, selector and verification record, write down which service it belongs to. Search the record text if you don't recognise it.</li>
+<li><b>Find an owner.</b> Next to each service, write who in the business uses it, and who pays for it.</li>
+<li><b>Mark what's unused.</b> Anything with no owner, no invoice or no recent activity goes on a removal list.</li>
+<li><b>Remove carefully.</b> Close or confirm the vendor account first, then delete the DNS record. Remove one at a time, watch your email, and keep a note of what you changed so you can restore it.</li>
+</ol>
+<div class="callout"><b>Don't remove first, ask later</b>A record can look unused but still be doing a job, such as signing mail from a payroll system once a fortnight. Always confirm with the owner before deleting a sender's SPF or DKIM entries.</div>
+
+<h2 id="limits">What DNS can't tell you</h2>
+<ul>
+<li><b>Whether a tool is still used.</b> A verification record only shows the service was connected once.</li>
+<li><b>Tools that don't touch DNS.</b> Most software, including accounting, project and file-sharing tools that don't send mail as you, leaves no trace here.</li>
+<li><b>How well a tool is secured.</b> Whether it uses multi-factor authentication, who has admin access and what data it holds all live inside the tool.</li>
+<li><b>Who's behind a name.</b> Different vendors can share a platform or use similar names, so treat matches as hints.</li>
+</ul>
+<p>That's why an inventory built from DNS is a good <i>starting point</i>, and why the next step is always a conversation with the people who run each tool. For broader coverage of what DNS says about your email, website and exposed systems, see <a href="/blog/read-your-email-dns/">What your DNS records say about your business</a>.</p>
+
+<h2 id="lab">Check your own domain</h2>
+<pre><code>Resolve-DnsName globalsoc.com.au -Type TXT | Select -Expand Strings          <span class="c"># SPF and verification records</span>
+Resolve-DnsName _dmarc.globalsoc.com.au -Type TXT | Select -Expand Strings <span class="c"># DMARC and its reporting address</span>
+Resolve-DnsName selector1._domainkey.yourdomain.com.au -Type CNAME        <span class="c"># try a DKIM selector</span></code></pre>
+<p>Or run our free <a href="/dnsaudit/">DNS Audit</a>: its <b>Raw records</b> tab shows all your TXT records in one place, and its <b>Hygiene &amp; exposure</b> section lists leftover verification records. <a href="/blog/how-to-read-dns-audit-report/">This guide</a> explains how to read the rest of the report.</p>
+
+<div class="cta"><h3>Want a hand tidying your domain?</h3><p>We'll build the inventory with you, remove what's unused safely, and set up monitoring so it stays tidy.</p><a href="/dnsaudit/">Run a free DNS Audit →</a><a href="/#contact">Talk to Yogesh</a></div>
+
+<div class="author"><div class="av">Y</div><div><b style="color:var(--ink)">Yogesh</b> runs Global SOC, a security-first app and IT studio in Glen Waverley, Melbourne, helping small businesses build software and keep it secure.</div></div>
+</article></main>
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+</body>
+</html>
