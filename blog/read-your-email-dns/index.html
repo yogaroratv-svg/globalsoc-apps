@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>What Your DNS Says | Global SOC</title>
+<title>What Your DNS Exposes | Global SOC</title>
 <meta name="description" content="What your email, web and subdomain DNS records say about your business, how to read them yourself, and what to fix. Uses globalsoc.com.au as the live example.">
 <meta name="author" content="Yogesh">
-<meta property="og:title" content="What your DNS records say about your business">
+<meta property="og:title" content="What your DNS exposes: email, web and attack surface">
 <meta property="og:description" content="How to read your own MX, SPF, DKIM and DMARC records, and what each one means.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/read-your-email-dns/">
@@ -67,9 +67,9 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 
 <section class="hero"><div class="wrap">
   <span class="tag">EMAIL SECURITY · HOW IT WORKS</span>
-  <h1>What your DNS records say about your business</h1>
-  <p class="lede">Your domain publishes a public description of how your email, website and tools are set up. Here's how to read your own records, what each one means, and what to fix.</p>
-  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 15 min read</span></div></div>
+  <h1>What your DNS exposes: email, web and attack surface</h1>
+  <p class="lede">Your domain publishes a public description of how your email, website and exposed systems are set up. Here's how to read your own records, what each one means, and what to fix. (The software you use has its own post.)</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 11 min read</span></div></div>
 </div></section>
 
 <main class="wrap"><article>
@@ -79,7 +79,6 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 <li><a href="#senders">SPF and DKIM: who may send as you</a></li>
 <li><a href="#dmarc">DMARC: the policy, and who reads the reports</a></li>
 <li><a href="#transport">MTA-STS, TLS-RPT and DANE: protecting email in transit</a></li>
-<li><a href="#saas">Your SaaS footprint: the tools your DNS admits to</a></li>
 <li><a href="#web">The web side: CDN, certificates and headers</a></li>
 <li><a href="#surface">Your attack surface: subdomains and certificate logs</a></li>
 <li><a href="#fixes">From findings to fixes</a></li>
@@ -92,6 +91,7 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 
 <h2 id="why">Why this information is public</h2>
 <p>For email to work between strangers, every mail server in the world needs to find out three things about your domain without asking you: <b>where to deliver your mail</b>, <b>which servers may send it</b>, and <b>what to do when a message fails those checks</b>. DNS is the only shared directory, so you publish the answers there, and anyone can look them up.</p>
+<p>This post covers your email, website and exposed systems. A companion post, <a href="/blog/dns-saas-footprint/">What your DNS reveals about the software you use</a>, covers the SaaS tools that show up in your records.</p>
 <p>That's by design, and it's useful for you. Reading your own records shows you your email setup as the rest of the internet sees it, including leftovers you forgot about. This post goes through the records worth knowing, using our own domain, globalsoc.com.au, as the example.</p>
 <div class="callout key"><b>Reading records isn't the same as testing security</b>These records show what a domain has <i>published</i>, not what's actually switched on inside the business. Treat them as a checklist for your own domain, not as a verdict on anyone else's.</div>
 
@@ -114,7 +114,7 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 
 <h2 id="senders">SPF and DKIM: who may send as you</h2>
 <h3>SPF lists the allowed sending servers</h3>
-<p>Your SPF record is a list of everything permitted to send email as your domain. Each <code>include:</code> is a service the business uses, which makes it a handy inventory of your email-sending tools: accounting, CRM, marketing, helpdesk, HR. Ours is:</p>
+<p>Your SPF record is a list of everything permitted to send email as your domain. Each <code>include:</code> is a service the business uses, which makes it a handy inventory of your email-sending tools: accounting, CRM, marketing, helpdesk, HR. (More on reading these in <a href="/blog/dns-saas-footprint/">What your DNS reveals about the software you use</a>.) Ours is:</p>
 <pre><code>v=spf1 include:_spf.mx.cloudflare.net include:_spf.google.com include:spf.protection.outlook.com -all</code></pre>
 <p>Read it left to right: Cloudflare, Google (our Gmail "Send mail as") and Microsoft (the Azure service that sends our alerts) may send as globalsoc.com.au, and <code>-all</code> means <i>everyone else is rejected</i>.</p>
 <ul>
@@ -160,21 +160,6 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 <tr><td><b>DANE (TLSA)</b></td><td>Pins your mail server's certificate in DNS. Needs DNSSEC. Microsoft 365 and some national providers support it.</td></tr>
 </table></div>
 <p>Few small businesses use any of these yet, so having them is a sign of a careful email setup, and adding them is cheap.</p>
-
-<h2 id="saas">Your SaaS footprint: the tools your DNS admits to</h2>
-<p>Over the years, every business connects services to its domain: a CRM, a marketing tool, a helpdesk, HR and finance software. Each one leaves a trace in DNS, and the traces rarely get cleaned up. Reading them is one of the quickest ways to build an inventory of your own tools, and to find the ones you forgot.</p>
-<div class="tw"><table>
-<tr><th>Where to look</th><th>Examples</th><th>What it shows you</th></tr>
-<tr><td><b>SPF includes</b></td><td><code>_spf.salesforce.com</code>, <code>sendgrid.net</code>, <code>servers.mcsv.net</code> (Mailchimp), <code>mail.zendesk.com</code>, <code>hubspot</code>, <code>xero</code>, <code>sapsf.com</code></td><td>Every service allowed to send email as you: CRM, marketing, helpdesk, finance and HR.</td></tr>
-<tr><td><b>Verification TXT records</b></td><td><code>MS=</code>, <code>google-site-verification</code>, <code>atlassian-domain-verification</code>, <code>docusign</code>, <code>adobe-idp-site-verification</code>, <code>facebook-domain-verification</code>, <code>zoom</code>, <code>apple-domain-verification</code></td><td>Services that asked you to prove you own the domain. Plenty of these are for tools you no longer use.</td></tr>
-<tr><td><b>CNAMEs</b></td><td><code>autodiscover</code> → Microsoft, <code>enterpriseenrollment</code> → Intune, <code>lyncdiscover</code> and <code>sip</code> → Teams</td><td>How deeply you use Microsoft 365: Outlook setup, managed devices and Teams calling.</td></tr>
-</table></div>
-<h3>What to do with this</h3>
-<ul>
-<li><b>Build a service list and match it to a person.</b> Every include and verification record should map to a tool someone still owns and pays for. Anything nobody recognises is a cleanup candidate.</li>
-<li><b>Remove records for cancelled services.</b> A leftover verification or SPF include can let a former vendor, or anyone who takes over that account, act as your domain. It's also a good moment to check the account itself was closed when the person who owned it left.</li>
-<li><b>Treat verification records as a clue, not a verdict.</b> A record shows the service was <i>once</i> connected, not that it's still in use.</li>
-</ul>
 
 <h2 id="web">The web side: CDN, certificates and headers</h2>
 <p>A visit to your website tells a browser (and a security reviewer) how it's hosted and how carefully it's protected:</p>
