@@ -855,7 +855,9 @@ function render(){
   $('#raw').innerHTML=`<table><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Data</th></tr></thead><tbody>${RAW.filter(r=>r.ans.length||r.status!==3).sort((a,b)=>a.name.localeCompare(b.name)||a.type.localeCompare(b.type)).map(r=>`<tr><td class="d">${esc(r.name)}</td><td>${esc(r.type)}</td><td>${esc(RC[r.status]||r.status)}</td><td class="d">${r.ans.map(a=>`${esc(TN[a.type]||a.type)} ${esc(a.data)} <span style="color:var(--muted)">TTL ${a.TTL}</span>`).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`;
   renderServices();
   renderCompliance();
-  try{fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,services:detectServices(),typo:ctx.typo||null,surface:ctx.surface||null})},8000).catch(()=>{})}catch(e){}
+  try{const recs=CK.filter(c=>c.status==='fail'||c.status==='warn').sort((a,b)=>ORDER[a.status]-ORDER[b.status]||SEVO[a.sev]-SEVO[b.sev]).slice(0,15).map(c=>({s:c.status,cat:c.cat,title:c.title,fix:c.fix}));
+  const compliance=CTRLS.map(c=>({n:c.n,st:ctrlStatus(CK.filter(c.sel))})).filter(r=>r.st!=='na');
+  fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,pass:CK.filter(c=>c.status==='pass').length,info:CK.filter(c=>c.status==='info').length,services:detectServices(),typo:ctx.typo||null,surface:ctx.surface||null,recs,compliance})},8000).catch(()=>{})}catch(e){}
   drawMap();
   document.querySelectorAll('.snip button').forEach(b=>b.onclick=()=>copyText(b.parentElement.querySelector('code').textContent));
   tab('recs');
