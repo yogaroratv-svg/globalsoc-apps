@@ -624,15 +624,22 @@ async function chkSurface(){
   const hosts=data.hosts;
   const nm=ip=>((ctx.ipMap&&ctx.ipMap[ip])||[]),lbl=h=>{const n=nm(h.ip);return n.length?`${n.join(', ')} → ${h.ip}`:`${h.ip}${h.hostnames&&h.hostnames.length?' ('+h.hostnames[0]+')':''}`};
   const fmt=h=>(h.ports||[]).map(p=>PORTN[p]?`${p} (${PORTN[p]})`:`${p}`).join(', ');
-  const vulnHosts=hosts.filter(h=>h.vulns&&h.vulns.length),riskyHosts=hosts.filter(h=>(h.ports||[]).some(p=>RISKYP.has(p)));
-  const vulnAll=[...new Set([].concat(...hosts.map(h=>h.vulns||[])))];
+  const cv=v=>(typeof v==='string')?{id:v,cvss:null}:v,cstr=v=>cv(v).cvss!=null?`${cv(v).id} (CVSS ${cv(v).cvss})`:`${cv(v).id} (unrated)`;
+  const maxC=h=>Math.max(-1,...(h.vulns||[]).map(v=>cv(v).cvss??-1));
+  const vulnHosts=hosts.filter(h=>h.vulns&&h.vulns.length).sort((a,b)=>maxC(b)-maxC(a)),riskyHosts=hosts.filter(h=>(h.ports||[]).some(p=>RISKYP.has(p)));
+  const overallMax=Math.max(-1,...vulnHosts.map(maxC));
+  const vulnAll=[...new Set([].concat(...hosts.map(h=>(h.vulns||[]).map(cstr))))];
   const riskyAll=[...new Set([].concat(...hosts.map(h=>(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p))))];
-  ctx.surface={hosts:hosts.length,vulns:vulnAll,risky:riskyAll,
-    detail:vulnHosts.map(h=>({ip:h.ip,names:nm(h.ip).slice(0,3),cves:(h.vulns||[]).slice(0,10)})),
+  ctx.surface={hosts:hosts.length,vulns:vulnAll,risky:riskyAll,max:overallMax,
+    detail:vulnHosts.map(h=>({ip:h.ip,names:nm(h.ip).slice(0,3),max:maxC(h),cves:(h.vulns||[]).slice(0,10).map(cstr)})),
     riskyDetail:riskyHosts.map(h=>({ip:h.ip,names:nm(h.ip).slice(0,3),ports:(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p)}))};
   if(!hosts.length){add('surf','pass','No notable exposure in public scan data',`Checked ${ips.length} internet-facing address${ips.length>1?'es':''} against Shodan's public scan database. Nothing notable is exposed, or these hosts aren't indexed.`,N);return}
   add('surf','info',`${hosts.length} internet-facing host${hosts.length>1?'s':''} seen in public scans`,hosts.map(h=>`${lbl(h)}\n   ports: ${fmt(h)||'—'}`).join('\n\n')+`\n\nLeft of each arrow is the subdomain of ${D} that resolves to that IP. Data is from Shodan's public internet scans, not a scan by us.`,N);
-  if(vulnHosts.length)add('surf','fail','Known vulnerabilities on an exposed host',vulnHosts.map(h=>`${lbl(h)}\n   open: ${fmt(h)||'—'}\n   CVEs: ${h.vulns.slice(0,8).join(', ')}${h.vulns.length>8?` +${h.vulns.length-8} more`:''}`).join('\n\n')+`\n\nEach host above is where a subdomain of ${D} resolves, and is reachable from the internet. Shodan matched its software banner to published CVEs — these are potential, not confirmed, so verify the version before acting.`,{sev:'high',fix:'For each host: confirm you own it and it\'s in scope, identify the service and its real version, then patch or apply the vendor mitigation. If it doesn\'t need to be public (e.g. SSH, admin), put it behind a VPN or an IP allow-list.',...N});
+  if(vulnHosts.length){
+    const st=overallMax>=7?'fail':overallMax>=4?'warn':'info',sv=overallMax>=4?(overallMax>=7?'high':'med'):'low';
+    const title=overallMax>=9?'Critical vulnerabilities on an exposed host (CVSS ≥ 9)':overallMax>=7?'High-severity vulnerabilities on an exposed host (CVSS ≥ 7)':overallMax>=4?'Medium-severity vulnerabilities on an exposed host':'Exposed service with low-severity or unrated CVEs';
+    add('surf',st,title,vulnHosts.map(h=>`${lbl(h)}\n   open: ${fmt(h)||'—'}\n   ${(h.vulns||[]).slice(0,8).map(cstr).join(', ')}${h.vulns.length>8?` +${h.vulns.length-8} more`:''}`).join('\n\n')+`\n\nSorted worst-first by CVSS. Each host is where a subdomain of ${D} resolves and is reachable from the internet. CVSS and the CVE match come from public data — potential, not confirmed — so verify the service version before acting.`,{sev:sv,fix:'Confirm you own each host and it\'s in scope, identify the service and its real version, then patch or apply the vendor mitigation. If it doesn\'t need to be public (e.g. SSH, admin), put it behind a VPN or an IP allow-list.',...N});
+  }
   if(riskyHosts.length)add('surf','warn','Sensitive service exposed to the internet',riskyHosts.map(h=>`${lbl(h)}\n   ${(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p).join(', ')}`).join('\n\n')+'\n\nRemote-access, database and admin services are prime ransomware entry points and should rarely face the public internet.',{sev:'high',fix:'Restrict these to a VPN or IP allow-list, require MFA, and keep them patched. Databases and remote-access ports should not be internet-facing.',...N});
   if(!vulnHosts.length&&!riskyHosts.length)add('surf','pass','Only standard web services exposed','Exposed hosts serve normal web ports with no flagged vulnerabilities in the scan data.',N);
 }
@@ -782,8 +789,8 @@ function render(){
   $('#counts').innerHTML=[['fail','Fix now'],['warn','Improve'],['pass','Good'],['info','Info']].map(([s,l])=>`<div><b style="color:var(--${s})">${n(s)}</b><span>${l}</span></div>`).join('');
   const al=$('#alert');
   if(al){
-    const tmx=(ctx.typo&&ctx.typo.mx)||[],sdetail=(ctx.surface&&ctx.surface.detail)||[],jump=g=>`<a onclick="document.querySelector('[data-p=all]').click();const g=document.getElementById('g-${g}');if(g){g.open=true;g.scrollIntoView({behavior:'smooth'})}">See details ↓</a>`,rows=[];
-    if(sdetail.length)rows.push(`<div class="ic">⚠️</div><div><h3>An internet-facing host has known vulnerabilities</h3><p>These hosts of <b>${esc(D)}</b> are reachable from the internet with potential CVEs:</p>${sdetail.map(d=>`<div style="margin:8px 0"><b style="font-family:ui-monospace,monospace">${d.names.length?esc(d.names.join(', '))+' → ':''}${esc(d.ip)}</b><div class="doms">${d.cves.slice(0,8).map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>`).join('')}<p>Confirm you own each host, then verify the versions and patch, or take the service off the public internet. ${jump('surf')}</p></div>`);
+    const tmx=(ctx.typo&&ctx.typo.mx)||[],shigh=((ctx.surface&&ctx.surface.detail)||[]).filter(d=>d.max>=7),jump=g=>`<a onclick="document.querySelector('[data-p=all]').click();const g=document.getElementById('g-${g}');if(g){g.open=true;g.scrollIntoView({behavior:'smooth'})}">See details ↓</a>`,rows=[];
+    if(shigh.length)rows.push(`<div class="ic">⚠️</div><div><h3>High-severity vulnerability on an internet-facing host</h3><p>These hosts of <b>${esc(D)}</b> are reachable from the internet with high-severity CVEs (CVSS ≥ 7):</p>${shigh.map(d=>`<div style="margin:8px 0"><b style="font-family:ui-monospace,monospace">${d.names.length?esc(d.names.join(', '))+' → ':''}${esc(d.ip)}</b><div class="doms">${d.cves.slice(0,8).map(v=>`<span>${esc(v)}</span>`).join('')}</div></div>`).join('')}<p>Confirm you own each host, then verify the versions and patch, or take the service off the public internet. ${jump('surf')}</p></div>`);
     if(tmx.length)rows.push(`<div class="ic">⚠️</div><div><h3>Look-alike domains are set up to send email as you</h3><p>These near-copies of <b>${esc(D)}</b> have mail servers configured, so someone could send convincing phishing that looks like it came from your business:</p><div class="doms">${tmx.map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>If you don't own these, report them to <a href="https://www.cyber.gov.au/report" target="_blank" rel="noopener">ACSC ReportCyber</a> and the registrar, warn your staff and customers, and consider registering the most convincing ones yourself. ${jump('typo')}</p></div>`);
     if(rows.length){al.style.display='';al.innerHTML=rows.map(r=>`<div class="alertrow">${r}</div>`).join('')}else al.style.display='none';
   }
