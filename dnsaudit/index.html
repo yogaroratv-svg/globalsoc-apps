@@ -685,7 +685,9 @@ async function chkSurface(){
     add('surf','info',`Network map: ${ips.length} IP${ips.length>1?'s':''} across ${gl.length} network${gl.length>1?'s':''} (ASN)`,gl.map(([k,g])=>`${g.a?`AS${k} ${g.a.name||''}${g.a.cloud?' [cloud/CDN provider]':''}`:'Unknown network'}\n`+g.ips.map(ip=>{const a=AS[ip],n=nm(ip);return `   ${ip}${a?' in '+a.prefix+' ('+a.cc+')':''}${n.length?' ← '+n.slice(0,3).join(', '):''}`}).join('\n')).join('\n\n')+`\n\nShows which organisation's network each of ${D}'s internet-facing addresses sits in. ${own.length?'Networks not tagged as cloud/CDN may be self-hosted or with a smaller provider: these are usually yours to patch.':'Everything is on cloud/CDN providers. Exposure on shared provider edge IPs (e.g. a CDN) usually belongs to the provider, not you.'} Source: Team Cymru IP-to-ASN (public DNS lookups).`,N);
   }
   if(!data||!Array.isArray(data.hosts)){return}
-  const hosts=data.hosts;
+  // Shared cloud/CDN edge IPs serve thousands of sites: Shodan's CVEs there describe the provider or other tenants, not this domain.
+  const isEdge=h=>(AS[h.ip]&&AS[h.ip].cloud)||/^185\.199\.(10[89]|11[01])\./.test(h.ip);
+  const edgeHosts=data.hosts.filter(isEdge),hosts=data.hosts.filter(h=>!isEdge(h));
   const asl=ip=>{const a=AS[ip];return a?` [AS${a.asn} ${(a.name||'').split(',')[0]}${a.cloud?' — provider edge, no direct egress':''}]`:''};
   const lbl=h=>{const n=nm(h.ip);return (n.length?`${n.join(', ')} → ${h.ip}`:`${h.ip}${h.hostnames&&h.hostnames.length?' ('+h.hostnames[0]+')':''}`)+asl(h.ip)};
   const fmt=h=>(h.ports||[]).map(p=>PORTN[p]?`${p} (${PORTN[p]})`:`${p}`).join(', ');
@@ -701,7 +703,8 @@ async function chkSurface(){
   ctx.surface={hosts:hosts.length,vulns:vulnAll,risky:riskyAll,max:overallMax,kev:kevAll,
     detail:vulnHosts.map(h=>({ip:h.ip,asn:AS[h.ip]?'AS'+AS[h.ip].asn+' '+AS[h.ip].name:'',names:nm(h.ip).slice(0,3),max:maxC(h),kev:hasKev(h),cves:(h.vulns||[]).slice(0,10).map(cstr)})),
     riskyDetail:riskyHosts.map(h=>({ip:h.ip,names:nm(h.ip).slice(0,3),ports:(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p)}))};
-  if(!hosts.length){add('surf','pass','No notable exposure in public scan data',`Checked ${ips.length} internet-facing address${ips.length>1?'es':''} against Shodan's public scan database. Nothing notable is exposed, or these hosts aren't indexed.`,N);return}
+  if(edgeHosts.length)add('surf','info',`${edgeHosts.length} shared cloud/CDN IP${edgeHosts.length>1?'s':''}: public scan data not applied to ${D}`,edgeHosts.map(h=>{const a=AS[h.ip];return `${lbl(h)}${a?'':' [GitHub Pages]'}\n   Shodan lists ${(h.vulns||[]).length} CVE${(h.vulns||[]).length===1?'':'s'} and ports ${fmt(h)||'—'} for this shared address`}).join('\n\n')+`\n\nThese addresses belong to a hosting or CDN provider and are shared by many websites. Scan results for them (including any CVEs) come from the provider's edge servers or from other sites on the same address, so they aren't counted as ${D}'s vulnerabilities. Keep your own site's software and JavaScript libraries up to date.`,N);
+  if(!hosts.length){add('surf','pass',edgeHosts.length?`No exposure on ${D}'s own servers`:'No notable exposure in public scan data',edgeHosts.length?`All internet-facing addresses with scan data are shared cloud/CDN IPs (see above). No directly hosted server of ${D} shows open services or CVEs in Shodan's public scans.`:`Checked ${ips.length} internet-facing address${ips.length>1?'es':''} against Shodan's public scan database. Nothing notable is exposed, or these hosts aren't indexed.`,N);return}
   add('surf','info',`${hosts.length} internet-facing host${hosts.length>1?'s':''} seen in public scans`,hosts.map(h=>`${lbl(h)}\n   ports: ${fmt(h)||'—'}`).join('\n\n')+`\n\nLeft of each arrow is the subdomain of ${D} that resolves to that IP. Data is from Shodan's public internet scans, not a scan by us.`,N);
   if(vulnHosts.length){
     const st=(anyKev||overallMax>=7)?'fail':overallMax>=4?'warn':'info',sv=(anyKev||overallMax>=4)?'high':(overallMax>=4?'med':'low');
