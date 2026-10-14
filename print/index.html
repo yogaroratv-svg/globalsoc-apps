@@ -170,6 +170,17 @@ input[type=range]{width:100%;accent-color:var(--magenta)}
 .qty{display:flex;align-items:center;gap:0;border:1.5px solid var(--line);border-radius:999px;overflow:hidden;width:max-content;background:var(--card)}
 .qty button{width:42px;height:42px;border:0;background:transparent;color:var(--ink);font:700 20px var(--body);cursor:pointer}
 .qty input{width:70px;border:0;text-align:center;border-radius:0;padding:8px 0;font-variant-numeric:tabular-nums}
+.sizegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.sz{display:grid;gap:4px;text-align:center;border:1.5px solid var(--line);border-radius:8px;padding:8px 6px;background:var(--card)}
+.sz.on{border-color:var(--ink)}
+.sz label{font:700 13px/1 var(--mono)}
+.sz input{text-align:center;padding:6px 2px;font-variant-numeric:tabular-nums}
+.sguide summary{font:600 14px/1.3 var(--body);padding-block:4px;color:var(--magenta)}
+.sguide{border:0;padding:0;background:none}
+.sguide summary::after{content:none}
+.pt.sg{min-width:520px}.pt.sg td,.pt.sg th{padding:8px 10px;font-size:14px}
+.qtytotal{font:600 15px var(--mono);font-variant-numeric:tabular-nums}
+.qtytotal b{font:800 30px/1 var(--display)}
 .check{display:flex;gap:10px;align-items:center;font-size:15px;cursor:pointer}
 .check input{width:18px;height:18px;accent-color:var(--magenta)}
 
@@ -358,6 +369,20 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
               <div class="row" style="flex-wrap:nowrap"><label class="label" for="tcol" style="white-space:nowrap">Ink</label><input type="color" id="tcol" value="#14162b" style="width:48px;height:40px;border:0;background:none;padding:0"><input type="range" id="tsize" min="6" max="30" value="14" aria-label="Text size"></div>
             </div>
           </div>
+          <div class="field" id="sizesfield">
+            <span class="label" id="l-sizes">Sizes &amp; quantities</span>
+            <div class="sizegrid" id="sizegrid" role="group" aria-labelledby="l-sizes"></div>
+            <div class="seg" id="mugsize" role="group" aria-labelledby="l-sizes" hidden>
+              <button type="button" data-m="11oz" aria-pressed="true">11oz standard</button>
+              <button type="button" data-m="15oz" aria-pressed="false">15oz large <span class="small">+$3</span></button>
+            </div>
+            <p class="small" id="sizenote">Unisex fit. 3XL–5XL add $3 each.</p>
+            <details class="sguide" id="sguide"><summary>Size guide (chest width, cm)</summary>
+              <div class="ptable-wrap"><table class="pt sg"><thead><tr><th scope="col">Size</th><th scope="col">XS</th><th scope="col">S</th><th scope="col">M</th><th scope="col">L</th><th scope="col">XL</th><th scope="col">2XL</th><th scope="col">3XL</th><th scope="col">4XL</th><th scope="col">5XL</th></tr></thead>
+              <tbody><tr><th scope="row">T-shirt</th><td>48</td><td>51</td><td>54</td><td>57</td><td>60</td><td>63</td><td>66</td><td>69</td><td>72</td></tr><tr><th scope="row">Hoodie</th><td>51</td><td>54</td><td>57</td><td>60</td><td>63</td><td>66</td><td>69</td><td>72</td><td>75</td></tr></tbody></table></div>
+              <p class="small" style="margin-top:8px">Measured flat across the chest, 2.5 cm below the armpit. Between sizes? Size up, or ask to try samples at a meet-up.</p>
+            </details>
+          </div>
           <div class="field" id="sizefield">
             <span class="label">Options</span>
             <label class="check"><input type="checkbox" id="back"> Add a second print (back or sleeve) <span class="small" id="backp">+$6.00 each</span></label>
@@ -365,7 +390,8 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
           </div>
           <div class="price" aria-live="polite">
             <div class="row" style="justify-content:space-between">
-              <div class="qty"><button type="button" id="qm" aria-label="Fewer">−</button><input type="number" id="qty" value="1" min="1" max="999" aria-label="Quantity"><button type="button" id="qp" aria-label="More">+</button></div>
+              <div class="qty" id="qtybox"><button type="button" id="qm" aria-label="Fewer">−</button><input type="number" id="qty" value="1" min="1" max="999" aria-label="Quantity"><button type="button" id="qp" aria-label="More">+</button></div>
+              <div class="qtytotal" id="qtytotal" hidden><b id="qtyn">1</b> item</div>
               <div class="big"><span id="unit">$19.95</span> <small>each</small></div>
             </div>
             <div class="meta"><span id="total">Total $19.95 incl. GST</span><span id="tier">1+ price</span></div>
@@ -408,6 +434,8 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
           <div class="extras">
             <span><b>+$6</b> second print location (apparel)</span>
             <span><b>+$15</b> express 48-hour, per order</span>
+            <span><b>Sizes XS–5XL:</b> +$3 each for 3XL–5XL</span>
+            <span><b>+$3</b> 15oz large mug</span>
             <span><b>100+ units:</b> ask for a custom quote</span>
             <span><b>Free</b> pickup in Glen Waverley</span>
           </div>
@@ -690,7 +718,8 @@ document.querySelectorAll('#prod button').forEach(b=>b.onclick = ()=>{
   if (S.p==='mug'){ S.color='#FFFFFF'; S.colorName='White'; }
   $('#back').closest('label').hidden = S.p==='mug'; if (S.p==='mug') { S.back=false; $('#back').checked=false; }
   if (!S.text.touched){ S.text.color = inkFor(S.p, S.color); $('#tcol').value = S.text.color.toLowerCase(); }
-  renderSwatches(); refreshArt();
+  if (S.p==='mug') S.qty = Math.max(1, +$('#qty').value || 1);
+  renderSwatches(); renderSizes(); refreshArt();
 });
 $('#up').onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader();
   r.onload = () => { const img = new Image(); img.onload = () => { S.art = {...S.art, design:null, img, upload:{name:f.name, src:r.result}}; renderChosen(); draw(); }; img.src = r.result; };
@@ -716,23 +745,47 @@ cv.addEventListener('pointermove', e => { if (!drag) return; const [x,y] = pt(e)
   S[drag.k].cx = Math.max(0, Math.min(1, drag.cx + (x-drag.x)/aw)); S[drag.k].cy = Math.max(0, Math.min(1, drag.cy + (y-drag.y)/ah)); draw(); });
 ['pointerup','pointercancel'].forEach(t => cv.addEventListener(t, () => { drag = null; cv.classList.remove('dragging'); }));
 
+/* sizes */
+const SIZES = ['XS','S','M','L','XL','2XL','3XL','4XL','5XL'], BIG = new Set(['3XL','4XL','5XL']);
+S.sizes = {M:1}; S.mug = '11oz';
+const sizeTotal = () => SIZES.reduce((n,k)=>n+(S.sizes[k]||0),0);
+const sizeList = () => SIZES.filter(k=>S.sizes[k]>0).map(k=>`${k}×${S.sizes[k]}`).join(', ');
+function renderSizes(){
+  const mug = S.p==='mug';
+  $('#sizegrid').hidden = mug; $('#sguide').hidden = mug; $('#mugsize').hidden = !mug;
+  $('#qtybox').hidden = !mug; $('#qtytotal').hidden = mug;
+  $('#sizenote').textContent = mug ? 'Both sizes are dishwasher and microwave safe.' : 'Unisex fit. Enter how many of each size. 3XL–5XL add $3 each.';
+  if (mug) return;
+  $('#sizegrid').innerHTML = SIZES.map(k=>`<div class="sz${S.sizes[k]>0?' on':''}"><label for="sz-${k}">${k}</label><input type="number" id="sz-${k}" data-k="${k}" min="0" max="999" value="${S.sizes[k]||0}" inputmode="numeric"></div>`).join('');
+  $('#sizegrid').querySelectorAll('input').forEach(i=>i.oninput = ()=>{ const v = Math.max(0, Math.min(999, Math.round(+i.value)||0)); S.sizes[i.dataset.k] = v; i.parentElement.classList.toggle('on', v>0); S.qty = sizeTotal(); draw(); });
+  S.qty = sizeTotal();
+}
+document.querySelectorAll('#mugsize button').forEach(b=>b.onclick = ()=>{ S.mug = b.dataset.m; document.querySelectorAll('#mugsize button').forEach(x=>x.setAttribute('aria-pressed', String(x===b))); draw(); });
+
 /* price */
 function quoteOf(){
-  const P = PRICES[S.p], u = unitPrice(S.p, S.qty) + (S.back ? P.extra : 0), total = u*S.qty + (S.express ? 15 : 0);
-  const nextT = P.tiers.find(([t]) => t > S.qty);
-  return {u, total, tierLabel: (P.tiers.filter(([t])=>S.qty>=t).pop()||P.tiers[0])[0] + '+ price', nextT};
+  const P = PRICES[S.p], q = S.qty, tq = Math.max(1,q);
+  const u = unitPrice(S.p, tq) + (S.back ? P.extra : 0) + (S.p==='mug' && S.mug==='15oz' ? 3 : 0);
+  const big = S.p==='mug' ? 0 : SIZES.filter(k=>BIG.has(k)).reduce((n,k)=>n+(S.sizes[k]||0),0);
+  const total = q ? u*q + big*3 + (S.express ? 15 : 0) : 0;
+  const nextT = P.tiers.find(([t]) => t > tq);
+  return {u, total, big, tierLabel: (P.tiers.filter(([t])=>tq>=t).pop()||P.tiers[0])[0] + '+ price', nextT};
 }
 function updatePrice(){
   const q = quoteOf();
-  $('#unit').textContent = money(q.u); $('#total').textContent = `Total ${money(q.total)} incl. GST`; $('#tier').textContent = q.tierLabel;
+  $('#unit').textContent = money(q.u); $('#total').textContent = `Total ${money(q.total)} incl. GST${q.big?` (incl. ${money(q.big*3)} for 3XL+)`:''}`; $('#tier').textContent = q.tierLabel;
+  $('#qtyn').textContent = S.qty; $('#qtyn').nextSibling.textContent = S.qty===1 ? ' item' : ' items';
+  if (!S.qty){ $('#next').textContent = 'Enter a quantity for at least one size.'; $('#backp').textContent = `+${money(PRICES[S.p].extra)} each`; return; }
   $('#next').textContent = S.qty >= 100 ? '100+ units: send a quote request for a custom price.' : q.nextT ? `Order ${q.nextT[0]} and pay ${money(q.nextT[1] + (S.back?PRICES[S.p].extra:0))} each.` : 'Best tier price applied.';
   $('#backp').textContent = `+${money(PRICES[S.p].extra)} each`;
 }
 function summaryText(){
   const q = quoteOf(), art = S.art.upload ? `Uploaded: ${S.art.upload.name}` : S.art.design ? `Library: ${DESIGNS.find(d=>d.id===S.art.design).name}` : 'None';
-  return `Product:   ${PRICES[S.p].name} (${S.colorName})\nArtwork:   ${art}\nText:      ${S.text.str ? `"${S.text.str}" in ${S.text.font}` : 'None'}\nExtras:    ${[S.back&&'second print', S.express&&'express 48h'].filter(Boolean).join(', ') || 'None'}\nQuantity:  ${S.qty}\nEstimate:  ${money(q.u)} each, ${money(q.total)} total incl. GST`;
+  return `Product:   ${PRICES[S.p].name} (${S.colorName})\nSizes:     ${S.p==='mug' ? S.mug : (sizeList() || 'None chosen')}\nArtwork:   ${art}\nText:      ${S.text.str ? `"${S.text.str}" in ${S.text.font}` : 'None'}\nExtras:    ${[S.back&&'second print', S.express&&'express 48h'].filter(Boolean).join(', ') || 'None'}\nQuantity:  ${S.qty}\nEstimate:  ${money(q.u)} each, ${money(q.total)} total incl. GST`;
 }
-function updateSummary(){ $('#sumbox').textContent = summaryText(); $('#f-sum').value = summaryText(); }
+function updateSummary(){ $('#sumbox').textContent = summaryText(); $('#f-sum').value = summaryText();
+  const fs = $('#f-sizes'); if (!fs.dataset.touched) fs.value = S.p==='mug' ? `${S.mug} × ${S.qty}` : sizeList(); }
+$('#f-sizes').addEventListener('input', e => { e.target.dataset.touched = '1'; });
 $('#toquote').onclick = () => document.getElementById('quote').scrollIntoView({behavior:'smooth'});
 
 /* library */
@@ -789,7 +842,7 @@ $('#copybtn').onclick = () => { const t = $('#sentsum').textContent; navigator.c
 if (location.hash === '#sent') showSent(false);
 
 /* boot */
-renderSwatches(); renderLib(); renderTable(); refreshArt(); hero();
+renderSwatches(); renderSizes(); renderLib(); renderTable(); refreshArt(); hero();
 if (document.fonts) document.fonts.ready.then(draw);
 </script>
 </body>
