@@ -196,7 +196,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   <div class="radar"><canvas id="radar" aria-hidden="true"></canvas><div class="rl"><b id="qc">0</b><span>DNS queries</span></div></div>
 </div>
 <div class="wrap" style="padding-bottom:40px">
-  <div class="checks"><span>DNSSEC</span><span>SPF</span><span>DMARC</span><span>DKIM</span><span>MTA-STS</span><span>TLS-RPT</span><span>DANE</span><span>CAA</span><span>Name servers</span><span>SOA</span><span>Registrar lock</span><span>Expiry</span><span>Subdomain takeover</span><span>Wildcards</span><span>Exposed records</span></div>
+  <div class="checks"><span>DNSSEC</span><span>SPF</span><span>DMARC</span><span>DKIM</span><span>MTA-STS</span><span>TLS-RPT</span><span>DANE</span><span>CAA</span><span>Name servers</span><span>SOA</span><span>Registrar lock</span><span>Expiry</span><span>Subdomain takeover</span><span>Lookalike domains</span><span>Wildcards</span><span>Exposed records</span></div>
 </div>
 </section>
 
@@ -267,7 +267,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const T={A:1,NS:2,CNAME:5,SOA:6,MX:15,TXT:16,AAAA:28,DS:43,DNSKEY:48,TLSA:52,HTTPS:65,CAA:257};
 const TN=Object.fromEntries(Object.entries(T).map(([k,v])=>[v,k]));
 const RC={0:'NOERROR',1:'FORMERR',2:'SERVFAIL',3:'NXDOMAIN',5:'REFUSED','-1':'ERROR'};
-const CATS={reg:['Registration','🏷️'],ns:['Name servers','🧭'],soa:['SOA & zone','📜'],dnssec:['DNSSEC','🔏'],web:['Web & certificates','🌐'],mx:['Mail servers','📮'],spf:['SPF','✉️'],dmarc:['DMARC','🛡️'],dkim:['DKIM & mail transport','🔑'],sub:['Subdomains & takeover','🧩'],hyg:['Hygiene & exposure','🧹']};
+const CATS={reg:['Registration','🏷️'],ns:['Name servers','🧭'],soa:['SOA & zone','📜'],dnssec:['DNSSEC','🔏'],web:['Web & certificates','🌐'],mx:['Mail servers','📮'],spf:['SPF','✉️'],dmarc:['DMARC','🛡️'],dkim:['DKIM & mail transport','🔑'],sub:['Subdomains & takeover','🧩'],typo:['Lookalike domains','🎭'],hyg:['Hygiene & exposure','🧹']};
 const W={fail:{high:15,med:8,low:4},warn:{high:8,med:4,low:2}};
 const ORDER={fail:0,warn:1,pass:2,info:3};
 const SEVO={high:0,med:1,low:2};
@@ -599,7 +599,43 @@ function chkHyg(c){
 }
 
 /* ---------- run ---------- */
-const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web & CAA','Mail servers','SPF','DMARC','DKIM & transport','Subdomains & takeover','Server-side tests','Hygiene'];
+/* ---------- lookalike / typosquat domains ---------- */
+const TYSUF=['com','com.au','net','net.au','org','org.au','co','io','app','online','site','xyz','info','biz'];
+const HOMO=[['o','0'],['l','1'],['i','1'],['i','l'],['l','i'],['e','3'],['s','5'],['b','6'],['g','9'],['u','v'],['m','rn'],['w','vv'],['cl','d'],['n','m'],['rn','m']];
+const KEY={a:'s',b:'v',c:'x',d:'s',e:'w',f:'d',g:'f',h:'g',i:'u',j:'h',k:'j',l:'k',m:'n',n:'b',o:'i',p:'o',q:'w',r:'e',s:'a',t:'r',u:'y',v:'c',w:'q',x:'z',y:'t',z:'x'};
+const COMBO=['-login','-secure','-support','-portal','-pay','-online','-au','login','secure','my-'];
+function typoCandidates(D){
+  const p=D.split('.'),suf=SL2.has(p.slice(-2).join('.'))?p.slice(-2).join('.'):p.slice(-1).join('.'),lab=p[0];
+  const set=new Set(),add=d=>{d=String(d).toLowerCase();if(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(d)&&!d.includes('..')&&d!==D)set.add(d)};
+  for(const s of TYSUF)if(s!==suf)add(lab+'.'+s);
+  for(const c of COMBO){add(lab+c+'.com');add(lab+c+'.'+suf)}
+  for(const [a,b] of HOMO)if(lab.includes(a))add(lab.replace(a,b)+'.'+suf);
+  for(let i=0;i<lab.length;i++)add(lab.slice(0,i)+lab.slice(i+1)+'.'+suf); // omission
+  for(let i=0;i<lab.length-1;i++){const a=lab.split('');[a[i],a[i+1]]=[a[i+1],a[i]];add(a.join('')+'.'+suf)} // swap
+  for(let i=0;i<lab.length;i++)add(lab.slice(0,i+1)+lab[i]+lab.slice(i+1)+'.'+suf); // duplication
+  for(let i=0;i<lab.length;i++){const k=KEY[lab[i]];if(k)add(lab.slice(0,i)+k+lab.slice(i+1)+'.'+suf)} // keyboard
+  for(let i=1;i<lab.length;i++)add(lab.slice(0,i)+'-'+lab.slice(i)+'.'+suf); // hyphen
+  add(lab+'s.'+suf);
+  return [...set];
+}
+async function chkTypo(){
+  const N={node:''};
+  let cands=typoCandidates(D);const CAP=50;if(cands.length>CAP)cands=cands.slice(0,CAP);
+  const res=await Promise.all(cands.map(async d=>{const r=await dq(d,'NS');return {d,reg:r.status===0&&r.ans.some(a=>a.type===2)}}));
+  const registered=res.filter(x=>x.reg).map(x=>x.d);
+  ctx.typo={checked:cands.length,registered:[],mx:[],live:[]};
+  if(!registered.length){add('typo','pass','No look-alike domains registered',`Checked ${cands.length} common typo and look-alike variations of ${D}. None are currently registered.`,N);return}
+  const det=await Promise.all(registered.map(async d=>{const [m,a]=await Promise.all([dq(d,'MX'),dq(d,'A')]);
+    const mxh=R(m,'MX').map(x=>(x.split(/\s+/)[1]||'').replace(/\.$/,'')).filter(h=>h&&h!=='.');
+    return {d,mx:mxh.length>0,mxh,a:R(a,'A').length>0}}));
+  const email=det.filter(x=>x.mx),live=det.filter(x=>x.a&&!x.mx),parked=det.filter(x=>!x.mx&&!x.a);
+  ctx.typo={checked:cands.length,registered,mx:email.map(x=>x.d),live:live.map(x=>x.d)};
+  add('typo','info',`${registered.length} look-alike domain${registered.length>1?'s':''} registered`,det.map(x=>`${x.d}${x.mx?'  ✉ email configured':x.a?'  🌐 live site':'  parked'}`).join('\n')+`\nChecked ${cands.length} variations. Some may be yours (defensive registrations) or a registrar parking page — confirm which you own.`,N);
+  if(email.length)add('typo','warn','Look-alike domain can send email as you',email.map(x=>`${x.d} → ${x.mxh.slice(0,2).join(', ')}`).join('\n')+'\nA look-alike with MX records can send or receive email. If you don\'t own this, someone can send convincing phishing from a near-copy of your name.',{sev:'high',fix:'Confirm whether you own it. If not, report it (ACSC ReportCyber and the registrar), warn staff and customers, and consider registering the most convincing look-alikes yourself.',...N});
+  if(live.length)add('typo','warn','Look-alike domain hosts a live website',live.map(x=>x.d).join(', ')+'. A look-alike with a website can host a phishing copy of your login or payment page.',{sev:'med',fix:'Check what it serves. If it imitates you, report it and consider a takedown request.',...N});
+  if(parked.length)add('typo','info','Look-alike domains parked',parked.map(x=>x.d).join(', ')+'. No email or website yet — often held by squatters, or registered defensively.',N);
+}
+const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web & CAA','Mail servers','SPF','DMARC','DKIM & transport','Subdomains & takeover','Lookalike domains','Server-side tests','Hygiene'];
 async function chkServer(){
   const r=await ctx.srvP;
   if(!r||!Array.isArray(r.checks)){ctx.srv=false;return}
@@ -642,6 +678,7 @@ async function run(input){
   await Promise.all([step('Registration',chkReg),step('Name servers',()=>chkNS(c)),step('SOA',()=>chkSOA(c)),step('DNSSEC',()=>chkDNSSEC(c)),step('Web & CAA',()=>chkWeb(c))]);
   await step('Mail servers',()=>chkMX(c));
   await Promise.all([step('SPF',()=>chkSPF(c)),step('DMARC',()=>chkDMARC(c)),step('DKIM & transport',()=>chkDKIM(c)),step('Subdomains & takeover',()=>chkSub(c))]);
+  await step('Lookalike domains',chkTypo);
   await step('Server-side tests',chkServer);
   await step('Hygiene',()=>chkHyg(c));
   LAST={domain:D,entered:H,date:new Date().toISOString(),queries:QN,server:!!ctx.srv,seconds:+((performance.now()-t0)/1000).toFixed(1)};
@@ -714,7 +751,7 @@ function render(){
     return `<details class="group" id="g-${k}" ${L.some(c=>c.status==='fail')?'open':''}><summary>${ic} ${l}<span class="sc">${cnt}</span></summary><div class="items">${L.map(c=>`<div class="item"><div class="st ${c.status}">${ICON[c.status]}</div><div><h4>${esc(c.title)}</h4><p>${esc(c.detail)}</p>${c.fix?`<p class="fix"><b style="color:var(--accent)">Fix:</b> ${esc(c.fix)}</p>`:''}${snip(c.snip)}</div></div>`).join('')}</div></details>`}).join('');
   $('#raw').innerHTML=`<table><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Data</th></tr></thead><tbody>${RAW.filter(r=>r.ans.length||r.status!==3).sort((a,b)=>a.name.localeCompare(b.name)||a.type.localeCompare(b.type)).map(r=>`<tr><td class="d">${esc(r.name)}</td><td>${esc(r.type)}</td><td>${esc(RC[r.status]||r.status)}</td><td class="d">${r.ans.map(a=>`${esc(TN[a.type]||a.type)} ${esc(a.data)} <span style="color:var(--muted)">TTL ${a.TTL}</span>`).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`;
   renderServices();
-  try{fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,services:detectServices()})},8000).catch(()=>{})}catch(e){}
+  try{fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,services:detectServices(),typo:ctx.typo||null})},8000).catch(()=>{})}catch(e){}
   drawMap();
   document.querySelectorAll('.snip button').forEach(b=>b.onclick=()=>copyText(b.parentElement.querySelector('code').textContent));
   tab('recs');
