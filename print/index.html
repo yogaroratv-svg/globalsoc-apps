@@ -30,9 +30,10 @@
   "description": "Custom t-shirt, hoodie and mug printing in Glen Waverley, Melbourne. Design your own or choose from our design library. No minimum order.",
   "url": "https://globalsoc.com.au/print/",
   "priceRange": "$",
+  "telephone": "+61 423 793 130",
   "address": { "@type": "PostalAddress", "addressLocality": "Glen Waverley", "addressRegion": "VIC", "postalCode": "3150", "addressCountry": "AU" },
   "geo": { "@type": "GeoCoordinates", "latitude": -37.8780, "longitude": 145.1650 },
-  "areaServed": ["Glen Waverley","Mount Waverley","Wheelers Hill","Mulgrave","Burwood East","Vermont South","Notting Hill","Clayton","Box Hill","Doncaster","Monash","Melbourne"],
+  "areaServed": ["Glen Waverley","Mount Waverley","Wheelers Hill","Mulgrave","Burwood East","Vermont South","Notting Hill","Clayton","Box Hill","Doncaster","Ringwood","Monash","Melbourne CBD","Melbourne"],
   "hasOfferCatalog": {
     "@type": "OfferCatalog",
     "name": "Custom printing",
@@ -52,7 +53,7 @@
     { "@type": "Question", "name": "Is there a minimum order?", "acceptedAnswer": { "@type": "Answer", "text": "No. You can order a single t-shirt, hoodie or mug. Prices drop at 10, 25 and 50 units for apparel and at 12, 36 and 72 for mugs." } },
     { "@type": "Question", "name": "How does the price-beat promise work?", "acceptedAnswer": { "@type": "Answer", "text": "Send us a written quote from another Melbourne or Australian printer for the same garment, quantity and print size, dated within the last 30 days. We'll beat the total by up to 20%." } },
     { "@type": "Question", "name": "How fast is turnaround?", "acceptedAnswer": { "@type": "Answer", "text": "Standard turnaround is 3 to 5 business days after you approve your proof. Express 48-hour printing is available for an extra $15 per order." } },
-    { "@type": "Question", "name": "Can I meet you in Glen Waverley?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Book a time through the quote form and we'll meet you in Glen Waverley to go through garments, colours and artwork. Local pickup is free." } },
+    { "@type": "Question", "name": "Can I meet you in person?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Call or text 0423 793 130 and we'll meet you in Glen Waverley, anywhere in Melbourne's east, or in the city to help you choose garments, colours and artwork. No website needed. Local pickup is free." } },
     { "@type": "Question", "name": "What artwork files can I send?", "acceptedAnswer": { "@type": "Answer", "text": "PNG with a transparent background at 300 dpi works best. We also accept PDF, SVG, AI, EPS and high-resolution JPG. If your file isn't print-ready, we'll fix it before printing." } },
     { "@type": "Question", "name": "What printing methods do you use?", "acceptedAnswer": { "@type": "Answer", "text": "Full-colour DTF (direct-to-film) transfers for t-shirts and hoodies, which suit photos and small runs, screen printing for larger single-colour runs, and dye sublimation for mugs." } }
   ]
@@ -242,6 +243,14 @@ form.quote{background:var(--card);border:1px solid var(--line);border-radius:var
 .sent{border:2px solid var(--cyan);border-radius:var(--r);padding:18px;background:var(--card);display:grid;gap:10px}
 .small{font-size:13px;color:var(--muted)}
 
+.tel{display:inline-flex;align-items:center;gap:6px;font:700 15px/1 var(--mono);text-decoration:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media (max-width:520px){.tel span{display:none}}
+.headsup{margin-top:22px;border-left:4px solid var(--yellow);background:var(--card);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;display:grid;gap:4px;max-width:60ch}
+.headsup p{color:var(--muted)}
+.headsup a{color:var(--ink);font-weight:700;white-space:nowrap}
+.bigtel{margin-top:22px;display:grid;gap:4px}
+.bigtel a{font:800 clamp(30px,4.5vw,44px)/1 var(--display);color:var(--yellow);text-decoration:none;letter-spacing:-.01em}
+.bigtel span{font:13px/1.4 var(--mono);opacity:.8}
 footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);font-size:14px}
 .foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px}
 .foot nav{display:flex;flex-wrap:wrap;gap:16px}
@@ -262,7 +271,10 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
       <li><a href="#local">Meet up</a></li>
       <li><a href="#faq">FAQ</a></li>
     </ul>
-    <a class="btn primary small" href="#quote">Get a quote</a>
+    <div class="row" style="gap:12px;flex-wrap:nowrap">
+      <a class="tel" href="tel:+61423793130" aria-label="Call or text 0423 793 130">📞 <span>0423 793 130</span></a>
+      <a class="btn primary small" href="#quote">Get a quote</a>
+    </div>
   </div>
 </header>
 
@@ -276,6 +288,10 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
         <div class="cta">
           <a class="btn primary" href="#studio">Start designing</a>
           <a class="btn" href="#designs">Browse designs</a>
+        </div>
+        <div class="headsup">
+          <b>Not a website person? No worries.</b>
+          <p>Call or text <a href="tel:+61423793130">0423 793 130</a> and I'll meet you in Melbourne's east or the city to help you decide. Quick, easy, fair.</p>
         </div>
         <div class="specs" aria-label="Starting prices">
           <div><b>$19.95</b><span>T-shirt, printed</span></div>
@@ -427,13 +443,14 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
       <div>
         <p class="eyebrow">Local to Glen Waverley</p>
         <h2 style="margin-top:14px">Rather talk it through? Let's meet.</h2>
-        <p style="margin-top:16px">We're based in Glen Waverley and happy to meet you locally to look at garment samples, colours and your artwork before anything is printed. It's free, and it's the easiest way to get a team, school or business order right.</p>
+        <p style="margin-top:16px">Skip the website if you like. I'm based in Glen Waverley and happy to meet you anywhere in Melbourne's east or in the city to help you decide: bring your idea, look at garment samples and colours, and walk away with a fair price on the spot. Quick, easy, fair, and the meet-up is free.</p>
+        <p class="bigtel"><a href="tel:+61423793130">0423 793 130</a><span>Call or text · Glen Waverley VIC 3150</span></p>
         <ul class="suburbs" aria-label="Areas we serve">
-          <li>Glen Waverley</li><li>Mount Waverley</li><li>Wheelers Hill</li><li>Mulgrave</li><li>Vermont South</li><li>Burwood East</li><li>Notting Hill</li><li>Clayton</li><li>Box Hill</li><li>Doncaster</li><li>All of Melbourne</li>
+          <li>Glen Waverley</li><li>Mount Waverley</li><li>Wheelers Hill</li><li>Mulgrave</li><li>Vermont South</li><li>Burwood East</li><li>Notting Hill</li><li>Clayton</li><li>Box Hill</li><li>Doncaster</li><li>Ringwood</li><li>Melbourne CBD</li>
         </ul>
       </div>
       <div class="meet">
-        <div><b>Meet-ups by appointment</b>Choose "Meet up in person" in the quote form and suggest a time.</div>
+        <div><b>Meet-ups in the east or the city</b>Call or text 0423 793 130, or choose "Meet up in person" in the quote form.</div>
         <div><b>Free local pickup</b>Collect your order in Glen Waverley.</div>
         <div><b>Delivery Australia-wide</b>Tracked shipping on every order, quoted with your proof.</div>
         <div><a class="btn primary" href="#quote" id="meetbtn">Book a meet-up</a></div>
@@ -448,7 +465,7 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
         <details open><summary>Is there a minimum order?</summary><p>No. You can order a single t-shirt, hoodie or mug. Prices drop at 10, 25 and 50 units for apparel and at 12, 36 and 72 for mugs.</p></details>
         <details><summary>How does the price-beat promise work?</summary><p>Send us a written quote from another Melbourne or Australian printer for the same garment, quantity and print size, dated within the last 30 days. We'll beat the total by up to 20%.</p></details>
         <details><summary>How fast is turnaround?</summary><p>Standard turnaround is 3 to 5 business days after you approve your proof. Express 48-hour printing is available for an extra $15 per order.</p></details>
-        <details><summary>Can I meet you in Glen Waverley?</summary><p>Yes. Book a time through the quote form and we'll meet you in Glen Waverley to go through garments, colours and artwork. Local pickup is free.</p></details>
+        <details><summary>Can I meet you in person?</summary><p>Yes. Call or text 0423 793 130 and we'll meet you in Glen Waverley, anywhere in Melbourne's east, or in the city to help you choose garments, colours and artwork. No website needed. Local pickup is free.</p></details>
         <details><summary>What artwork files can I send?</summary><p>PNG with a transparent background at 300 dpi works best. We also accept PDF, SVG, AI, EPS and high-resolution JPG. If your file isn't print-ready, we'll fix it before printing.</p></details>
         <details><summary>What printing methods do you use?</summary><p>Full-colour DTF (direct-to-film) transfers for t-shirts and hoodies, which suit photos and small runs, screen printing for larger single-colour runs, and dye sublimation for mugs.</p></details>
         <details><summary>Can I print a logo or character I found online?</summary><p>Only if you own it or have permission. We can't print trademarked logos, sports club emblems or copyrighted characters without the owner's approval.</p></details>
@@ -506,7 +523,7 @@ footer{border-top:1px solid var(--line);padding-block:36px;color:var(--muted);fo
 
 <footer>
   <div class="wrap foot">
-    <div><b style="color:var(--ink)">Waverley Print Co.</b><br>Custom t-shirt, hoodie and mug printing · Glen Waverley VIC 3150 · Meet-ups by appointment</div>
+    <div><b style="color:var(--ink)">Waverley Print Co.</b><br>Custom t-shirt, hoodie and mug printing · Glen Waverley VIC 3150<br>Call or text <a href="tel:+61423793130">0423 793 130</a> · Meet-ups in Melbourne's east and the city</div>
     <nav aria-label="Footer"><a href="#studio">Design studio</a><a href="#designs">Designs</a><a href="#pricing">Prices</a><a href="#faq">FAQ</a><a href="#quote">Quote</a></nav>
   </div>
 </footer>
