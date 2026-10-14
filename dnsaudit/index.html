@@ -603,7 +603,7 @@ const STAGES=['Core records','Registration','Name servers','SOA','DNSSEC','Web &
 async function chkServer(){
   const r=await ctx.srvP;
   if(!r||!Array.isArray(r.checks)){ctx.srv=false;return}
-  ctx.srv=true;
+  ctx.srv=true;ctx.tech=r.tech||null;
   r.checks.forEach(c=>{if(CATS[c.cat]&&ORDER[c.status]!==undefined)add(c.cat,c.status,c.title,c.detail,{sev:c.sev,fix:c.fix,snip:c.snip,node:c.cat==='dkim'?'MTA-STS':''})});
   const t=$('#term');if(t){const d=document.createElement('div');d.innerHTML=`<span class="dim">srv</span> TLS, headers, MTA-STS, AXFR, recursion <span class="dim">→</span> ${r.checks.length} results <span class="dim">· ${r.ms}ms · Azure</span>`;t.appendChild(d);t.scrollTop=t.scrollHeight}
 }
@@ -672,12 +672,14 @@ function detectServices(){
   const dmarc=ctx.rua?[...new Set(ctx.rua.split(',').map(x=>svcMatch(DMARCPROV,x.trim().toLowerCase())).filter(Boolean))]:[];
   const saas=new Set();(ctx.verif||[]).forEach(t=>{const n=svcMatch(VERIFV,t);if(n)saas.add(n)});
   dmarc.forEach(d=>saas.delete(d));
-  return {plat,sender:[...sender],dmarc,saas:[...saas]};
+  const t=ctx.tech||{};
+  return {plat,sender:[...sender],dmarc,saas:[...saas],cdnwaf:(t.cdnwaf||[]).map(x=>x.name+(x.type?` (${x.type})`:'')),server:t.server||'',framework:t.framework||[],ca:t.ca||'',ns:t.ns||''};
 }
 function renderServices(){
   const host=$('#svc');if(!host)return;
   const d=detectServices();
-  const groups=[['📮','Email platform',d.plat],['📤','Sends email via',d.sender],['🛡️','DMARC reporting',d.dmarc],['🧩','Domain verified with',d.saas]].filter(g=>g[2].length);
+  const web=[];if(d.cdnwaf.length)web.push(...d.cdnwaf);if(d.server)web.push('Server: '+d.server);(d.framework||[]).forEach(f=>web.push(f));if(d.ca)web.push('TLS: '+d.ca);if(d.ns)web.push('DNS: '+d.ns);
+  const groups=[['📮','Email platform',d.plat],['📤','Sends email via',d.sender],['🛡️','DMARC reporting',d.dmarc],['🛰️','Web, CDN & hosting',web],['🧩','Domain verified with',d.saas]].filter(g=>g[2].length);
   if(!groups.length){host.style.display='none';return}
   host.style.display='';
   host.innerHTML=`<div class="ph2"><h2>🔎 Services detected in this domain's DNS</h2></div>
@@ -689,6 +691,8 @@ function servicesText(){
   if(d.plat.length)p.push('Email platform: '+d.plat.join(', '));
   if(d.sender.length)p.push('Sends email via: '+d.sender.join(', '));
   if(d.dmarc.length)p.push('DMARC reporting: '+d.dmarc.join(', '));
+  const web=[...(d.cdnwaf||[])];if(d.server)web.push('Server '+d.server);if(d.ca)web.push('TLS '+d.ca);if(d.ns)web.push('DNS '+d.ns);
+  if(web.length)p.push('Web/CDN/hosting: '+web.join(', '));
   if(d.saas.length)p.push('Domain verified with: '+d.saas.join(', '));
   return p.length?'\n== Services detected (from public records) ==\n'+p.join('\n')+'\n':'';
 }
@@ -710,6 +714,7 @@ function render(){
     return `<details class="group" id="g-${k}" ${L.some(c=>c.status==='fail')?'open':''}><summary>${ic} ${l}<span class="sc">${cnt}</span></summary><div class="items">${L.map(c=>`<div class="item"><div class="st ${c.status}">${ICON[c.status]}</div><div><h4>${esc(c.title)}</h4><p>${esc(c.detail)}</p>${c.fix?`<p class="fix"><b style="color:var(--accent)">Fix:</b> ${esc(c.fix)}</p>`:''}${snip(c.snip)}</div></div>`).join('')}</div></details>`}).join('');
   $('#raw').innerHTML=`<table><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Data</th></tr></thead><tbody>${RAW.filter(r=>r.ans.length||r.status!==3).sort((a,b)=>a.name.localeCompare(b.name)||a.type.localeCompare(b.type)).map(r=>`<tr><td class="d">${esc(r.name)}</td><td>${esc(r.type)}</td><td>${esc(RC[r.status]||r.status)}</td><td class="d">${r.ans.map(a=>`${esc(TN[a.type]||a.type)} ${esc(a.data)} <span style="color:var(--muted)">TTL ${a.TTL}</span>`).join('<br>')||'—'}</td></tr>`).join('')}</tbody></table>`;
   renderServices();
+  try{fetchT(API+'/ingest',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({d:D,grade:gradeOf(scoreOf(CK)),score:scoreOf(CK),fail:CK.filter(c=>c.status==='fail').length,warn:CK.filter(c=>c.status==='warn').length,services:detectServices()})},8000).catch(()=>{})}catch(e){}
   drawMap();
   document.querySelectorAll('.snip button').forEach(b=>b.onclick=()=>copyText(b.parentElement.querySelector('code').textContent));
   tab('recs');
