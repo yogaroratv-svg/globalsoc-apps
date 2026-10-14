@@ -2,6 +2,7 @@
    First-party only, no cookies, no third-party trackers. Disclosed at https://globalsoc.com.au/privacy.html */
 (function () {
   try {
+    if (window.top !== window.self) return; // embedded previews (home page phone mock-ups) are not visits
     var E = 'https://gsoc-dnsaudit-api.azurewebsites.net/api/visit', n = navigator, c = n.connection || {};
     function id(store, k) {
       try { var v = store.getItem(k); if (v) return [v, false]; v = Math.random().toString(36).slice(2) + Date.now().toString(36); store.setItem(k, v); return [v, true]; }
