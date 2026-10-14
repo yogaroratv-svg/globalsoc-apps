@@ -134,6 +134,13 @@ td.d{font-family:"JetBrains Mono",ui-monospace,monospace;word-break:break-all}
 .cta{margin-top:28px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:22px;padding:26px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
 .cta h3{font-size:20px}.cta p{opacity:.85;font-size:14.5px}
 .cta .btn{background:#fff;color:#0b3b4a}
+.alert{margin-top:18px;background:linear-gradient(135deg,#c8372d,#e05a4f);color:#fff;border-radius:16px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 8px 26px rgba(200,55,45,.28)}
+.alert .ic{font-size:26px;line-height:1.1;flex:none}
+.alert h3{font-size:18px;margin:0 0 4px;color:#fff}
+.alert p{margin:0;opacity:.96;font-size:14px;line-height:1.5}
+.alert .doms{margin:10px 0 6px;display:flex;flex-wrap:wrap;gap:7px}
+.alert .doms span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.34);border-radius:8px;padding:4px 11px;font-size:13.5px;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace}
+.alert a{color:#fff;text-decoration:underline;font-weight:700;cursor:pointer}
 .svc{margin-top:18px}
 .svc .ph2 h2{font-size:18px}
 .svc-sub{color:var(--muted);font-size:13.5px;margin:2px 0 14px;line-height:1.5}
@@ -223,6 +230,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
       </div>
     </div>
 
+    <div class="alert" id="alert" style="display:none"></div>
     <div class="panel svc" id="svc" style="display:none"></div>
     <div class="tabs" role="tablist">
       <button class="on" data-p="recs">Recommendations</button><button data-p="all">All checks</button><button data-p="map">DNS map</button><button data-p="raw">Raw records</button>
@@ -742,6 +750,8 @@ function render(){
   $('#rmeta').textContent=`${new Date(LAST.date).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})} · ${LAST.queries} queries${LAST.server?' + server-side tests':''} · ${LAST.seconds}s`;
   const n=s=>CK.filter(c=>c.status===s).length;
   $('#counts').innerHTML=[['fail','Fix now'],['warn','Improve'],['pass','Good'],['info','Info']].map(([s,l])=>`<div><b style="color:var(--${s})">${n(s)}</b><span>${l}</span></div>`).join('');
+  const tmx=(ctx.typo&&ctx.typo.mx)||[],al=$('#alert');
+  if(al){if(tmx.length){al.style.display='';al.innerHTML=`<div class="ic">⚠️</div><div><h3>Look-alike domains are set up to send email as you</h3><p>These near-copies of <b>${esc(D)}</b> have mail servers configured, so someone could send convincing phishing that looks like it came from your business:</p><div class="doms">${tmx.map(x=>`<span>${esc(x)}</span>`).join('')}</div><p>If you don't own these, report them to <a href="https://www.cyber.gov.au/report" target="_blank" rel="noopener">ACSC ReportCyber</a> and the registrar, warn your staff and customers, and consider registering the most convincing ones yourself. <a onclick="document.querySelector('[data-p=all]').click();const g=document.getElementById('g-typo');if(g){g.open=true;g.scrollIntoView({behavior:'smooth'})}">See details ↓</a></p></div>`}else al.style.display='none'}
   $('#cats').innerHTML=Object.entries(CATS).filter(([k])=>CK.some(c=>c.cat===k)).map(([k,[l,ic]])=>{const s=scoreOf(CK.filter(c=>c.cat===k),3);return `<div class="cat" data-cat="${k}"><span>${ic}</span><span>${l}</span><em>${s}</em><div class="bar"><i style="background:${colOf(s)}" data-w="${s}"></i></div></div>`}).join('');
   requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll('.cat .bar i').forEach(i=>i.style.width=i.dataset.w+'%')));
   document.querySelectorAll('.cat').forEach(el=>el.onclick=()=>{tab('all');const g=document.getElementById('g-'+el.dataset.cat);if(g){g.open=true;g.scrollIntoView({behavior:'smooth',block:'start'})}});
