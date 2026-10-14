@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tracking IP Changes | Global SOC</title>
+<meta name="description" content="A public IP is a lease, not an identity. Why blocklists and allowlists rot over time, and how to build a simple IP change-tracker — with a hands-on lab you can run now.">
+<meta name="author" content="Yogesh">
+<meta property="og:title" content="Tracking when public IPs change">
+<meta property="og:description" content="Why IP reputation decays, and how to build a change-tracker. Hands-on lab included.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/tracking-ip-changes/">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#06222c,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.88;max-width:620px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px}
+article h2{font-size:27px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px}
+article h3{font-size:19px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:4px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 10px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+pre .c{color:#7f98a6}
+pre .ok{color:#56e0a6}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.step{display:flex;gap:14px;margin:28px 0 8px;align-items:center}
+.step .n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800}
+@media (prefers-color-scheme:dark){.step .n{color:#06202d}}
+.step h3{margin:0}
+.vid{border:2px dashed var(--line);border-radius:16px;padding:28px 18px;text-align:center;color:var(--muted);font-size:14px;margin:18px 0 24px;background:var(--card)}
+.vid b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+figure.flow{margin:22px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+figure.flow svg{width:100%;height:auto;display:block}
+figcaption{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav><a href="/blog/">All posts</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">THREAT INTEL · HANDS-ON</span>
+  <h1>Tracking when public IPs change</h1>
+  <p class="lede">A public IP address is a <i>lease</i>, not an identity. That one fact breaks the way most teams use blocklists and allowlists — and it's why a simple change-tracker is one of the highest-value things you can build. With a lab you can run right now.</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 14 October 2026 · 11 min read</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<div class="toc"><b>In this post</b><ol>
+<li><a href="#lease">An IP is a lease, not an identity</a></li>
+<li><a href="#rot">Two blind spots: block rot and allowlist rot</a></li>
+<li><a href="#track">What to track over time</a></li>
+<li><a href="#lab">Hands-on lab: snapshot &amp; diff an IP</a></li>
+<li><a href="#build">Building the tracker (and wiring it to Sentinel)</a></li>
+<li><a href="#alerts">The change events worth alerting on</a></li>
+<li><a href="#video">Video walkthrough</a></li>
+</ol></div>
+
+<h2 id="lease">An IP is a lease, not an identity</h2>
+<p>When we see an IP in an alert, we treat it like a name — "that's the attacker." But public IPv4 space is constantly reassigned, recycled, NAT'd and rotated. Today's malware command-and-control server is, a month later, a legitimate cloud VM rented by a small business. The IP didn't change; <b>who holds the lease</b> changed.</p>
+<p>Your instinct in the SOC — "don't block it permanently, it might be clean soon" — is exactly right, and it's the whole point. Two consequences follow:</p>
+<ul>
+<li><b>Blocks should decay.</b> A permanent block on a reassigned IP eventually punishes an innocent party and clutters your firewall.</li>
+<li><b>Trust should decay too.</b> An IP you <i>allow-listed</i> for a partner can quietly change hands — and nobody watches that side.</li>
+</ul>
+<div class="callout key"><b>The core idea</b>Stop treating IP indicators as permanent facts. Treat them as <b>time-boxed, confidence-scored observations</b>. A change-tracker is what lets you do that — it watches the lease, not just the number.</div>
+
+<h2 id="rot">Two blind spots: block rot and allowlist rot</h2>
+<p><b>Block rot</b> is the one you already feel: a block list grows forever, and old entries quietly start hitting clean, reassigned space — false positives you never revisit.</p>
+<p><b>Allowlist rot</b> is the dangerous one almost nobody watches. You add a partner's or vendor's IP to a firewall allow rule. Two years later that IP has been released and re-leased to someone else — and your firewall is now trusting a stranger, with a permit rule straight into your network. The scary part: nothing alerts, because the <i>IP</i> never changed. Only the owner did.</p>
+<div class="callout"><b>The signal that matters most</b>When an IP you trust <b>changes its ASN or registered owner</b>, that's your highest-value event. It means the lease changed hands, and any trust you granted the previous holder no longer applies.</div>
+
+<h2 id="track">What to track over time</h2>
+<p>For a watchlist of IPs and the domains you care about, snapshot these fields on a schedule and <b>diff</b> each run against the last:</p>
+<div class="tw"><table>
+<tr><th>Field</th><th>Source</th><th>Why a change matters</th></tr>
+<tr><td>A / AAAA records</td><td>DNS</td><td>A service moved IPs — migration, failover, or fast-flux malware.</td></tr>
+<tr><td>ASN + netblock owner</td><td>RIPEstat / RDAP</td><td><b>The lease changed hands</b> — the highest-signal event.</td></tr>
+<tr><td>Reverse DNS (PTR)</td><td>DNS</td><td>The name an IP claims changed.</td></tr>
+<tr><td>Geolocation</td><td>IP geo APIs</td><td>Country/region drift on a "known" IP.</td></tr>
+<tr><td>Reputation / exposure</td><td>Blocklists, Shodan tags</td><td>Newly listed (badness arrived) or delisted (block can expire).</td></tr>
+<tr><td>Open ports / services</td><td>Shodan InternetDB</td><td>Exposure changed on your own IPs.</td></tr>
+<tr><td>TLS certificate</td><td>CT logs</td><td>A new certificate appeared on the host.</td></tr>
+</table></div>
+<p>Store one row per observation, so every field has a history you can graph and alert on. That's the whole trick: <b>collect → diff → alert</b>.</p>
+
+<h2 id="lab">Hands-on lab: snapshot &amp; diff an IP</h2>
+<p>Let's build the smallest useful version by hand. All of this is passive — it reads public registries, never probes the target. Run it in PowerShell on Windows (the ideas are identical on macOS/Linux with <code>dig</code>/<code>curl</code>).</p>
+
+<div class="step"><div class="n">1</div><h3>What does the domain resolve to today?</h3></div>
+<pre><code>Resolve-DnsName example.com -Type A | Select -Expand IPAddress</code></pre>
+
+<div class="step"><div class="n">2</div><h3>Who holds the lease on that IP right now?</h3></div>
+<p>RIPEstat (free, no key) maps an IP to its ASN and prefix, and the ASN to its holder:</p>
+<pre><code><span class="c"># IP -> ASN + prefix</span>
+curl "https://stat.ripe.net/data/network-info/data.json?resource=93.184.216.34"
+<span class="c"># ASN -> holder name</span>
+curl "https://stat.ripe.net/data/as-overview/data.json?resource=AS15133"</code></pre>
+
+<div class="step"><div class="n">3</div><h3>Reverse DNS and exposure</h3></div>
+<pre><code>Resolve-DnsName 93.184.216.34 -Type PTR
+<span class="c"># Shodan InternetDB (passive): ports, tags, CVEs already known for this IP</span>
+curl "https://internetdb.shodan.io/93.184.216.34"</code></pre>
+
+<div class="step"><div class="n">4</div><h3>Snapshot + diff in ~30 lines of Node</h3></div>
+<p>Save this as <code>ipwatch.js</code>. First run stores a baseline; every later run prints what changed.</p>
+<pre><code>const fs = require("fs");
+const dns = require("dns").promises;
+
+async function getJson(u){ const r = await fetch(u); return r.ok ? r.json() : null; }
+
+async function snapshot(domain){
+  const ips = await dns.resolve4(domain).catch(()=>[]);
+  const out = {};
+  for (const ip of ips){
+    const ni = await getJson(`https://stat.ripe.net/data/network-info/data.json?resource=${ip}`);
+    const asn = ni?.data?.asns?.[0] ? "AS"+ni.data.asns[0] : "";
+    const ov = asn && await getJson(`https://stat.ripe.net/data/as-overview/data.json?resource=${asn}`);
+    const ptr = (await dns.reverse(ip).catch(()=>[]))[0] || "";
+    const idb = await getJson(`https://internetdb.shodan.io/${ip}`);
+    out[ip] = { asn, holder: ov?.data?.holder || "", ptr,
+                ports:(idb?.ports||[]).join(","), tags:(idb?.tags||[]).join(",") };
+  }
+  return out;
+}
+
+(async () => {
+  const domain = process.argv[2] || "example.com";
+  const file = `ipwatch_${domain}.json`;
+  const now = await snapshot(domain);
+  const prev = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : null;
+  if (!prev){ console.log("Baseline saved for", domain); }
+  else {
+    for (const ip of new Set([...Object.keys(prev), ...Object.keys(now)])){
+      const a = prev[ip], b = now[ip];
+      if (!a) console.log(`NEW IP   ${ip}  ${b.holder}`);
+      else if (!b) console.log(`GONE IP  ${ip}  (was ${a.holder})`);
+      else for (const k of Object.keys(b))
+        if (a[k] !== b[k]) console.log(`CHANGED  ${ip}  ${k}: "${a[k]}" -> "${b[k]}"`);
+    }
+  }
+  fs.writeFileSync(file, JSON.stringify(now, null, 2));
+})();</code></pre>
+<pre><code>node ipwatch.js example.com     <span class="c"># run 1: baseline</span>
+node ipwatch.js example.com     <span class="c"># run later: prints only what changed</span>
+<span class="ok"># CHANGED  93.184.216.34  holder: "EDGECAST" -> "EDGIO"   &lt;- the lease changed hands</span></code></pre>
+<p>That's the entire concept in one file: resolve, record owner/PTR/ports, and diff. Everything else — scheduling, a watchlist, alerting, scoring — is scaffolding around this core.</p>
+
+<h2 id="build">Building the tracker (and wiring it to Sentinel)</h2>
+<p>To make it real, wrap that loop in the same shape as any monitoring pipeline:</p>
+<figure class="flow">
+<svg viewBox="0 0 720 150" role="img" aria-label="Pipeline: scheduled snapshot, store, diff, alert to Sentinel">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#5d6b78"/></marker></defs>
+<rect x="8" y="50" width="130" height="52" rx="12" fill="#0e4d6e"/><text x="73" y="80" fill="#fff" font-size="12.5" font-weight="700" text-anchor="middle" font-family="Inter">Scheduled snapshot</text>
+<line x1="140" y1="76" x2="192" y2="76" stroke="#5d6b78" stroke-width="2.5" marker-end="url(#ar)"/>
+<rect x="194" y="50" width="120" height="52" rx="12" fill="#12806f"/><text x="254" y="80" fill="#fff" font-size="12.5" font-weight="700" text-anchor="middle" font-family="Inter">Store history</text>
+<line x1="316" y1="76" x2="368" y2="76" stroke="#5d6b78" stroke-width="2.5" marker-end="url(#ar)"/>
+<rect x="370" y="50" width="120" height="52" rx="12" fill="#e9771a"/><text x="430" y="80" fill="#2a1300" font-size="12.5" font-weight="700" text-anchor="middle" font-family="Inter">Diff vs last</text>
+<line x1="492" y1="76" x2="544" y2="76" stroke="#5d6b78" stroke-width="2.5" marker-end="url(#ar)"/>
+<rect x="546" y="50" width="166" height="52" rx="12" fill="none" stroke="#5d6b78" stroke-width="2"/><text x="629" y="73" fill="#5d6b78" font-size="12.5" font-weight="700" text-anchor="middle" font-family="Inter">Change event</text><text x="629" y="90" fill="#5d6b78" font-size="11" text-anchor="middle" font-family="Inter">-> Sentinel / email</text>
+</svg>
+<figcaption>The same collect → store → diff → alert loop behind every detection tool.</figcaption>
+</figure>
+<ul>
+<li><b>Schedule:</b> a timer job (cron, or an Azure Function timer like our DNS Audit monitor) runs the snapshot every hour/day.</li>
+<li><b>Store:</b> append each observation to a table (Azure Table Storage, a database, or straight into a Log Analytics custom table).</li>
+<li><b>Diff &amp; alert:</b> compare to the previous snapshot; on a change, emit an event.</li>
+<li><b>Sentinel:</b> send change events into Log Analytics and write analytics rules — now you get a timeline and alerting for free.</li>
+<li><b>Confidence decay:</b> give every indicator a score that drops on a schedule and drops further when the owner changes, so both blocks and allows age out automatically.</li>
+</ul>
+
+<h2 id="alerts">The change events worth alerting on</h2>
+<div class="tw"><table>
+<tr><th>Event</th><th>Why it matters</th></tr>
+<tr><td><b>Allow-listed IP changed ASN/owner</b></td><td>You're now trusting whoever got the lease. Re-verify the rule. (The one nobody watches.)</td></tr>
+<tr><td><b>Blocked IP delisted / owner changed</b></td><td>Review and expire the block so you stop over-blocking clean space.</td></tr>
+<tr><td><b>Your own asset IP changed unexpectedly</b></td><td>Cloud misconfig, failover, or — worst case — a BGP hijack.</td></tr>
+<tr><td><b>Domain A-record flux &gt; N/hour across ASNs</b></td><td>Fast-flux: malware / phishing infrastructure, not a CDN.</td></tr>
+<tr><td><b>Monitored IP newly listed on a blocklist</b></td><td>A trusted neighbour just went bad on shared hosting.</td></tr>
+</table></div>
+
+<h2 id="video">Video walkthrough</h2>
+<div class="vid"><b>📹 Walkthrough video coming</b>A screen-recorded run of the lab above: resolving an IP, checking its owner on RIPEstat, and watching <code>ipwatch.js</code> catch an ownership change.</div>
+
+<div class="callout key"><b>What this teaches you</b>Building this touches the whole SOC-engineering stack: BGP/ASN &amp; RDAP, passive DNS, reputation systems, time-series diffing, and confidence/decay scoring — plus the collect → diff → alert pattern under every detection tool. It also rewires how you reason about every IP indicator you'll ever see.</div>
+
+<div class="cta"><h3>Want this built for your environment?</h3><p>We build lightweight monitoring like this — IP and DNS change tracking wired into Sentinel — for Melbourne businesses.</p><a href="/dnsaudit/">Try DNS Audit</a><a href="/#contact">Talk to Yogesh</a></div>
+
+<div class="author"><div class="av">Y</div><div><b style="color:var(--ink)">Yogesh</b> runs Global SOC, a security-first app and IT studio in Glen Waverley, Melbourne, helping small businesses build software and keep it secure.</div></div>
+</article></main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+</body>
+</html>
