@@ -655,14 +655,37 @@ function chkHyg(c){
 /* ---------- external attack surface (passive, via backend Shodan InternetDB) ---------- */
 const PORTN={21:'FTP',22:'SSH',23:'Telnet',25:'SMTP',53:'DNS',80:'HTTP',110:'POP3',135:'MS-RPC',139:'NetBIOS',143:'IMAP',161:'SNMP',443:'HTTPS',445:'SMB',465:'SMTPS',587:'SMTP',993:'IMAPS',995:'POP3S',1433:'MSSQL',1521:'Oracle DB',2375:'Docker API',3306:'MySQL',3389:'RDP',5432:'PostgreSQL',5601:'Kibana',5900:'VNC',5984:'CouchDB',6379:'Redis',8080:'HTTP-alt',8443:'HTTPS-alt',9200:'Elasticsearch',11211:'Memcached',27017:'MongoDB'};
 const RISKYP=new Set([21,23,135,139,445,161,1433,1521,2375,3306,3389,5432,5601,5900,5984,6379,9200,11211,27017]);
+/* ASN mapping via Team Cymru's public IP-to-ASN DNS service (passive DNS lookups only) */
+const CLOUDN=/(cloudflare|amazon|aws|microsoft|azure|google|akamai|fastly|digitalocean|linode|ovh|hetzner|oracle|alibaba|vultr|github|automattic|wpengine|squarespace|wix|shopify|incapsula|imperva|sucuri|stackpath|edgecast|limelight|zscaler)/i;
+async function asnMap(ips){
+  const out={},names={};
+  await Promise.all(ips.map(async ip=>{
+    const r=await dq(ip.split('.').reverse().join('.')+'.origin.asn.cymru.com','TXT');
+    const t=R(r,'TXT').map(txt)[0];if(!t)return;
+    const [asn,prefix,cc]=t.split('|').map(s=>s.trim());out[ip]={asn:asn.split(' ')[0],prefix,cc}}));
+  await Promise.all([...new Set(Object.values(out).map(a=>a.asn))].map(async a=>{
+    const t=R(await dq('AS'+a+'.asn.cymru.com','TXT'),'TXT').map(txt)[0];names[a]=t?t.split('|').pop().trim():''}));
+  Object.values(out).forEach(a=>{a.name=names[a.asn]||'';a.cloud=CLOUDN.test(a.name)});
+  return out;
+}
 async function chkSurface(){
   const ips=ctx.surfIPs||[],N={node:''};
   if(!ips.length)return;
   let data=null;
+  const asnP=asnMap(ips).catch(()=>({}));
   try{const resp=await fetchT(API+'/surface',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ips})},40000);data=resp.ok?await resp.json():null}catch(e){}
+  const AS=await asnP;ctx.asn=AS;
+  const nm=ip=>((ctx.ipMap&&ctx.ipMap[ip])||[]);
+  const groups={};ips.forEach(ip=>{const a=AS[ip];const k=a?a.asn:'?';(groups[k]=groups[k]||{a,ips:[]}).ips.push(ip)});
+  const gl=Object.entries(groups).sort((x,y)=>y[1].ips.length-x[1].ips.length);
+  if(gl.length&&Object.keys(AS).length){
+    const own=gl.filter(([k,g])=>g.a&&!g.a.cloud);
+    add('surf','info',`Network map: ${ips.length} IP${ips.length>1?'s':''} across ${gl.length} network${gl.length>1?'s':''} (ASN)`,gl.map(([k,g])=>`${g.a?`AS${k} ${g.a.name||''}${g.a.cloud?' [cloud/CDN provider]':''}`:'Unknown network'}\n`+g.ips.map(ip=>{const a=AS[ip],n=nm(ip);return `   ${ip}${a?' in '+a.prefix+' ('+a.cc+')':''}${n.length?' ← '+n.slice(0,3).join(', '):''}`}).join('\n')).join('\n\n')+`\n\nShows which organisation's network each of ${D}'s internet-facing addresses sits in. ${own.length?'Networks not tagged as cloud/CDN may be self-hosted or with a smaller provider: these are usually yours to patch.':'Everything is on cloud/CDN providers. Exposure on shared provider edge IPs (e.g. a CDN) usually belongs to the provider, not you.'} Source: Team Cymru IP-to-ASN (public DNS lookups).`,N);
+  }
   if(!data||!Array.isArray(data.hosts)){return}
   const hosts=data.hosts;
-  const nm=ip=>((ctx.ipMap&&ctx.ipMap[ip])||[]),lbl=h=>{const n=nm(h.ip);return n.length?`${n.join(', ')} → ${h.ip}`:`${h.ip}${h.hostnames&&h.hostnames.length?' ('+h.hostnames[0]+')':''}`};
+  const asl=ip=>{const a=AS[ip];return a?` [AS${a.asn} ${(a.name||'').split(',')[0]}]`:''};
+  const lbl=h=>{const n=nm(h.ip);return (n.length?`${n.join(', ')} → ${h.ip}`:`${h.ip}${h.hostnames&&h.hostnames.length?' ('+h.hostnames[0]+')':''}`)+asl(h.ip)};
   const fmt=h=>(h.ports||[]).map(p=>PORTN[p]?`${p} (${PORTN[p]})`:`${p}`).join(', ');
   const cv=v=>(typeof v==='string')?{id:v,cvss:null}:v;
   const cstr=v=>{v=cv(v);let s=v.id+(v.cvss!=null?` CVSS ${v.cvss}`:' (unrated)');if(v.kev)s+=' · ⚠ KEV actively exploited';else if(v.epss!=null&&v.epss>=0.1)s+=` · EPSS ${Math.round(v.epss*100)}%`;return s};
@@ -674,7 +697,7 @@ async function chkSurface(){
   const vulnAll=[...new Set([].concat(...hosts.map(h=>(h.vulns||[]).map(cstr))))];
   const riskyAll=[...new Set([].concat(...hosts.map(h=>(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p))))];
   ctx.surface={hosts:hosts.length,vulns:vulnAll,risky:riskyAll,max:overallMax,kev:kevAll,
-    detail:vulnHosts.map(h=>({ip:h.ip,names:nm(h.ip).slice(0,3),max:maxC(h),kev:hasKev(h),cves:(h.vulns||[]).slice(0,10).map(cstr)})),
+    detail:vulnHosts.map(h=>({ip:h.ip,asn:AS[h.ip]?'AS'+AS[h.ip].asn+' '+AS[h.ip].name:'',names:nm(h.ip).slice(0,3),max:maxC(h),kev:hasKev(h),cves:(h.vulns||[]).slice(0,10).map(cstr)})),
     riskyDetail:riskyHosts.map(h=>({ip:h.ip,names:nm(h.ip).slice(0,3),ports:(h.ports||[]).filter(p=>RISKYP.has(p)).map(p=>PORTN[p]||p)}))};
   if(!hosts.length){add('surf','pass','No notable exposure in public scan data',`Checked ${ips.length} internet-facing address${ips.length>1?'es':''} against Shodan's public scan database. Nothing notable is exposed, or these hosts aren't indexed.`,N);return}
   add('surf','info',`${hosts.length} internet-facing host${hosts.length>1?'s':''} seen in public scans`,hosts.map(h=>`${lbl(h)}\n   ports: ${fmt(h)||'—'}`).join('\n\n')+`\n\nLeft of each arrow is the subdomain of ${D} that resolves to that IP. Data is from Shodan's public internet scans, not a scan by us.`,N);
