@@ -729,7 +729,9 @@ function draw16(i,pool){const s=rngKey()+":"+i;let h=1779033703^s.length;for(let
 function lmMain(A,LP,nums){
   if(!LP||nums.length<20)return;
   A.lmOn=true;A.lm=LP;A.bet1=wheelRuns(LP.top).flat();A.bet2=null;
-  A.rnd=draw16(nums.length,[...Array(37).keys()].filter(x=>!LP.top.includes(x)));A.bet=A.bet1.concat([A.rnd]);A.modelBet=A.bet;A.key=LP.more.slice();
+  // the draw is from all 37: outside the 15 it is a 16th number; inside the 15 it doubles the bet on that number
+  A.rnd=draw16(nums.length,[...Array(37).keys()]);A.rndIn=LP.top.includes(A.rnd);A.key=LP.more.slice();
+  if(A.rndIn){A.bet=A.bet1.slice();A.key.push(A.rnd);}else A.bet=A.bet1.concat([A.rnd]);A.modelBet=A.bet;
   A.pick=A.key.length?A.key[0]:A.bet[0];
   A.in1=nums.slice(-6).filter(x=>A.bet.includes(x)).length;
   A.conf=Math.round(LP.rank*100);A.tier=A.conf>=80?"high":A.conf>=50?"medium":"low";
@@ -744,7 +746,7 @@ function lmMain(A,LP,nums){
   A.nextWhy="learning model, switching speed it has learned here: "+LP.speed;
   if(A.stop||A.goal)return;
   A.label=A.rules.main?"pattern":"wait";
-  A.why=A.rules.main?"My model's 15 plus a random 16th for the next spin. This call is stronger than "+A.conf+"% of its calls at this table, so bet.":
+  A.why=A.rules.main?"My model's 15 plus a random draw from all 37 (a 16th number, or a doubled bet when it lands in the 15). This call is stronger than "+A.conf+"% of its calls at this table, so bet.":
     "My model's call is weaker than its usual here ("+A.conf+"% of its calls were weaker), so wait.";
 }
 /* Replays one session and returns decisions before each spin plus the live analysis. */
@@ -828,7 +830,8 @@ function replay(seq){
     // spins entered from v9 on keep the bet that was actually shown, so app updates never rewrite past money
     if(!sp.pre&&sp.dv&&sp.stake>0&&sp.played!==false){const h=sp.bet.includes(sp.n);A.cashMain=sp.stake*(h?36-sp.bet.length:-sp.bet.length)*U;
       // extra chip on the key numbers (setting), at the same stake
-      if(sp.kb&&sp.kb.length)A.cashMain+=sp.stake*(sp.kb.includes(sp.n)?36-sp.kb.length:-sp.kb.length)*U;
+      // (a number can carry more than one extra chip: circled and also picked by the random draw)
+      if(sp.kb&&sp.kb.length)A.cashMain+=sp.stake*(36*sp.kb.filter(x=>x===sp.n).length-sp.kb.length)*U;
       ctx.cash+=A.cashMain;}
     // number spike bet: 1 chip per spike number
     A.shit=A.sbet.includes(sp.n);
@@ -1242,10 +1245,12 @@ function render(){
   if(A.lmOn){const l=document.createElement("span");l.className="lbl";l.textContent="Model's 15 · "+A.in1+" of last 6";bs.appendChild(l);
     // wheel order, a gap between runs of neighbours; circled = 2 chips
     wheelRuns(A.lm.top).forEach((run,ri)=>{if(ri){const g=document.createElement("span");g.style.width="10px";bs.appendChild(g);}
-      run.forEach(n=>bs.appendChild(chip(n,[A.hotIn.includes(n)?"star":"",A.key.includes(n)?"more":""].join(" ").trim())));});
-    // the random 16th, set apart
+      run.forEach(n=>bs.appendChild(chip(n,[A.hotIn.includes(n)?"star":"",A.key.includes(n)?"more":"",A.rndIn&&n===A.rnd?"rnd":""].join(" ").trim())));});
+    // the random draw: a 16th number set apart, or "double it" when it landed inside the 15
     if(A.rnd!==undefined){const g=document.createElement("span");g.style.width="14px";bs.appendChild(g);
-      const r=document.createElement("span");r.className="lbl";r.textContent="16th · random";bs.appendChild(r);bs.appendChild(chip(A.rnd,"rnd"));}}
+      const r=document.createElement("span");r.className="lbl";
+      if(A.rndIn){const k=A.key.filter(x=>x===A.rnd).length+1;r.textContent="Random draw "+A.rnd+" is in your 15 · double it ("+k+" chips)";bs.appendChild(r);}
+      else{r.textContent="16th · random";bs.appendChild(r);bs.appendChild(chip(A.rnd,"rnd"));}}}
   else if(A.bet1){const l=document.createElement("span");l.className="lbl";l.textContent="Sector 1 · "+A.in1+" of last 6";bs.appendChild(l);A.bet1.forEach(n=>bs.appendChild(chip(n,cls(n))));}
   $("s1why").textContent=A.why1&&!state.setup?(A.lmOn?"Why: ":"Why Sector 1: ")+A.why1:"";
   $("pick2").parentElement.hidden=!!A.lmOn;
