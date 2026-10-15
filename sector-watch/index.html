@@ -167,6 +167,7 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
 @media (prefers-reduced-motion:reduce){.pad button:active{transform:none}}
 /* v16 simple layout: older panels kept running in the background but off the screen */
 .off{display:none!important}
+.chip.rnd{outline:2px dashed var(--brass);outline-offset:2px}
 details.sec{margin-top:12px}
 details.sec>summary{padding:4px 0}
 #manyBox{margin-top:8px}
@@ -719,9 +720,16 @@ function analyze(nums,hist,hot,lockIn,ctx){
 
 // main card (v15): the learning model's 15 replace the old Sector 1 / Sector 2 bets. It bets when this call is stronger than
 // its usual call at this table; circled numbers (support standing out from the rest) get a second chip.
+// 16th number: a random draw from the 22 numbers outside the model's 15. It uses a secret key made once on this phone by the
+// browser's secure random generator (the same kind of generator casino machines use; their own key and sequence are private
+// to them), mixed with the spin count, so the draw stays fixed until the next spin and is different every spin.
+function rngKey(){if(!state.rngKey){let k="";try{const a=new Uint32Array(4);crypto.getRandomValues(a);k=Array.from(a,x=>x.toString(36)).join("");}catch(e){k=Date.now().toString(36)+Math.random().toString(36).slice(2);}state.rngKey=k;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}return state.rngKey;}
+function draw16(i,pool){const s=rngKey()+":"+i;let h=1779033703^s.length;for(let j=0;j<s.length;j++){h=Math.imul(h^s.charCodeAt(j),3432918353);h=h<<13|h>>>19;}
+  h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);h^=h>>>16;return pool[(h>>>0)%pool.length];}
 function lmMain(A,LP,nums){
   if(!LP||nums.length<20)return;
-  A.lmOn=true;A.lm=LP;A.bet1=wheelRuns(LP.top).flat();A.bet2=null;A.bet=A.bet1.slice();A.modelBet=A.bet;A.key=LP.more.slice();
+  A.lmOn=true;A.lm=LP;A.bet1=wheelRuns(LP.top).flat();A.bet2=null;
+  A.rnd=draw16(nums.length,[...Array(37).keys()].filter(x=>!LP.top.includes(x)));A.bet=A.bet1.concat([A.rnd]);A.modelBet=A.bet;A.key=LP.more.slice();
   A.pick=A.key.length?A.key[0]:A.bet[0];
   A.in1=nums.slice(-6).filter(x=>A.bet.includes(x)).length;
   A.conf=Math.round(LP.rank*100);A.tier=A.conf>=80?"high":A.conf>=50?"medium":"low";
@@ -736,7 +744,7 @@ function lmMain(A,LP,nums){
   A.nextWhy="learning model, switching speed it has learned here: "+LP.speed;
   if(A.stop||A.goal)return;
   A.label=A.rules.main?"pattern":"wait";
-  A.why=A.rules.main?"My model's 15 for the next spin. This call is stronger than "+A.conf+"% of its calls at this table, so bet.":
+  A.why=A.rules.main?"My model's 15 plus a random 16th for the next spin. This call is stronger than "+A.conf+"% of its calls at this table, so bet.":
     "My model's call is weaker than its usual here ("+A.conf+"% of its calls were weaker), so wait.";
 }
 /* Replays one session and returns decisions before each spin plus the live analysis. */
@@ -1233,8 +1241,11 @@ function render(){
   const cls=n=>[A.hotIn.includes(n)?"star":"",A.key&&A.key.includes(n)?"key":""].join(" ").trim();
   if(A.lmOn){const l=document.createElement("span");l.className="lbl";l.textContent="Model's 15 · "+A.in1+" of last 6";bs.appendChild(l);
     // wheel order, a gap between runs of neighbours; circled = 2 chips
-    wheelRuns(A.bet).forEach((run,ri)=>{if(ri){const g=document.createElement("span");g.style.width="10px";bs.appendChild(g);}
-      run.forEach(n=>bs.appendChild(chip(n,[A.hotIn.includes(n)?"star":"",A.key.includes(n)?"more":""].join(" ").trim())));});}
+    wheelRuns(A.lm.top).forEach((run,ri)=>{if(ri){const g=document.createElement("span");g.style.width="10px";bs.appendChild(g);}
+      run.forEach(n=>bs.appendChild(chip(n,[A.hotIn.includes(n)?"star":"",A.key.includes(n)?"more":""].join(" ").trim())));});
+    // the random 16th, set apart
+    if(A.rnd!==undefined){const g=document.createElement("span");g.style.width="14px";bs.appendChild(g);
+      const r=document.createElement("span");r.className="lbl";r.textContent="16th · random";bs.appendChild(r);bs.appendChild(chip(A.rnd,"rnd"));}}
   else if(A.bet1){const l=document.createElement("span");l.className="lbl";l.textContent="Sector 1 · "+A.in1+" of last 6";bs.appendChild(l);A.bet1.forEach(n=>bs.appendChild(chip(n,cls(n))));}
   $("s1why").textContent=A.why1&&!state.setup?(A.lmOn?"Why: ":"Why Sector 1: ")+A.why1:"";
   $("pick2").parentElement.hidden=!!A.lmOn;
