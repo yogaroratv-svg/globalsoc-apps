@@ -98,7 +98,7 @@ button:disabled{opacity:.45;cursor:default}
   <div class="pad" id="pad"></div>
   <div class="tools">
     <button type="button" id="undo">Undo</button>
-    <button type="button" id="clearStart">Clear start</button>
+    <button type="button" id="clearStart">Skip start</button>
     <button type="button" id="newTable">New table</button>
   </div>
 </section>
@@ -152,7 +152,7 @@ function travelVotes(rows,d,s){
   const same=rows.filter(x=>x.d===d&&x.v===s),other=rows.filter(x=>x.d===d&&x.v!==s);
   add(same,1);add(other,1/3);return {v,n:same.length,no:other.length};
 }
-const startRows=seq=>seq.map(sp=>({d:sp.d,v:sp.v,t:travel(sp.a,sp.n)}));
+const startRows=seq=>seq.filter(sp=>sp.a!=null).map(sp=>({d:sp.d,v:sp.v,t:travel(sp.a,sp.n)}));
 // before the spin: from the previous landing to this landing (dealers usually launch near where the last ball landed)
 const lastRows=seq=>seq.slice(1).map((sp,i)=>({d:sp.d,v:sp.v,t:travel(seq[i].n,sp.n)}));
 const PRE_MIN=15;
@@ -175,8 +175,8 @@ function window15(T,start){
 // how the calls have done: every spin with a start number, predicted from the spins before it
 function record(seq){
   const out={};Object.keys(GL).forEach(k=>out[k]={calls:0,hits:0,pc:0,ph:0,n:0,trav:new Array(37).fill(0)});
-  seq.forEach((sp,i)=>{const g=out[gk(sp.d,sp.v)],prev=seq.slice(0,i);g.n++;g.trav[travel(sp.a,sp.n)]++;
-    const P=predict(prev,sp.d,sp.v,sp.a);if(P.nums){g.calls++;if(P.nums.includes(sp.n))g.hits++;}
+  seq.forEach((sp,i)=>{const g=out[gk(sp.d,sp.v)],prev=seq.slice(0,i);g.n++;if(sp.a!=null)g.trav[travel(sp.a,sp.n)]++;
+    const P=sp.a!=null?predict(prev,sp.d,sp.v,sp.a):{};if(P.nums){g.calls++;if(P.nums.includes(sp.n))g.hits++;}
     const Q=predictPre(prev,sp.d,sp.v);if(Q.nums){g.pc++;if(Q.nums.includes(sp.n))g.ph++;}});
   return out;
 }
@@ -184,8 +184,8 @@ function record(seq){
 /* ---------- entering a spin: start number first, then landing number ---------- */
 function tapNumber(n){
   if(state.start===null){state.start=n;save();render();return;}
-  const seq=tableSpins(),P=predict(seq,state.dir,state.speed,state.start);
-  const sp={a:state.start,n,d:state.dir,v:state.speed,t:Date.now(),s:state.table},Q=predictPre(seq,state.dir,state.speed);
+  const skip=state.start==="skip",seq=tableSpins(),P=skip?{}:predict(seq,state.dir,state.speed,state.start);
+  const sp={a:skip?null:state.start,n,d:state.dir,v:state.speed,t:Date.now(),s:state.table},Q=predictPre(seq,state.dir,state.speed);
   if(P.nums){sp.p=P.nums;sp.hit=P.nums.includes(n);}
   if(Q.nums){sp.q=Q.nums;sp.qhit=Q.nums.includes(n);}
   state.spins.push(sp);state.start=null;
@@ -200,16 +200,17 @@ function render(){
   $("count").textContent="Table "+state.table+" · "+seq.length+" spin"+(seq.length===1?"":"s");
   $("dCW").setAttribute("aria-pressed",String(state.dir==="cw"));$("dACW").setAttribute("aria-pressed",String(state.dir==="acw"));
   $("sSlow").setAttribute("aria-pressed",String(state.speed==="S"));$("sFast").setAttribute("aria-pressed",String(state.speed==="F"));
-  const st=state.start;$("vStart").textContent=st===null?"–":st;$("vLand").textContent="–";
+  const st=state.start;$("vStart").textContent=st===null?"–":st==="skip"?"skipped":st;$("vLand").textContent="–";
   $("stepA").classList.toggle("now",st===null);$("stepB").classList.toggle("now",st!==null);
   // prediction for this spin
   const pr=$("pred"),pc=$("pChips");pc.innerHTML="";pr.classList.remove("live");
   const label=GL[gk(state.dir,state.speed)].toLowerCase();
-  if(st===null){const Q=predictPre(seq,state.dir,state.speed);
+  if(st===null||st==="skip"){const Q=predictPre(seq,state.dir,state.speed);
     if(Q.nums){pr.classList.add("live");$("pBig").textContent="Bet before the spin: around "+Q.centre;
       Q.nums.forEach(n=>pc.appendChild(chip(n,Q.more.includes(n)?"more":"")));
-      $("pWhy").textContent="Last ball landed on "+Q.from+". From "+Q.n+" earlier "+label+" spin"+(Q.n===1?"":"s")+(Q.no?" (and "+Q.no+" at the other speed)":"")+", the next ball most often landed about "+Q.peak+" pockets clockwise from the previous landing. These 15 hold "+Math.round(100*Q.share)+"% of that history (even spread 41%). When the spin starts, tap the start number for a sharper call.";}
-    else{$("pBig").textContent="Tap the start number";$("pWhy").textContent="Set direction and speed, then tap the number where the spin started. The likely landing area shows straight away. From "+PRE_MIN+" spins it also calls before the spin ("+Q.need+" more to go).";}}
+      $("pWhy").textContent="Last ball landed on "+Q.from+". From "+Q.n+" earlier "+label+" spin"+(Q.n===1?"":"s")+(Q.no?" (and "+Q.no+" at the other speed)":"")+", the next ball most often landed about "+Q.peak+" pockets clockwise from the previous landing. These 15 hold "+Math.round(100*Q.share)+"% of that history (even spread 41%). "+(st==="skip"?"Now tap where it landed.":"When the spin starts, tap the start number for a sharper call, or tap Skip start.");}
+    else if(st==="skip"){$("pBig").textContent="Tap the landing number";$("pWhy").textContent="Start skipped. From "+PRE_MIN+" spins the app calls before each spin ("+Q.need+" more to go).";}
+    else{$("pBig").textContent="Tap the start number";$("pWhy").textContent="Set direction and speed, then tap the number where the spin started, or tap Skip start and just enter the landing. From "+PRE_MIN+" spins it also calls before the spin ("+Q.need+" more to go).";}}
   else{const P=predict(seq,state.dir,state.speed,st);
     if(!P.nums){$("pBig").textContent="Learning "+label+" spins";$("pWhy").textContent="Needs "+P.need+" more spin"+(P.need===1?"":"s")+" in this direction before it can call a landing area. Now tap where it landed.";}
     else{pr.classList.add("live");$("pBig").textContent="Likely around "+P.centre;
@@ -217,7 +218,7 @@ function render(){
       P.nums.forEach(n=>pc.appendChild(chip(n,P.more.includes(n)?"more":"")));
       $("pWhy").textContent="From "+P.n+" earlier "+label+" spin"+(P.n===1?"":"s")+(P.no?" (and "+P.no+" at the other speed)":"")+": the ball most often travelled about "+P.peak+" pockets clockwise from the start. These 15 neighbours hold "+Math.round(100*P.share)+"% of that history (an even spread would be 41%). Circled = the 3 strongest. Now tap where it landed.";}}
   // pad: mark the start number while waiting for the landing
-  document.querySelectorAll("#pad button").forEach(b=>b.classList.toggle("mark",st!==null&&+b.dataset.n===st));
+  document.querySelectorAll("#pad button").forEach(b=>b.classList.toggle("mark",typeof st==="number"&&+b.dataset.n===st));
   // learned groups
   const R=record(seq),gw=$("groups");gw.innerHTML="";
   Object.keys(GL).forEach(k=>{const g=R[k],d=document.createElement("div");d.className="grp";
@@ -231,12 +232,12 @@ function render(){
   const h=$("hist");h.innerHTML="";seq.slice(-40).reverse().forEach(sp=>{const r=document.createElement("div");r.className="h";
     const d=document.createElement("span");d.className="d "+sp.d;d.textContent=sp.d==="cw"?"↻":"↺";
     const s=document.createElement("span");s.className="sp";s.textContent=sp.v==="F"?"fast":"slow";
-    const m=document.createElement("span");m.className="r";m.appendChild(chip(sp.a));m.append("→");m.appendChild(chip(sp.n));
-    const o=document.createElement("span");o.className="o";o.textContent="+"+travel(sp.a,sp.n)+(sp.q?(sp.qhit?" · before ✓":" · before ✗"):"")+(sp.p?(sp.hit?" · start ✓":" · start ✗"):"");
+    const m=document.createElement("span");m.className="r";if(sp.a!=null){m.appendChild(chip(sp.a));m.append("→");}m.appendChild(chip(sp.n));
+    const o=document.createElement("span");o.className="o";o.textContent=(sp.a!=null?"+"+travel(sp.a,sp.n):"no start")+(sp.q?(sp.qhit?" · before ✓":" · before ✗"):"")+(sp.p?(sp.hit?" · start ✓":" · start ✗"):"");
     if(sp.p||sp.q)o.classList.add(sp.hit||sp.qhit?"ok":"no");
     r.append(d,s,m,o);h.appendChild(r);});
   if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start → landing and the travel in pockets.</div>';
-  $("undo").disabled=!seq.length&&st===null;$("clearStart").disabled=st===null;$("altIn").checked=!!state.alt;
+  $("undo").disabled=!seq.length&&st===null;$("clearStart").textContent=st===null?"Skip start":"Clear start";$("altIn").checked=!!state.alt;
 }
 
 /* ---------- controls ---------- */
@@ -246,10 +247,11 @@ $("dCW").addEventListener("click",()=>{state.dir="cw";save();render();});
 $("dACW").addEventListener("click",()=>{state.dir="acw";save();render();});
 $("sSlow").addEventListener("click",()=>{state.speed="S";save();render();});
 $("sFast").addEventListener("click",()=>{state.speed="F";save();render();});
-$("clearStart").addEventListener("click",()=>{state.start=null;save();render();});
+// Skip start: next tap is the landing number. Tapped again (or with a start already in) it clears back to step 1.
+$("clearStart").addEventListener("click",()=>{state.start=state.start===null?"skip":null;save();render();});
 $("undo").addEventListener("click",()=>{if(state.start!==null){state.start=null;save();render();return;}
   const seq=tableSpins();if(!seq.length)return;const last=seq[seq.length-1];state.spins.splice(state.spins.lastIndexOf(last),1);
-  state.dir=last.d;state.speed=last.v;state.start=last.a;save();render();});
+  state.dir=last.d;state.speed=last.v;state.start=last.a!=null?last.a:"skip";save();render();});
 $("altIn").addEventListener("change",e=>{state.alt=e.target.checked;save();render();});
 let newArmed=null;$("newTable").addEventListener("click",()=>{const b=$("newTable");if(!newArmed){b.textContent="Tap again";newArmed=setTimeout(()=>{newArmed=null;b.textContent="New table";},3000);return;}
   clearTimeout(newArmed);newArmed=null;b.textContent="New table";state.table++;state.start=null;save();render();});
