@@ -1,0 +1,266 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" type="image/png" href="icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Real Wheel"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#130f0c"></head><body>
+<title>Real Wheel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: one phone column at a physical wheel. Spin entry first (direction, speed, start, landing), then the prediction, results, history.
+   Deliberately dark: mahogany and brass like the wheel itself. */
+:root{
+  --bg:#130f0c; --panel:#1e1712; --panel-2:#2a201a; --line:#3e3027; --fg:#f1ebe4; --muted:#ad9c8e;
+  --brass:#d9a441; --cw:#4fb3bf; --acw:#e07a3f; --good:#5cc489; --bad:#e2574c;
+  --red:#b8382c; --black:#24221f; --green:#1f8a4c;
+  --display:"Saira Condensed","Arial Narrow",Arial,sans-serif; --body:"Source Sans 3","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.4;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 40px}
+main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,.lbl,button{font-family:var(--display)}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-size:30px;font-weight:700;letter-spacing:.02em;margin:0}
+h1 b{color:var(--brass)}
+.meta{color:var(--muted);font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
+h2{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.note{color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);font-size:16px;font-weight:600;letter-spacing:.04em;padding:8px 14px}
+button:focus-visible,select:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{font-size:19px;padding:10px 6px;text-transform:uppercase}
+#dCW[aria-pressed="true"]{background:var(--cw);border-color:var(--cw);color:#06191b}
+#dACW[aria-pressed="true"]{background:var(--acw);border-color:var(--acw);color:#1f0c03}
+#sSlow[aria-pressed="true"],#sFast[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:#1d1503}
+.steps{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.step{border-radius:10px;padding:8px 10px;background:var(--panel-2);border:2px solid transparent;display:flex;flex-direction:column;gap:2px}
+.step.now{border-color:var(--brass)}
+.step .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.step .v{font-family:var(--display);font-size:30px;font-weight:700;line-height:1.1;min-height:33px}
+.pred{border-radius:12px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.pred.live{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass) inset}
+.pred .big{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:.02em}
+.chips{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.chip{min-width:30px;height:28px;padding:0 4px;border-radius:7px;display:inline-grid;place-items:center;font-family:var(--display);font-weight:600;font-size:17px;color:#fff}
+.c-red{background:var(--red)}.c-black{background:var(--black);box-shadow:inset 0 0 0 1px #4a443e}.c-green{background:var(--green)}
+.chip.more{border-radius:50%;box-shadow:0 0 0 2px var(--brass)}
+.pad{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.pad button{padding:0;height:46px;font-size:21px;color:#fff;border:0}
+.pad button.z{grid-column:span 6;height:40px}
+.pad button.mark{box-shadow:0 0 0 3px var(--brass) inset}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.grp{background:var(--panel-2);border-radius:10px;padding:8px 10px;min-width:0}
+.grp .k{font-family:var(--display);font-size:15px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.grp .k.cw{color:var(--cw)}.grp .k.acw{color:var(--acw)}
+.grp .s{font-size:13px;color:var(--muted)}
+.grp .v{font-family:var(--display);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.bars{display:grid;grid-template-columns:repeat(37,1fr);align-items:end;gap:1px;height:34px;margin-top:4px}
+.bars i{background:var(--brass);border-radius:1px 1px 0 0;min-height:1px;opacity:.85}
+.hist{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto}
+.h{display:grid;grid-template-columns:28px 44px 1fr auto;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.h .d{font-family:var(--display);font-weight:700;font-size:18px;text-align:center}
+.h .d.cw{color:var(--cw)}.h .d.acw{color:var(--acw)}
+.h .sp{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.h .r{display:flex;gap:6px;align-items:center}
+.h .o{font-size:13px;color:var(--muted)}
+.ok{color:var(--good);font-weight:600}.no{color:var(--muted)}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+.toggle{display:flex;align-items:center;gap:8px}
+.warnbtn{border-color:var(--bad);color:var(--bad)}
+@media (prefers-reduced-motion:no-preference){.pred.live{animation:glow 1.2s ease-in-out 1}}
+@keyframes glow{50%{box-shadow:0 0 0 3px var(--brass) inset}}
+</style>
+
+<main>
+<header>
+  <h1>Real <b>Wheel</b></h1>
+  <div class="meta"><span id="count">0 spins</span><span id="cloud">Connecting…</span></div>
+</header>
+
+<section class="card" aria-live="polite">
+  <h2>This spin</h2>
+  <div class="seg" role="group" aria-label="Direction">
+    <button type="button" id="dCW" aria-pressed="true">↻ Clockwise</button>
+    <button type="button" id="dACW" aria-pressed="false">↺ Anticlockwise</button>
+  </div>
+  <div class="seg" role="group" aria-label="Speed">
+    <button type="button" id="sSlow" aria-pressed="true">Slow</button>
+    <button type="button" id="sFast" aria-pressed="false">Fast</button>
+  </div>
+  <div class="steps">
+    <div class="step" id="stepA"><span class="k">1 · Start number</span><span class="v" id="vStart">–</span></div>
+    <div class="step" id="stepB"><span class="k">2 · Landing number</span><span class="v" id="vLand">–</span></div>
+  </div>
+  <div class="pred" id="pred"><div class="big" id="pBig">Tap the start number</div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div></div>
+  <div class="pad" id="pad"></div>
+  <div class="tools">
+    <button type="button" id="undo">Undo</button>
+    <button type="button" id="clearStart">Clear start</button>
+    <button type="button" id="newTable">New table</button>
+  </div>
+</section>
+
+<section class="card" id="noteCard" hidden>
+  <h2>Note from Claude</h2>
+  <div id="noteText"></div><div class="note" id="noteAt"></div>
+</section>
+
+<section class="card">
+  <h2>What the app has learned at this table</h2>
+  <div class="groups" id="groups"></div>
+  <div class="note">Travel = pockets from the start number to the landing number, counted clockwise round the wheel (0 to 36). The bars show how often each travel came up: a clear peak means the ball keeps travelling about the same distance for that direction and speed. "Calls" = how often the 15 it showed before the spin landed (15 of 37 is an even share).</div>
+</section>
+
+<section class="card">
+  <h2>Last spins</h2>
+  <div class="hist" id="hist"></div>
+</section>
+
+<section class="card">
+  <h2>Settings</h2>
+  <label class="toggle" for="altIn"><input type="checkbox" id="altIn"> Switch direction by itself after each spin (most wheels alternate)</label>
+  <div class="row"><button type="button" id="wipe" class="warnbtn">Clear all history</button></div>
+</section>
+</main>
+
+<script>
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const POS=[];WHEEL.forEach((n,i)=>POS[n]=i);
+const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const colorClass=n=>n===0?"c-green":RED.has(n)?"c-red":"c-black";
+const $=id=>document.getElementById(id);
+const KEY="realWheel.v1",K=15,GL={cwS:"Clockwise · slow",cwF:"Clockwise · fast",acwS:"Anticlockwise · slow",acwF:"Anticlockwise · fast"};
+const newRun=()=>Date.now().toString(36);
+let state={v:1,run:newRun(),table:1,spins:[],dir:"cw",speed:"S",start:null,alt:true};
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.spins))state=Object.assign(state,s);}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}cloudQueue();}
+const tableSpins=()=>state.spins.filter(s=>s.s===state.table);
+const travel=(a,b)=>(POS[b]-POS[a]+37)%37;
+const gk=(d,s)=>d+s;
+
+/* ---------- prediction: learned from this table's own spins, no fixed travel.
+   Each earlier spin with the same direction and speed votes for its travel (recent spins count more), spread over the
+   pockets either side; the same direction at the other speed votes at a third of the weight. The 15 neighbouring pockets
+   with the most votes, counted from today's start number, are the call; the 3 strongest pockets are circled. ---------- */
+function travelVotes(seq,d,s){
+  const v=new Array(37).fill(0.02),add=(arr,w0)=>arr.forEach((sp,i)=>{const t=travel(sp.a,sp.n),w=w0*(0.5+(i+1)/arr.length);
+    for(let k=-3;k<=3;k++)v[(t+k+37)%37]+=w*(4-Math.abs(k));});
+  const same=seq.filter(x=>x.d===d&&x.v===s),other=seq.filter(x=>x.d===d&&x.v!==s);
+  add(same,1);add(other,1/3);return {v,n:same.length,no:other.length};
+}
+function predict(seq,d,s,start){
+  const T=travelVotes(seq,d,s);if(T.n+T.no<4)return {need:4-(T.n+T.no),n:T.n};
+  let best=0,bo=0;for(let o=0;o<37;o++){let t=0;for(let j=0;j<K;j++)t+=T.v[(o+j)%37];if(t>best){best=t;bo=o;}}
+  const win=[...Array(K)].map((_,j)=>(bo+j)%37),top3=win.slice().sort((a,b)=>T.v[b]-T.v[a]).slice(0,3);
+  const tot=T.v.reduce((a,b)=>a+b,0),share=best/tot;
+  const peak=top3[0],nums=win.map(o=>WHEEL[(POS[start]+o)%37]),more=top3.map(o=>WHEEL[(POS[start]+o)%37]);
+  return {nums,more,peak,share,n:T.n,no:T.no,centre:WHEEL[(POS[start]+peak)%37]};
+}
+// how the calls have done: every spin with a start number, predicted from the spins before it
+function record(seq){
+  const out={};Object.keys(GL).forEach(k=>out[k]={calls:0,hits:0,n:0,trav:new Array(37).fill(0)});
+  seq.forEach((sp,i)=>{const g=out[gk(sp.d,sp.v)];g.n++;g.trav[travel(sp.a,sp.n)]++;
+    const P=predict(seq.slice(0,i),sp.d,sp.v,sp.a);if(P.nums){g.calls++;if(P.nums.includes(sp.n))g.hits++;}});
+  return out;
+}
+
+/* ---------- entering a spin: start number first, then landing number ---------- */
+function tapNumber(n){
+  if(state.start===null){state.start=n;save();render();return;}
+  const seq=tableSpins(),P=predict(seq,state.dir,state.speed,state.start);
+  const sp={a:state.start,n,d:state.dir,v:state.speed,t:Date.now(),s:state.table};
+  if(P.nums){sp.p=P.nums;sp.hit=P.nums.includes(n);}
+  state.spins.push(sp);state.start=null;
+  if(state.alt)state.dir=state.dir==="cw"?"acw":"cw";
+  save();render();
+}
+function chip(n,extra){const c=document.createElement("span");c.className="chip "+colorClass(n)+(extra?" "+extra:"");c.textContent=n;return c;}
+
+/* ---------- render ---------- */
+function render(){
+  const seq=tableSpins();
+  $("count").textContent="Table "+state.table+" · "+seq.length+" spin"+(seq.length===1?"":"s");
+  $("dCW").setAttribute("aria-pressed",String(state.dir==="cw"));$("dACW").setAttribute("aria-pressed",String(state.dir==="acw"));
+  $("sSlow").setAttribute("aria-pressed",String(state.speed==="S"));$("sFast").setAttribute("aria-pressed",String(state.speed==="F"));
+  const st=state.start;$("vStart").textContent=st===null?"–":st;$("vLand").textContent="–";
+  $("stepA").classList.toggle("now",st===null);$("stepB").classList.toggle("now",st!==null);
+  // prediction for this spin
+  const pr=$("pred"),pc=$("pChips");pc.innerHTML="";pr.classList.remove("live");
+  const label=GL[gk(state.dir,state.speed)].toLowerCase();
+  if(st===null){$("pBig").textContent="Tap the start number";$("pWhy").textContent="Set direction and speed, then tap the number where the spin started. The likely landing area shows straight away.";}
+  else{const P=predict(seq,state.dir,state.speed,st);
+    if(!P.nums){$("pBig").textContent="Learning "+label+" spins";$("pWhy").textContent="Needs "+P.need+" more spin"+(P.need===1?"":"s")+" in this direction before it can call a landing area. Now tap where it landed.";}
+    else{pr.classList.add("live");$("pBig").textContent="Likely around "+P.centre;
+      // the 15 in wheel order, starting from the left edge of the window
+      P.nums.forEach(n=>pc.appendChild(chip(n,P.more.includes(n)?"more":"")));
+      $("pWhy").textContent="From "+P.n+" earlier "+label+" spin"+(P.n===1?"":"s")+(P.no?" (and "+P.no+" at the other speed)":"")+": the ball most often travelled about "+P.peak+" pockets clockwise from the start. These 15 neighbours hold "+Math.round(100*P.share)+"% of that history (an even spread would be 41%). Circled = the 3 strongest. Now tap where it landed.";}}
+  // pad: mark the start number while waiting for the landing
+  document.querySelectorAll("#pad button").forEach(b=>b.classList.toggle("mark",st!==null&&+b.dataset.n===st));
+  // learned groups
+  const R=record(seq),gw=$("groups");gw.innerHTML="";
+  Object.keys(GL).forEach(k=>{const g=R[k],d=document.createElement("div");d.className="grp";
+    const exp=(g.calls*K/37).toFixed(1),mx=Math.max(1,...g.trav);
+    d.innerHTML='<div class="k '+(k.startsWith("acw")?"acw":"cw")+'"></div><div class="v"></div><div class="s"></div><div class="bars"></div>';
+    d.querySelector(".k").textContent=GL[k];d.querySelector(".v").textContent=g.calls?g.hits+"/"+g.calls:g.n+" spins";
+    d.querySelector(".s").textContent=g.calls?"calls landed ("+exp+" expected), "+g.n+" spins":(g.n?"learning":"no spins yet");
+    const bars=d.querySelector(".bars");g.trav.forEach((c,t)=>{const i=document.createElement("i");i.style.height=(100*c/mx)+"%";i.title="travel "+t+": "+c;bars.appendChild(i);});
+    gw.appendChild(d);});
+  // history
+  const h=$("hist");h.innerHTML="";seq.slice(-40).reverse().forEach(sp=>{const r=document.createElement("div");r.className="h";
+    const d=document.createElement("span");d.className="d "+sp.d;d.textContent=sp.d==="cw"?"↻":"↺";
+    const s=document.createElement("span");s.className="sp";s.textContent=sp.v==="F"?"fast":"slow";
+    const m=document.createElement("span");m.className="r";m.appendChild(chip(sp.a));m.append("→");m.appendChild(chip(sp.n));
+    const o=document.createElement("span");o.className="o";o.textContent="+"+travel(sp.a,sp.n)+(sp.p?(sp.hit?" ✓":" ✗"):"");
+    if(sp.p)o.classList.add(sp.hit?"ok":"no");
+    r.append(d,s,m,o);h.appendChild(r);});
+  if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start → landing and the travel in pockets.</div>';
+  $("undo").disabled=!seq.length&&st===null;$("clearStart").disabled=st===null;$("altIn").checked=!!state.alt;
+}
+
+/* ---------- controls ---------- */
+(function(){const pad=$("pad");const mk=n=>{const b=document.createElement("button");b.type="button";b.className=colorClass(n)+(n===0?" z":"");b.textContent=n;b.dataset.n=n;
+  b.addEventListener("click",()=>tapNumber(n));pad.appendChild(b);};mk(0);for(let n=1;n<=36;n++)mk(n);})();
+$("dCW").addEventListener("click",()=>{state.dir="cw";save();render();});
+$("dACW").addEventListener("click",()=>{state.dir="acw";save();render();});
+$("sSlow").addEventListener("click",()=>{state.speed="S";save();render();});
+$("sFast").addEventListener("click",()=>{state.speed="F";save();render();});
+$("clearStart").addEventListener("click",()=>{state.start=null;save();render();});
+$("undo").addEventListener("click",()=>{if(state.start!==null){state.start=null;save();render();return;}
+  const seq=tableSpins();if(!seq.length)return;const last=seq[seq.length-1];state.spins.splice(state.spins.lastIndexOf(last),1);
+  state.dir=last.d;state.speed=last.v;state.start=last.a;save();render();});
+$("altIn").addEventListener("change",e=>{state.alt=e.target.checked;save();render();});
+let newArmed=null;$("newTable").addEventListener("click",()=>{const b=$("newTable");if(!newArmed){b.textContent="Tap again";newArmed=setTimeout(()=>{newArmed=null;b.textContent="New table";},3000);return;}
+  clearTimeout(newArmed);newArmed=null;b.textContent="New table";state.table++;state.start=null;save();render();});
+let wipeArmed=null;$("wipe").addEventListener("click",()=>{const b=$("wipe");if(!wipeArmed){b.textContent="Tap again to clear everything on this phone";wipeArmed=setTimeout(()=>{wipeArmed=null;b.textContent="Clear all history";},3000);return;}
+  clearTimeout(wipeArmed);wipeArmed=null;b.textContent="Clear all history";state.run=newRun();state.spins=[];state.table=1;state.start=null;save();render();});
+
+/* ---------- cloud copy: each table mirrored to the artifact's db so Claude can read it and leave a note ---------- */
+let cdb=null,cloudTimer=null,cloudBusy=false,cloudAgain=false,cloudState="connecting",cloudAt=0;const CHUNK=400;
+let cloudSent={};try{cloudSent=JSON.parse(localStorage.getItem(KEY+".cloud")||"{}")||{};}catch(e){}
+const hashStr=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h+":"+s.length;};
+function cloudMsg(){const t=cloudAt?new Date(cloudAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"";
+  $("cloud").textContent=cloudState==="ok"?"Saved"+(t?" "+t:""):cloudState==="retry"?"Offline: saved on this phone":cloudState==="off"?"Saved on this phone":"Connecting…";}
+function cloudQueue(){if(!cdb)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1200);}
+async function cloudPush(){
+  if(!cdb)return;if(cloudBusy){cloudAgain=true;return;}cloudBusy=true;
+  try{for(const t of [...new Set(state.spins.map(s=>s.s))]){const all=state.spins.filter(x=>x.s===t);
+      for(let p=0;p*CHUNK<Math.max(all.length,1);p++){const id=state.run+"_"+t+"_"+p;
+        const body={run:state.run,table:t,part:p,from:p*CHUNK,spins:all.slice(p*CHUNK,(p+1)*CHUNK),app:"realwheel-v1"};
+        const sig=hashStr(JSON.stringify(body));if(cloudSent[id]===sig)continue;body.updated=Date.now();
+        await cdb.doc("tables/"+id).set(body);cloudSent[id]=sig;try{localStorage.setItem(KEY+".cloud",JSON.stringify(cloudSent));}catch(e){}}}
+    cloudState="ok";cloudAt=Date.now();}
+  catch(e){cloudState="retry";clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,30000);}
+  cloudBusy=false;cloudMsg();if(cloudAgain){cloudAgain=false;cloudQueue();}
+}
+const use=n=>window.claude&&typeof window.claude.use==="function"?window.claude.use(n):Promise.resolve(null);
+use("db").then(d=>{cdb=d;if(!d){cloudState="off";cloudMsg();return;}cloudPush();
+  d.doc("notes/latest").onSnapshot(s=>{const v=s.exists?s.data():null;$("noteCard").hidden=!(v&&v.text);if(v&&v.text){$("noteText").textContent=v.text;$("noteAt").textContent=v.at?"Written "+new Date(v.at).toLocaleString([],{weekday:"short",hour:"numeric",minute:"2-digit"}):"";}},()=>{});
+},()=>{cloudState="off";cloudMsg();});
+cloudMsg();render();
+</script>
+
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body></html>
