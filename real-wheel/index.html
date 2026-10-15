@@ -74,6 +74,8 @@ button:disabled{opacity:.45;cursor:default}
 .pred.wait .big{color:var(--muted)}.pred.wait .chips{opacity:.55}
 .pred .k{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .pred.ai{margin-top:10px}
+.vs{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.vsline{font-weight:600;margin-bottom:8px}.vsline.alt{color:var(--brass)}
+#hotChips{margin-top:8px}.pred.wait #hotChips{opacity:1}
 .dirs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .dir{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel-2);min-width:0}
 .dir.cur{border-color:var(--brass)}.dir.cw .dk{color:var(--cw)}.dir.acw .dk{color:var(--acw)}
@@ -102,7 +104,8 @@ button:disabled{opacity:.45;cursor:default}
     <div class="step" id="stepA"><span class="k" id="kStart">Start number</span><span class="v" id="vStart">â€“</span></div>
     <div class="step now" id="stepB"><span class="k">Landing number</span><span class="v" id="vLand">tap the pad</span></div>
   </div>
-  <div class="pred" id="pred"><div class="k">This app</div><div class="big" id="pBig">Tap where the ball landed</div><div class="state" id="pState"></div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div></div>
+  <div class="pred" id="pred"><div class="k">This app</div><div class="big" id="pBig">Tap where the ball landed</div><div class="state" id="pState"></div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div>
+    <div class="vs" id="vs" hidden><div class="vsline" id="vsLine"></div><button type="button" id="hotBtn">Show Hot 15</button><div class="chips" id="hotChips" hidden></div><div class="note" id="hotWhy" hidden></div></div></div>
   <div class="pred ai" id="ai" hidden><div class="k">Claude</div><div class="big" id="aiBig"></div><div class="state" id="aiState"></div><div class="chips" id="aiChips"></div><div class="note" id="aiWhy"></div></div>
   <div class="dirs" id="dirs" hidden></div>
   <div class="pad" id="pad"></div>
@@ -189,9 +192,12 @@ const startNow=seq=>typeof state.start==="number"?state.start:lastLanding(seq);
 // where the ball went (in bits: above 0 = better than a random wheel), and the call the app would have made recorded
 function fitBits(prev,d,s,hl,t){const T=travelVotes(prev,d,s,hl),sum=T.v.reduce((a,b)=>a+b,0);return Math.log2(37*((1-MIX)*T.v[t]/sum+MIX/37));}
 const peakTravel=(seq,d,s,hl)=>{const v=travelVotes(seq,d,s,hl).v;let b=0;for(let o=0;o<37;o++){let t=0,u=0;for(let k=-2;k<=2;k++){t+=v[(o+k+37)%37];u+=v[(b+k+37)%37];}if(t>u)b=o;}return b;};
+// Hot 15 (as in the 15 Switch app): the 15 numbers that have landed most at this table; ties go to the most recent
+function hot15(seq){const c=new Array(37).fill(0),seen=new Array(37).fill(-1);seq.forEach((sp,i)=>{c[sp.n]++;seen[sp.n]=i;});
+  return [...Array(37).keys()].sort((a,b)=>c[b]-c[a]||seen[b]-seen[a]||POS[a]-POS[b]).slice(0,K);}
 function judge(seq){
   const g={},ev={},wt={},last={},rec={calls:0,hits:0,bet:0,betHits:0,wait:0,waitHits:0},byDir={};
-  ["cw","acw"].forEach(d=>byDir[d]={calls:0,hits:0,bet:0,betHits:0});
+  ["cw","acw"].forEach(d=>byDir[d]={calls:0,hits:0,bet:0,betHits:0,hot:0,app10:[],hot10:[]});
   Object.keys(GL).forEach(k=>g[k]={calls:0,hits:0,n:0,trav:new Array(37).fill(0)});
   const E=d=>ev[d]||(ev[d]=MODELS.map(()=>0)),L=d=>last[d]||(last[d]=MODELS.map(()=>[]));
   const decide=d=>{const e=E(d),w=wt[d]||0;let m=0;e.forEach((x,i)=>{if(x>e[m]+1e-9)m=i;});
@@ -204,7 +210,8 @@ function judge(seq){
     const hits=Ps.map(P=>P.nums.includes(sp.n)?1:0),h=hits[D.m],t=travel(sp.a,sp.n);
     G.calls++;G.hits+=h;rec.calls++;rec.hits+=h;
     if(D.bet){rec.bet++;rec.betHits+=h;}else{rec.wait++;rec.waitHits+=h;}
-    const bd=byDir[sp.d];if(bd){bd.calls++;bd.hits+=h;if(D.bet){bd.bet++;bd.betHits+=h;}}
+    const bd=byDir[sp.d];if(bd){const hh=hot15(prev).includes(sp.n)?1:0;bd.calls++;bd.hits+=h;bd.hot+=hh;if(D.bet){bd.bet++;bd.betHits+=h;}
+      bd.app10.push(h);bd.hot10.push(hh);if(bd.app10.length>10){bd.app10.shift();bd.hot10.shift();}}
     const e=E(sp.d),l=L(sp.d);
     MODELS.forEach((M,j)=>{e[j]=e[j]*DECAY+fitBits(prev,sp.d,sp.v,M.hl,t);l[j].push(hits[j]);if(l[j].length>10)l[j].shift();});
     wt[sp.d]=(wt[sp.d]||0)*DECAY+1;});
@@ -279,7 +286,24 @@ function render(){
     r.append(d,s,m,o);h.appendChild(r);});
   if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start â†’ landing (a ringed start was edited) and the travel in pockets.</div>';
   $("undo").disabled=!seq.length&&!edited&&!editing;$("altIn").checked=!!state.alt;
-  renderDirs(seq,J);renderAI(seq);
+  renderDirs(seq,J);renderVs(seq,J);renderAI(seq);
+}
+
+// one line: who has done better lately in this direction (this app, Hot 15, Claude), and Hot 15 a tap away (or shown when it leads)
+let hotOpen=false;
+function renderVs(seq,J){
+  const box=$("vs"),b=J.byDir[state.dir];box.hidden=editing||!b||!b.app10.length;if(box.hidden)return;
+  const dn=state.dir==="cw"?"clockwise":"anticlockwise",n=b.app10.length,sum=a=>a.reduce((p,q)=>p+q,0),app=sum(b.app10),hot=sum(b.hot10);
+  const cl=seq.filter(s=>s.d===state.dir&&s.cl).slice(-10),ch=cl.filter(s=>s.chit).length;
+  const rows=[["This app",app,n],["Hot 15",hot,n]];if(cl.length)rows.push(["Claude",ch,cl.length]);
+  const best=rows.slice().sort((x,y)=>y[1]/y[2]-x[1]/x[2])[0],tie=rows.filter(r=>r[1]/r[2]===best[1]/best[2]).length>1;
+  const hotLeads=!tie&&best[0]==="Hot 15";
+  $("vsLine").textContent=(tie?"Level on "+dn+" lately":best[0]+" is doing best on "+dn+" lately")+": "+rows.map(r=>r[0]+" "+r[1]+"/"+r[2]).join(" Â· ");
+  $("vsLine").className="vsline"+(tie||best[0]==="This app"?"":" alt");
+  const show=hotOpen||hotLeads,hc=$("hotChips");$("hotBtn").hidden=hotLeads;$("hotBtn").textContent=hotOpen?"Hide Hot 15":"Show Hot 15";
+  hc.hidden=$("hotWhy").hidden=!show;hc.innerHTML="";if(!show)return;
+  const H=hot15(seq),order=H.slice().sort((x,y)=>POS[x]-POS[y]);order.forEach(x=>hc.appendChild(chip(x)));
+  $("hotWhy").textContent="Hot 15 = the 15 numbers landing most at this table (ignores direction and start). Whole table on "+dn+": Hot 15 "+b.hot+"/"+b.calls+", this app "+b.hits+"/"+b.calls+" ("+(b.calls*K/37).toFixed(1)+" by luck)."+(hotLeads?" Shown because it leads lately.":"");
 }
 
 // clockwise vs anticlockwise side by side: what each says for its next spin and how each has done at this table
@@ -290,12 +314,13 @@ function renderDirs(seq,J){
   const better=Math.abs(score("cw")-score("acw"))<1e-9?null:score("cw")>score("acw")?"cw":"acw";
   ["cw","acw"].forEach(d=>{const D=J.decide(d),b=J.byDir[d],cl=seq.filter(s=>s.d===d&&s.cl),el=document.createElement("div");
     el.className="dir "+d+(state.dir===d?" cur":"");
-    const l10=D.last[D.m]||[],h10=l10.reduce((p,q)=>p+q,0);
+    const l10=b.app10,h10=l10.reduce((p,q)=>p+q,0),hot10=b.hot10.reduce((p,q)=>p+q,0);
     const lines=[
       (d==="cw"?"â†» Clockwise":"â†º Anticlockwise")+(better===d?" Â· better":""),
       (D.bet?"BET":"WAIT")+" Â· "+SW[D.state],
       "Calls landed "+b.hits+"/"+b.calls+" ("+(b.calls*K/37).toFixed(1)+" by luck)",
-      "Last "+l10.length+": "+h10+"/"+l10.length,
+      "Last "+l10.length+": "+h10+"/"+l10.length+" (Hot 15 "+hot10+")",
+      "Hot 15 whole table "+b.hot+"/"+b.calls,
       "Bets "+b.betHits+"/"+b.bet+" Â· "+(net(b)>=0?"+":"")+net(b)+" chips",
       cl.length?"Claude "+cl.filter(s=>s.chit).length+"/"+cl.length:""];
     lines.forEach((t,i)=>{if(!t)return;const s=document.createElement("div");s.className=i===0?"dk":i===1?"dv "+(D.bet?"ok":"no"):"ds";s.textContent=t;el.appendChild(s);});
@@ -305,6 +330,7 @@ function renderDirs(seq,J){
 /* ---------- controls ---------- */
 (function(){const pad=$("pad");const mk=n=>{const b=document.createElement("button");b.type="button";b.className=colorClass(n)+(n===0?" z":"");b.textContent=n;b.dataset.n=n;
   b.addEventListener("click",()=>tapNumber(n));pad.appendChild(b);};mk(0);for(let n=1;n<=36;n++)mk(n);})();
+$("hotBtn").addEventListener("click",()=>{hotOpen=!hotOpen;render();});
 $("dCW").addEventListener("click",()=>{state.dir="cw";save();render();});
 $("dACW").addEventListener("click",()=>{state.dir="acw";save();render();});
 $("sSlow").addEventListener("click",()=>{state.speed="S";save();render();});
