@@ -742,12 +742,13 @@ function lmMain(A,LP,nums){
   A.form=LP.bets?{n:LP.bets,hits:LP.hits,exp:LP.bets*LM_K/LM_N}:null;
   const L=LP.leaders,pc=x=>Math.round(100*x)+"%";
   A.why1="spins here lately fit "+L.slice(0,2).map(l=>l.name+" ("+pc(l.w)+" of its trust"+(l.b?", won "+l.h+" of "+l.b:"")+")").join(" and ")+
-    (A.key.length?". Circled "+A.key.join(" ")+": most of its experts agree on "+(A.key.length>1?"these":"this")+", so 2 chips":"");A.why2="";
+    (LP.more.length?". Circled "+LP.more.join(" ")+": most of its experts agree on "+(LP.more.length>1?"these":"this")+", so 2 chips":"");A.why2="";
   A.nextWhy="learning model, switching speed it has learned here: "+LP.speed;
   if(A.stop||A.goal)return;
   A.label=A.rules.main?"pattern":"wait";
-  A.why=A.rules.main?"My model's 15 plus a random draw from all 37 (a 16th number, or a doubled bet when it lands in the 15). This call is stronger than "+A.conf+"% of its calls at this table, so bet.":
-    "My model's call is weaker than its usual here ("+A.conf+"% of its calls were weaker), so wait.";
+  // strength 0-100 = where this call sits among the model's own earlier calls at this table (0 = its weakest yet, 100 = its strongest)
+  A.why=A.rules.main?"Bet: the model's ideas agree more than usual on these 15 (strength "+A.conf+" of 100, where 100 is its most sure call at this table). Plus the random draw.":
+    "Wait: the model's ideas disagree "+(A.conf<=5?"more than at any time so far":"more than usual")+" at this table (strength "+A.conf+" of 100, where 0 is its least sure call here), so it would sit this spin out.";
 }
 /* Replays one session and returns decisions before each spin plus the live analysis. */
 /* ---- colour learner: START ---- */
