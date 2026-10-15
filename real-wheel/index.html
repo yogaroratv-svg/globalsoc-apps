@@ -73,7 +73,11 @@ button:disabled{opacity:.45;cursor:default}
 @media (prefers-reduced-motion:no-preference){.pred.live{animation:glow 1.2s ease-in-out 1}}
 .pred.wait .big{color:var(--muted)}.pred.wait .chips{opacity:.55}
 .pred .k{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.pred.ai{margin-top:10px}.state{font-weight:600;margin:4px 0}.state:empty{display:none}
+.pred.ai{margin-top:10px}
+.dirs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.dir{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel-2);min-width:0}
+.dir.cur{border-color:var(--brass)}.dir.cw .dk{color:var(--cw)}.dir.acw .dk{color:var(--acw)}
+.dk{font-family:var(--display);font-weight:700;font-size:16px}.dv{font-family:var(--display);font-weight:700;font-size:18px}.ds{font-size:13px;color:var(--muted)}.state{font-weight:600;margin:4px 0}.state:empty{display:none}
 .s-holding{color:var(--good)}.s-shifting{color:var(--brass)}.s-changed{color:var(--acw)}.s-random,.s-new{color:var(--muted)}
 @keyframes glow{50%{box-shadow:0 0 0 3px var(--brass) inset}}
 </style>
@@ -100,6 +104,7 @@ button:disabled{opacity:.45;cursor:default}
   </div>
   <div class="pred" id="pred"><div class="k">This app</div><div class="big" id="pBig">Tap where the ball landed</div><div class="state" id="pState"></div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div></div>
   <div class="pred ai" id="ai" hidden><div class="k">Claude</div><div class="big" id="aiBig"></div><div class="state" id="aiState"></div><div class="chips" id="aiChips"></div><div class="note" id="aiWhy"></div></div>
+  <div class="dirs" id="dirs" hidden></div>
   <div class="pad" id="pad"></div>
   <div class="tools">
     <button type="button" id="undo">Undo</button>
@@ -185,7 +190,8 @@ const startNow=seq=>typeof state.start==="number"?state.start:lastLanding(seq);
 function fitBits(prev,d,s,hl,t){const T=travelVotes(prev,d,s,hl),sum=T.v.reduce((a,b)=>a+b,0);return Math.log2(37*((1-MIX)*T.v[t]/sum+MIX/37));}
 const peakTravel=(seq,d,s,hl)=>{const v=travelVotes(seq,d,s,hl).v;let b=0;for(let o=0;o<37;o++){let t=0,u=0;for(let k=-2;k<=2;k++){t+=v[(o+k+37)%37];u+=v[(b+k+37)%37];}if(t>u)b=o;}return b;};
 function judge(seq){
-  const g={},ev={},wt={},last={},rec={calls:0,hits:0,bet:0,betHits:0,wait:0,waitHits:0};
+  const g={},ev={},wt={},last={},rec={calls:0,hits:0,bet:0,betHits:0,wait:0,waitHits:0},byDir={};
+  ["cw","acw"].forEach(d=>byDir[d]={calls:0,hits:0,bet:0,betHits:0});
   Object.keys(GL).forEach(k=>g[k]={calls:0,hits:0,n:0,trav:new Array(37).fill(0)});
   const E=d=>ev[d]||(ev[d]=MODELS.map(()=>0)),L=d=>last[d]||(last[d]=MODELS.map(()=>[]));
   const decide=d=>{const e=E(d),w=wt[d]||0;let m=0;e.forEach((x,i)=>{if(x>e[m]+1e-9)m=i;});
@@ -198,10 +204,11 @@ function judge(seq){
     const hits=Ps.map(P=>P.nums.includes(sp.n)?1:0),h=hits[D.m],t=travel(sp.a,sp.n);
     G.calls++;G.hits+=h;rec.calls++;rec.hits+=h;
     if(D.bet){rec.bet++;rec.betHits+=h;}else{rec.wait++;rec.waitHits+=h;}
+    const bd=byDir[sp.d];if(bd){bd.calls++;bd.hits+=h;if(D.bet){bd.bet++;bd.betHits+=h;}}
     const e=E(sp.d),l=L(sp.d);
     MODELS.forEach((M,j)=>{e[j]=e[j]*DECAY+fitBits(prev,sp.d,sp.v,M.hl,t);l[j].push(hits[j]);if(l[j].length>10)l[j].shift();});
     wt[sp.d]=(wt[sp.d]||0)*DECAY+1;});
-  return {g,rec,decide};
+  return {g,rec,decide,byDir};
 }
 
 /* ---------- entering a spin: tap the landing number. Edit start first only when the dealer launched from somewhere else. ---------- */
@@ -234,7 +241,8 @@ function render(){
   if(editing){$("pBig").textContent="Tap the number the dealer started from";$("pWhy").textContent="The call updates for the new start straight away.";}
   else{const D=J.decide(state.dir),M=MODELS[D.m],P=predict(seq,state.dir,state.speed,st,M.hl);
     if(P.nums){if(D.bet)pr.classList.add("live");pr.classList.toggle("wait",!D.bet);
-      $("pBig").textContent=(D.bet?"Bet: around ":"Wait: watching around ")+P.centre;
+      const DN=state.dir==="cw"?"clockwise":"anticlockwise";
+      $("pBig").textContent=(D.bet?"Bet "+DN+": around ":"Wait on "+DN+": watching around ")+P.centre;
       P.nums.forEach(n=>pc.appendChild(chip(n,P.more.includes(n)?"more":"")));
       const dl=state.dir==="cw"?"clockwise":"anticlockwise",tally=MODELS.map((x,j)=>{const l=D.last[j];return x.name+" "+l.reduce((p,q)=>p+q,0)+"/"+l.length;}).join(", ");
       const was=peakTravel(seq,state.dir,state.speed,0),now=peakTravel(seq,state.dir,state.speed,M.hl);
@@ -271,7 +279,27 @@ function render(){
     r.append(d,s,m,o);h.appendChild(r);});
   if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start â†’ landing (a ringed start was edited) and the travel in pockets.</div>';
   $("undo").disabled=!seq.length&&!edited&&!editing;$("altIn").checked=!!state.alt;
-  renderAI(seq);
+  renderDirs(seq,J);renderAI(seq);
+}
+
+// clockwise vs anticlockwise side by side: what each says for its next spin and how each has done at this table
+function renderDirs(seq,J){
+  const box=$("dirs"),any=J.byDir.cw.calls+J.byDir.acw.calls>0;box.hidden=!any;if(!any)return;box.innerHTML="";
+  const SW={new:"Watching",random:"No pattern",holding:"Pattern holding",shifting:"Pattern shifting",changed:"Pattern changed"};
+  const net=b=>b.betHits*36-b.bet*K,score=d=>{const b=J.byDir[d];return b.calls?b.hits/b.calls:-1;};
+  const better=Math.abs(score("cw")-score("acw"))<1e-9?null:score("cw")>score("acw")?"cw":"acw";
+  ["cw","acw"].forEach(d=>{const D=J.decide(d),b=J.byDir[d],cl=seq.filter(s=>s.d===d&&s.cl),el=document.createElement("div");
+    el.className="dir "+d+(state.dir===d?" cur":"");
+    const l10=D.last[D.m]||[],h10=l10.reduce((p,q)=>p+q,0);
+    const lines=[
+      (d==="cw"?"â†» Clockwise":"â†º Anticlockwise")+(better===d?" Â· better":""),
+      (D.bet?"BET":"WAIT")+" Â· "+SW[D.state],
+      "Calls landed "+b.hits+"/"+b.calls+" ("+(b.calls*K/37).toFixed(1)+" by luck)",
+      "Last "+l10.length+": "+h10+"/"+l10.length,
+      "Bets "+b.betHits+"/"+b.bet+" Â· "+(net(b)>=0?"+":"")+net(b)+" chips",
+      cl.length?"Claude "+cl.filter(s=>s.chit).length+"/"+cl.length:""];
+    lines.forEach((t,i)=>{if(!t)return;const s=document.createElement("div");s.className=i===0?"dk":i===1?"dv "+(D.bet?"ok":"no"):"ds";s.textContent=t;el.appendChild(s);});
+    box.appendChild(el);});
 }
 
 /* ---------- controls ---------- */
@@ -338,7 +366,8 @@ function renderAI(seq){
   if(!aiLive||aiLive.key!==aiKey()||aiLive.busy){$("aiBig").textContent="Claude is thinkingâ€¦";$("aiWhy").textContent="Usually 5â€“30 seconds. You can tap the landing number any time."+rec;return;}
   if(aiLive.err){$("aiBig").textContent="No answer this spin";$("aiWhy").textContent=aiLive.err+rec;return;}
   box.classList.toggle("wait",!aiLive.bet);
-  $("aiBig").textContent=(aiLive.bet?"Bet: around ":"Wait: watching around ")+aiLive.centre;
+  const DN=state.dir==="cw"?"clockwise":"anticlockwise";
+  $("aiBig").textContent=(aiLive.bet?"Bet "+DN+": around ":"Wait on "+DN+": watching around ")+aiLive.centre;
   const S={holding:"Claude: pattern holding",changed:"Claude: âš  pattern changed",random:"Claude: no pattern lately"};
   $("aiState").textContent=S[aiLive.state]||"";$("aiState").className="state s-"+(aiLive.state==="changed"?"changed":aiLive.state==="holding"?"holding":"random");
   aiLive.nums.forEach(n=>c.appendChild(chip(n,aiLive.more.includes(n)?"more":"")));
