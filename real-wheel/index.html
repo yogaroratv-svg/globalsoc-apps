@@ -145,14 +145,27 @@ const gk=(d,s)=>d+s;
    Each earlier spin with the same direction and speed votes for its travel (recent spins count more), spread over the
    pockets either side; the same direction at the other speed votes at a third of the weight. The 15 neighbouring pockets
    with the most votes, counted from today's start number, are the call; the 3 strongest pockets are circled. ---------- */
-function travelVotes(seq,d,s){
-  const v=new Array(37).fill(0.02),add=(arr,w0)=>arr.forEach((sp,i)=>{const t=travel(sp.a,sp.n),w=w0*(0.5+(i+1)/arr.length);
-    for(let k=-3;k<=3;k++)v[(t+k+37)%37]+=w*(4-Math.abs(k));});
-  const same=seq.filter(x=>x.d===d&&x.v===s),other=seq.filter(x=>x.d===d&&x.v!==s);
+// rows = [{d,v,t}] (direction, speed, travel in pockets); travel measured from the start number, or (before the spin) from the last landing
+function travelVotes(rows,d,s){
+  const v=new Array(37).fill(0.02),add=(arr,w0)=>arr.forEach((r,i)=>{const w=w0*(0.5+(i+1)/arr.length);
+    for(let k=-3;k<=3;k++)v[(r.t+k+37)%37]+=w*(4-Math.abs(k));});
+  const same=rows.filter(x=>x.d===d&&x.v===s),other=rows.filter(x=>x.d===d&&x.v!==s);
   add(same,1);add(other,1/3);return {v,n:same.length,no:other.length};
 }
+const startRows=seq=>seq.map(sp=>({d:sp.d,v:sp.v,t:travel(sp.a,sp.n)}));
+// before the spin: from the previous landing to this landing (dealers usually launch near where the last ball landed)
+const lastRows=seq=>seq.slice(1).map((sp,i)=>({d:sp.d,v:sp.v,t:travel(seq[i].n,sp.n)}));
+const PRE_MIN=15;
+function predictPre(seq,d,s){
+  if(seq.length<PRE_MIN)return {need:PRE_MIN-seq.length};
+  return Object.assign(window15(travelVotes(lastRows(seq),d,s),seq[seq.length-1].n),{from:seq[seq.length-1].n});
+}
 function predict(seq,d,s,start){
-  const T=travelVotes(seq,d,s);if(T.n+T.no<4)return {need:4-(T.n+T.no),n:T.n};
+  const T=travelVotes(startRows(seq),d,s);if(T.n+T.no<4)return {need:4-(T.n+T.no),n:T.n};
+  return window15(T,start);
+}
+function window15(T,start){
+  if(T.n+T.no<4)return {need:4-(T.n+T.no),n:T.n};
   let best=0,bo=0;for(let o=0;o<37;o++){let t=0;for(let j=0;j<K;j++)t+=T.v[(o+j)%37];if(t>best){best=t;bo=o;}}
   const win=[...Array(K)].map((_,j)=>(bo+j)%37),top3=win.slice().sort((a,b)=>T.v[b]-T.v[a]).slice(0,3);
   const tot=T.v.reduce((a,b)=>a+b,0),share=best/tot;
@@ -161,9 +174,10 @@ function predict(seq,d,s,start){
 }
 // how the calls have done: every spin with a start number, predicted from the spins before it
 function record(seq){
-  const out={};Object.keys(GL).forEach(k=>out[k]={calls:0,hits:0,n:0,trav:new Array(37).fill(0)});
-  seq.forEach((sp,i)=>{const g=out[gk(sp.d,sp.v)];g.n++;g.trav[travel(sp.a,sp.n)]++;
-    const P=predict(seq.slice(0,i),sp.d,sp.v,sp.a);if(P.nums){g.calls++;if(P.nums.includes(sp.n))g.hits++;}});
+  const out={};Object.keys(GL).forEach(k=>out[k]={calls:0,hits:0,pc:0,ph:0,n:0,trav:new Array(37).fill(0)});
+  seq.forEach((sp,i)=>{const g=out[gk(sp.d,sp.v)],prev=seq.slice(0,i);g.n++;g.trav[travel(sp.a,sp.n)]++;
+    const P=predict(prev,sp.d,sp.v,sp.a);if(P.nums){g.calls++;if(P.nums.includes(sp.n))g.hits++;}
+    const Q=predictPre(prev,sp.d,sp.v);if(Q.nums){g.pc++;if(Q.nums.includes(sp.n))g.ph++;}});
   return out;
 }
 
@@ -171,8 +185,9 @@ function record(seq){
 function tapNumber(n){
   if(state.start===null){state.start=n;save();render();return;}
   const seq=tableSpins(),P=predict(seq,state.dir,state.speed,state.start);
-  const sp={a:state.start,n,d:state.dir,v:state.speed,t:Date.now(),s:state.table};
+  const sp={a:state.start,n,d:state.dir,v:state.speed,t:Date.now(),s:state.table},Q=predictPre(seq,state.dir,state.speed);
   if(P.nums){sp.p=P.nums;sp.hit=P.nums.includes(n);}
+  if(Q.nums){sp.q=Q.nums;sp.qhit=Q.nums.includes(n);}
   state.spins.push(sp);state.start=null;
   if(state.alt)state.dir=state.dir==="cw"?"acw":"cw";
   save();render();
@@ -190,7 +205,11 @@ function render(){
   // prediction for this spin
   const pr=$("pred"),pc=$("pChips");pc.innerHTML="";pr.classList.remove("live");
   const label=GL[gk(state.dir,state.speed)].toLowerCase();
-  if(st===null){$("pBig").textContent="Tap the start number";$("pWhy").textContent="Set direction and speed, then tap the number where the spin started. The likely landing area shows straight away.";}
+  if(st===null){const Q=predictPre(seq,state.dir,state.speed);
+    if(Q.nums){pr.classList.add("live");$("pBig").textContent="Bet before the spin: around "+Q.centre;
+      Q.nums.forEach(n=>pc.appendChild(chip(n,Q.more.includes(n)?"more":"")));
+      $("pWhy").textContent="Last ball landed on "+Q.from+". From "+Q.n+" earlier "+label+" spin"+(Q.n===1?"":"s")+(Q.no?" (and "+Q.no+" at the other speed)":"")+", the next ball most often landed about "+Q.peak+" pockets clockwise from the previous landing. These 15 hold "+Math.round(100*Q.share)+"% of that history (even spread 41%). When the spin starts, tap the start number for a sharper call.";}
+    else{$("pBig").textContent="Tap the start number";$("pWhy").textContent="Set direction and speed, then tap the number where the spin started. The likely landing area shows straight away. From "+PRE_MIN+" spins it also calls before the spin ("+Q.need+" more to go).";}}
   else{const P=predict(seq,state.dir,state.speed,st);
     if(!P.nums){$("pBig").textContent="Learning "+label+" spins";$("pWhy").textContent="Needs "+P.need+" more spin"+(P.need===1?"":"s")+" in this direction before it can call a landing area. Now tap where it landed.";}
     else{pr.classList.add("live");$("pBig").textContent="Likely around "+P.centre;
@@ -205,7 +224,7 @@ function render(){
     const exp=(g.calls*K/37).toFixed(1),mx=Math.max(1,...g.trav);
     d.innerHTML='<div class="k '+(k.startsWith("acw")?"acw":"cw")+'"></div><div class="v"></div><div class="s"></div><div class="bars"></div>';
     d.querySelector(".k").textContent=GL[k];d.querySelector(".v").textContent=g.calls?g.hits+"/"+g.calls:g.n+" spins";
-    d.querySelector(".s").textContent=g.calls?"calls landed ("+exp+" expected), "+g.n+" spins":(g.n?"learning":"no spins yet");
+    d.querySelector(".s").textContent=g.calls?"after start: landed ("+exp+" expected)"+(g.pc?" · before spin: "+g.ph+"/"+g.pc+" ("+(g.pc*K/37).toFixed(1)+" expected)":"")+" · "+g.n+" spins":(g.n?"learning":"no spins yet");
     const bars=d.querySelector(".bars");g.trav.forEach((c,t)=>{const i=document.createElement("i");i.style.height=(100*c/mx)+"%";i.title="travel "+t+": "+c;bars.appendChild(i);});
     gw.appendChild(d);});
   // history
@@ -213,8 +232,8 @@ function render(){
     const d=document.createElement("span");d.className="d "+sp.d;d.textContent=sp.d==="cw"?"↻":"↺";
     const s=document.createElement("span");s.className="sp";s.textContent=sp.v==="F"?"fast":"slow";
     const m=document.createElement("span");m.className="r";m.appendChild(chip(sp.a));m.append("→");m.appendChild(chip(sp.n));
-    const o=document.createElement("span");o.className="o";o.textContent="+"+travel(sp.a,sp.n)+(sp.p?(sp.hit?" ✓":" ✗"):"");
-    if(sp.p)o.classList.add(sp.hit?"ok":"no");
+    const o=document.createElement("span");o.className="o";o.textContent="+"+travel(sp.a,sp.n)+(sp.q?(sp.qhit?" · before ✓":" · before ✗"):"")+(sp.p?(sp.hit?" · start ✓":" · start ✗"):"");
+    if(sp.p||sp.q)o.classList.add(sp.hit||sp.qhit?"ok":"no");
     r.append(d,s,m,o);h.appendChild(r);});
   if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start → landing and the travel in pockets.</div>';
   $("undo").disabled=!seq.length&&st===null;$("clearStart").disabled=st===null;$("altIn").checked=!!state.alt;
