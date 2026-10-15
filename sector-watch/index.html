@@ -329,7 +329,7 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
   <div class="row"><label for="winIn">Recent window for the hot arc (spins)</label><input id="winIn" type="number" min="6" max="60" step="1"></div>
   <div class="row"><label for="overSel">Burst is over after this many misses in a row</label>
     <select id="overSel"><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="0">Never</option></select></div>
-  <div class="row"><label for="colSel">Colour streak needed before betting it</label>
+  <div class="row" hidden><label for="colSel">Colour streak needed before betting it</label>
     <select id="colSel"><option value="2">2 in a row</option><option value="3">3 in a row</option><option value="4">4 in a row</option><option value="5">5 in a row</option></select></div>
   <div class="row"><label>Cloud copy (Claude reads your spins from here)</label><span class="note" id="cloudMsg">Connecting…</span></div>
   <div class="row"><label>Erase every session and start from zero</label><button class="btn warn" id="wipeBtn" type="button">Clear all history</button></div>
@@ -410,7 +410,7 @@ const RULES=[
   {id:"s24",label:"Side 2 of last 4"},
   {id:"s35",label:"Side 3 of last 5"},
   {id:"hot4",label:"Board hot numbers"},
-  {id:"colour",label:"Colour: switch / follow (learned)"},
+  {id:"colour",label:"Colour: learning model"},
   {id:"colour2",label:"· Colour 2× bets"},
   {id:"colourOld",label:"Colour: follow a 3+ streak (old)"}
 ];
@@ -487,16 +487,9 @@ function analyze(nums,hist,hot,lockIn,ctx){
   A.colourRun=run;A.colourCol=col;
   // old rule (kept for spins entered before v13 and as a scorecard row): follow a streak of 3+
   A.colourOld=col&&run>=3?col:null;A.rules.colourOld=!!A.colourOld;
-  // colour v13: after a streak, bet the SWITCH unless this table has been streaky lately (learned from its last 20 streaks).
-  // Your spins switched colour after a 2+ streak 57% of the time; table B was the streaky exception.
-  A.colStake=0;A.colMode=null;
-  if(col&&run>=state.colN){
-    const h=(ctx.colHist||[]).slice(-COL_WIN),sw=h.filter(v=>v==="S").length,fo=h.filter(v=>v==="F").length;
-    A.colMode=sw+COL_PRIOR_S>=fo+COL_PRIOR_F?"switch":"follow";
-    A.colour=A.colMode==="switch"?(col==="red"?"black":"red"):col;
-    const mh=A.colMode==="switch"?sw:fo;A.colRec={won:mh,n:h.length,sw,fo};
-    A.colStake=(ctx.colLastWon===true&&h.length>=8&&mh/h.length>=0.6)?2:1;
-  }
+  // colour v14: the colour learner (colPredict) calls every spin; it bets when the call is stronger than its usual, 2x in its top fifth
+  A.colStake=0;A.colMode=null;A.colPred=ctx.cl?colPredict(ctx.cl):null;
+  if(A.colPred&&A.colPred.bet){A.colMode="learned";A.colour=A.colPred.col;A.colStake=A.colPred.x2?2:1;}
   A.rules.colour=!!A.colour;A.rules.colour2=A.colStake===2;
   A.rules.hot4=hot.length>0;
   if(n<4)return A;
@@ -728,8 +721,60 @@ function analyze(nums,hist,hot,lockIn,ctx){
 }
 
 /* Replays one session and returns decisions before each spin plus the live analysis. */
+/* ---- colour learner: START ---- */
+// Colour learner: no fixed streak rule. Many small colour-pattern experts (follow, switch, same as 2-3 back, hot/due colour over
+// different windows, and "what came after this same run of colours before" for runs of 1-6) are reweighted after every spin by
+// whether their call won; learners with different speeds run side by side. It keeps learning across tables (earlier tables are
+// replayed into it first). It bets when its call is stronger than its usual call so far, and 2x when it is in its strongest fifth.
+const COL_EX=(()=>{const ex=[{name:"follow the last colour",f:c=>c.length&&c[c.length-1]!=="green"?c[c.length-1]:null},
+    {name:"switch from the last colour",f:c=>c.length&&c[c.length-1]!=="green"?colOp(c[c.length-1]):null}];
+  [2,3].forEach(p=>ex.push({name:"same colour as "+p+" spins back",f:c=>c.length>=p&&c[c.length-p]!=="green"?c[c.length-p]:null}));
+  [4,8,16,32].forEach(W=>{ex.push({name:"the colour hitting most in the last "+W,f:c=>colMaj(c.slice(-W))});
+    ex.push({name:"the colour that is behind in the last "+W,f:c=>{const m=colMaj(c.slice(-W));return m&&colOp(m);}});});
+  [1,2,3,4,5,6].forEach(L=>[30,300].forEach(W=>ex.push({name:"what followed the last "+L+" colour"+(L>1?"s":"")+(W<100?" (recent)":""),L,f:c=>colMatch(c,L,W).col})));
+  return ex;})();
+const colOp=c=>c==="red"?"black":"red";
+function colMaj(a){let r=0,b=0;a.forEach(c=>c==="red"?r++:c==="black"?b++:0);return r===b?null:r>b?"red":"black";}
+function colMatch(c,L,W){const n=c.length;if(n<=L)return {col:null,r:0,b:0};let r=0,b=0;
+  for(let i=Math.max(L,n-W);i<n;i++){let ok=true;for(let j=1;j<=L;j++)if(c[i-j]!==c[n-j]){ok=false;break;}
+    if(!ok)continue;if(c[i]==="red")r++;else if(c[i]==="black")b++;}
+  return {col:r===b?null:r>b?"red":"black",r,b};}
+const COL_LR=[[0.05,0.005],[0.15,0.02],[0.4,0.05]],COL_CH=18/37;
+function colNew(){const E=COL_EX.length;return {c:[],str:[],W:COL_LR.map(()=>new Array(E).fill(1/E)),top:COL_LR.map(()=>1/COL_LR.length),rec:COL_EX.map(()=>[0,0])};}
+function colPredict(st){
+  const last=COL_EX.map(e=>e.f(st.c));
+  const call=w=>{let r=0,b=0;last.forEach((p,i)=>{if(p==="red")r+=w[i];else if(p==="black")b+=w[i];});return {r,b};};
+  const per=st.W.map(w=>{const v=call(w);return v.r===v.b?null:v.r>v.b?"red":"black";});
+  let r=0,b=0;st.W.forEach((w,a)=>{const v=call(w),t=v.r+v.b||1;r+=st.top[a]*v.r/t;b+=st.top[a]*v.b/t;});
+  const col=r===b?null:r>b?"red":"black",s=Math.abs(r-b)/(r+b||1),past=st.str;
+  const rank=past.length?past.filter(x=>x<s).length/past.length:0.5;
+  const wt=COL_EX.map((e,i)=>st.W.reduce((acc,w,a)=>acc+st.top[a]*w[i],0)),tw=wt.reduce((x,y)=>x+y,0);
+  const lead=COL_EX.map((e,i)=>({i,name:e.name,w:wt[i]/tw,b:st.rec[i][0],won:st.rec[i][1],call:last[i]})).sort((x,y)=>y.w-x.w);
+  // plain-words reason: the most trusted expert that agrees with the call, with its record and, for run-matching, what it saw
+  let why="";const ag=lead.find(l=>l.call===col);
+  if(ag){const e=COL_EX[ag.i];why=ag.name;
+    if(e.L){const m=colMatch(st.c,e.L,e.name.includes("recent")?30:300),run=st.c.slice(-e.L).map(x=>x==="red"?"R":x==="black"?"B":"0").join("-");
+      why="after "+run+" it went red "+m.r+", black "+m.b+" times before";}
+    why+=" (this idea has won "+ag.won+" of "+ag.b+")";}
+  return {col,s,rank,bet:!!col&&past.length>=10&&rank>=0.5,x2:!!col&&past.length>=20&&rank>=0.8,lead:lead.slice(0,3),per,last,why,seen:st.c.length};
+}
+function colUpdate(st,y,P){
+  if(P.col)st.str.push(P.s);if(st.str.length>400)st.str.shift();
+  P.last.forEach((p,i)=>{if(p){st.rec[i][0]++;if(p===y)st.rec[i][1]++;}});
+  st.W.forEach((w,a)=>{const [eta,al]=COL_LR[a];let s=0;w.forEach((v,i)=>{if(P.last[i])w[i]=v*Math.exp(eta*((P.last[i]===y?1:0)-COL_CH));s+=w[i];});w.forEach((v,i)=>w[i]=(1-al)*v/s+al/w.length);});
+  let s=0;st.top.forEach((v,a)=>{if(P.per[a])st.top[a]=v*Math.exp(0.5*((P.per[a]===y?1:0)-COL_CH));s+=st.top[a];});st.top.forEach((v,a)=>st.top[a]=Math.max(0.02,v/s));
+  st.c.push(y);
+}
+// the learner as it stands at the start of a table: every earlier table's spins replayed into it (cached)
+let colCache={key:"",st:null};
+function colStart(sid){
+  const prev=state.spins.filter(s=>s.s<sid),key=sid+":"+prev.length+":"+(prev.length?prev[prev.length-1].t:0);
+  if(colCache.key!==key){const st=colNew();prev.forEach(s=>colUpdate(st,colourOf(s.n),colPredict(st)));colCache={key,st};}
+  return JSON.parse(JSON.stringify(colCache.st));
+}
+/* ---- colour learner: END ---- */
 function replay(seq){
-  const nums=[],hist=[],out=[];let lock=false,miss=0;const ctx={recent:[],lossRun:0,net:0,cash:0,bursts:[],model:newModel(),cyc:{last:null,since:0},cold:[],colHist:[],colLastWon:null,tally:{}};
+  const nums=[],hist=[],out=[];let lock=false,miss=0;const ctx={recent:[],lossRun:0,net:0,cash:0,bursts:[],model:newModel(),cyc:{last:null,since:0},cold:[],colHist:[],colLastWon:null,tally:{},cl:seq.length?colStart(seq[0].s):colNew()};
   // the model also learns from earlier sessions' spins
   const sid=seq.length?seq[0].s:state.session,pn=[];
   if(sid!==undefined)state.spins.filter(s=>s.s<sid).forEach(s=>{if(pn.length&&s.s!==pn.sid)pn.length=0;pn.sid=s.s;modelUpdate(ctx.model,pn,s.n,null,s.dir);pn.push(s.n);});
@@ -776,6 +821,7 @@ function replay(seq){
     // learn how this table behaves after a streak (switch / follow), on every streak including screen history
     if(A.colourCol&&A.colourRun>=state.colN){const c=colourOf(sp.n);ctx.colHist.push(c==="green"?"G":c===A.colourCol?"F":"S");}
     if(!sp.pre&&A.colour&&!A.stop&&!A.goal)ctx.colLastWon=colourOf(sp.n)===A.colour;
+    if(A.colPred)colUpdate(ctx.cl,colourOf(sp.n),A.colPred);
     A.cashAfter=ctx.cash;
     out.push(A);
     // remember where each new burst started, to learn how bursts move
@@ -834,7 +880,8 @@ function aiPrompt(seq){
     "Check for a swing first: this player has seen a table keep landing in one set of numbers, then switch to the numbers that set was missing. Use the 'previous picks' figures: if the previous picks are still landing at or above even in the last 10 spins, keep the sectors that are working; if they have missed most of the last 10 spins (or the last asks show a run of m), the table has swung, so drop those areas and build from where the recent misses landed, and start the reason with 'Switched:'. Weight the last 8-10 spins more than older ones. Nothing here is a fixed rule: the learning model re-fits its weights to this table after every spin (bursts of 15 long or short, flips to the missed numbers and back, ping-pong like 0-8-0-8, opposite sides, jumps). Read which experts it trusts now and how its 15 has done here: lean on it as much as its record here earns, combine it with your own reading of the long string, and say how much you used it.\n"+
     "Then give the "+AI_N+" numbers as 2 or 3 groups (never one single wheel block of "+AI_N+"): when you build from wheel areas, each group is a run of 5-8 neighbouring pockets and the groups do not touch on the wheel; when you follow the learning model, its numbers need not be neighbours, so group them as you like. Each group needs its own evidence.\n"+
     "Also pick 1 to 3 of your "+AI_N+" numbers that the evidence backs most strongly; the player puts an extra chip on those.\n"+
-    'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"more":[1-3 of your numbers for an extra chip],"method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
+    "Colour works together with your numbers: give your own red/black call from the colour sequence and the colour model's figures (agree or disagree with it, in a few words). When the evidence for two numbers is close, prefer the one in your colour call, and pick your extra-chip numbers in that colour where you can, so a win pays on both bets.\n"+
+    'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"more":[1-3 of your numbers for an extra chip],"colour":"red or black","colourWhy":"one short sentence","method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
 }
 // Learning model: dozens of pattern "experts", each with its own settings (window, trigger, spread), all scored after every spin.
 // Experts that called the last spins well gain weight, the rest lose it; a share of weight always flows back so the model can switch
@@ -927,6 +974,7 @@ function aiStats(seq){
     "\n- Numbers hit 3+ times in the last "+l36.length+": "+reps+
     "\n- Longest unseen: "+sleep+
     "\n- App's pattern model, its top "+AI_N+" for the next spin: "+model+
+    (A.colPred&&A.colPred.col?"\n- Colour model (also learns after every spin; the player bets its colour on the same spin): says "+A.colPred.col+(A.colPred.bet?", betting it"+(A.colPred.x2?" 2×":""):", not betting (weaker than usual)")+"; why: "+A.colPred.why+"; trusts most: "+A.colPred.lead.map(l=>l.name+" "+Math.round(100*l.w)+"% (won "+l.won+"/"+l.b+")").join(", "):"")+
     "\n- How each method has done at this table (live spins):\n  "+(rows.join("\n  ")||"fewer than 5 bets each so far");
 }
 function aiErr(c,what){what=what||"picks";const again=what==="picks"?"Tap Ask":"Tap Review this table";return c==="not_granted"||c==="sampling_disabled"||c==="not_declared"?"Claude isn't allowed for this page. Allow it in the page's permissions to use this.":
@@ -944,7 +992,8 @@ async function askClaude(){
     // where each sector starts in nums, for a gap between sectors on screen
     const cuts=[];if(Array.isArray(r.sectors)){let i=0;r.sectors.forEach(s=>{if(i>0&&i<nums.length)cuts.push(nums[i]);i+=Array.isArray(s)?s.length:0;});}
     const more=[...new Set((Array.isArray(r.more)?r.more:[]).map(Number))].filter(x=>nums.includes(x)).slice(0,3);
-    aiLive=sessionSeq().length===forLen?{status:"done",forLen,nums,cuts,more,reason:((r&&r.method)?"["+String(r.method).slice(0,60)+"] ":"")+String((r&&r.reason)||"").slice(0,700),bet:false}:null;
+    const colour=r.colour==="red"||r.colour==="black"?r.colour:null,colourWhy=String(r.colourWhy||"").slice(0,200);
+    aiLive=sessionSeq().length===forLen?{status:"done",forLen,nums,cuts,more,colour,colourWhy,reason:((r&&r.method)?"["+String(r.method).slice(0,60)+"] ":"")+String((r&&r.reason)||"").slice(0,700),bet:false}:null;
   }catch(e){const c=e&&e.code;aiLive=c==="cancelled"?null:{status:"error",forLen,msg:aiErr(c)};}
   render();
 }
@@ -968,7 +1017,7 @@ function reviewPrompt(){
     "Board hot numbers: "+(state.hot.join(" ")||"not entered")+"; board cold numbers: "+((state.cold||[]).join(" ")||"not entered")+"\n"+
     "Money this table: start "+money(bank,true)+", now "+money(pl)+" ($"+state.unit+" a number"+(state.colAmt?", $"+state.colAmt+" colour bets":", colour bets off")+"; loss limit "+(state.limit?money(state.limit,true):"off")+")\n"+
     "App right now: "+A.label+", confidence "+A.conf+", burst-on "+(A.burstPct==null?"n/a":A.burstPct+"%")+", burst cycle "+A.cyc.phase+", per-table switching: "+ad+
-    (A.colRec?", colour mode "+A.colMode+" (after streaks here: switched "+A.colRec.sw+", stayed "+A.colRec.fo+")":"")+"\n"+
+    (A.colPred&&A.colPred.col?", colour model says "+A.colPred.col+(A.colPred.bet?" (bet"+(A.colPred.x2?" 2×":"")+")":" (wait)")+": "+A.colPred.why:"")+"\n"+
     "Sector 1: "+(A.bet1||[]).join(" ")+" | Sector 2: "+(A.bet2||[]).join(" ")+" | dead sector: "+(A.dead||[]).join(" ")+"\n"+
     "Scorecard (units = chips won or lost at 1 chip a number, 1 unit on colour):\n"+rows.join("\n");
 }
@@ -995,7 +1044,9 @@ function renderAI(seq){
   else if(thinking)txt.textContent="Thinking… this can take up to a minute. Picks only count for the next spin.";
   else if(aiLive&&aiLive.status==="error")txt.textContent=aiLive.msg;
   else if(aiLive&&aiLive.status==="done"){const more=aiLive.more||[];
-    txt.textContent="Picks for the next spin"+(more.length?" (circled = 2 chips)":"")+(aiLive.reason?": "+aiLive.reason:"");
+    const cp=liveA&&liveA.colPred&&liveA.colPred.col;
+    txt.textContent="Picks for the next spin"+(more.length?" (circled = 2 chips)":"")+(aiLive.reason?": "+aiLive.reason:"")+
+      (aiLive.colour?" Colour: "+aiLive.colour+(cp?(cp===aiLive.colour?" (agrees with the colour model)":" (colour model says "+cp+")"):"")+(aiLive.colourWhy?" – "+aiLive.colourWhy:""):"");
     // in wheel order (clockwise), starting after the widest empty stretch so each run reads like the racetrack, with a gap between runs
     const ps=aiLive.nums.map(x=>POS[x]).sort((a,b)=>a-b);let st=0,gw=-1;
     ps.forEach((p,i)=>{const g=(p-ps[(i+ps.length-1)%ps.length]+37)%37||37;if(g>gw){gw=g;st=i;}});
@@ -1168,12 +1219,13 @@ function render(){
   if(!state.setup&&A.colour&&!A.stop&&!A.goal){cp.className="pill bet-"+A.colour;
     cp.textContent=state.colAmt>0&&skipCol?"Skipping":"Bet "+A.colour+(A.colStake===2?" 2×":"")+(state.colAmt>0?" "+money(state.colAmt*A.colStake,true):"");cd.style.background=A.colour==="red"?"var(--red)":"var(--black)";}
   else{cp.className="pill cwait";cp.textContent="Wait";cd.style.background="var(--felt-3)";}
-  let ct=A.colourCol?A.colourRun+" "+A.colourCol+" in a row":seq.length?"Zero just broke the streak.":"Waiting for spins.";
-  if(A.colour&&A.colRec){const r=A.colRec;
-    ct+=A.colMode==="switch"?". Bet the switch":". This table is streaky: follow it";
-    ct+=r.n?" (after streaks here: switched "+r.sw+", stayed "+r.fo+" of "+r.n+")":"";
-    if(A.colStake===2)ct+=". Increase to 2×: last colour bet won and this side is winning 60%+.";}
-  else if(A.colourCol)ct+=" (bet from "+state.colN+")";
+  // plain words: what the colour learner says and why
+  const P=A.colPred;let ct;
+  if(!P||!P.col)ct=seq.length?"My colour model has no lean right now.":"Waiting for spins.";
+  else{ct="My model says "+P.col+": "+(P.why||"its experts lean that way")+". ";
+    ct+=P.bet?(P.x2?"One of its strongest calls so far, so 2×.":"Stronger than its usual call, so bet."):"Weaker than its usual call, so wait.";
+    ct+=" Learned from "+P.seen+" spins"+(P.lead.length?"; trusts most: "+P.lead.map(l=>l.name+" "+Math.round(100*l.w)+"%").join(", "):"")+".";
+    if(aiLive&&aiLive.status==="done"&&aiLive.colour)ct+=" Claude says "+aiLive.colour+(aiLive.colour===P.col?" too.":" (disagrees).");}
   $("ctxt").textContent=ct;
   // pad
   const set1=new Set(betting?A.bet1:[]),set2=new Set(betting?A.bet2:[]);const hotSet=new Set(state.hot),coldSet=new Set(A.avoid);
