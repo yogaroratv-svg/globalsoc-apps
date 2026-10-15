@@ -285,7 +285,7 @@ details.sec>summary{padding:4px 0}
   <div class="row"><button class="btn" id="setupBtn" type="button">Enter screen history</button><span class="note" id="setupNote">Tap in the screen's recent results to start with signals ready.</span></div>
 </details>
 
-<details class="sec">
+<details hidden class="sec">
   <summary>Money and limits</summary>
   <div class="mgrid">
     <label class="field" for="bankIn">Starting balance ($)<input id="bankIn" type="number" inputmode="decimal" min="0" step="1"></label>
@@ -308,7 +308,7 @@ details.sec>summary{padding:4px 0}
   <p class="note">The app counts its own suggested bets automatically when you tap the result. Tap <b>Skip this bet</b> on the card before entering a spin you didn't play. With a colour amount set, tap the colour pill to skip a colour bet.</p>
 </details>
 
-<details class="sec">
+<details hidden class="sec">
   <summary>Scorecard</summary>
   <div class="seg" role="group" aria-label="Scorecard range">
     <button type="button" id="scopeSession" aria-pressed="true">This session</button>
@@ -346,7 +346,7 @@ details.sec>summary{padding:4px 0}
   <div class="row"><label>Erase every session and start from zero</label><button class="btn warn" id="wipeBtn" type="button">Clear all history</button></div>
 </details>
 
-<details id="howBox">
+<details hidden id="howBox">
   <summary>How it works</summary>
   <p class="note"><b>Model's 15</b> (main card): dozens of pattern ideas (bursts of 15 that hold or flip, hot and sleeping numbers, wheel areas, jumps, ping-pong, opposite side) each pick 15 numbers. After every spin the ideas that won gain trust and the rest lose it, so nothing is a fixed rule. It says <b>Bet</b> when this call is stronger than its usual call at this table, otherwise <b>Wait</b>. Circled numbers are the ones most ideas agree on: 2 chips.</p>
   <p class="note"><b>Colour</b>: the same kind of learning model for red and black (follow, switch, repeats, what came after this run of colours before). It keeps learning across your tables.</p>
