@@ -822,9 +822,62 @@ function aiPrompt(seq){
     "\nMeasured from this table (use these, they are exact):\n"+aiStats(seq)+"\n"+
     "Pick exactly "+AI_N+" different numbers (0-36) for the next spin. Do not pick at random or for variety: every number must come from the evidence above. "+
     "First decide which evidence is strongest at THIS table (prefer whatever the scorecard shows beating chance here; if nothing beats chance, say so and use the strongest wheel-area or jump evidence). "+
-    "Check for a swing first: this player has seen a table keep landing in one set of numbers, then switch to the numbers that set was missing. Use the 'previous picks' figures: if the previous picks are still landing at or above even in the last 10 spins, keep the sectors that are working; if they have missed most of the last 10 spins (or the last asks show a run of m), the table has swung, so drop those areas and build from where the recent misses landed, and start the reason with 'Switched:'. Weight the last 8-10 spins more than older ones. The swing model does this mechanically; use its 15 as your starting point unless the other evidence clearly disagrees, and say if you went against it.\n"+
-    "Then give the "+AI_N+" numbers as 2 or 3 groups (never one single wheel block of "+AI_N+"): when you build from wheel areas, each group is a run of 5-8 neighbouring pockets and the groups do not touch on the wheel; when you follow the swing model, its numbers need not be neighbours, so group them as you like. Each group needs its own evidence.\n"+
+    "Check for a swing first: this player has seen a table keep landing in one set of numbers, then switch to the numbers that set was missing. Use the 'previous picks' figures: if the previous picks are still landing at or above even in the last 10 spins, keep the sectors that are working; if they have missed most of the last 10 spins (or the last asks show a run of m), the table has swung, so drop those areas and build from where the recent misses landed, and start the reason with 'Switched:'. Weight the last 8-10 spins more than older ones. Nothing here is a fixed rule: the learning model re-fits its weights to this table after every spin (bursts of 15 long or short, flips to the missed numbers and back, ping-pong like 0-8-0-8, opposite sides, jumps). Read which experts it trusts now and how its 15 has done here: lean on it as much as its record here earns, combine it with your own reading of the long string, and say how much you used it.\n"+
+    "Then give the "+AI_N+" numbers as 2 or 3 groups (never one single wheel block of "+AI_N+"): when you build from wheel areas, each group is a run of 5-8 neighbouring pockets and the groups do not touch on the wheel; when you follow the learning model, its numbers need not be neighbours, so group them as you like. Each group needs its own evidence.\n"+
     'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
+}
+// Learning model: dozens of pattern "experts", each with its own settings (window, trigger, spread), all scored after every spin.
+// Experts that called the last spins well gain weight, the rest lose it; a share of weight always flows back so the model can switch
+// fast when the table changes (three switching speeds run side by side and are weighted the same way).
+function learnModel(nums){
+  const N=37,EPS=0.12,K=15;
+  const fromSet=S=>{const p=new Array(N).fill(EPS/N);S.forEach(x=>p[x]+=(1-EPS)/S.length);return p;};
+  const norm=p=>{const s=p.reduce((a,b)=>a+b,0);return p.map(v=>v/s);};
+  const kern=(cs,bw)=>{const p=new Array(N).fill(0.02);cs.forEach(({c,w})=>{for(let x=0;x<N;x++){const d=pdist(POS[x],c);if(d<=bw)p[x]+=w*(bw+1-d);}});return norm(p);};
+  const cnt=(h,W)=>{const c=new Array(N).fill(0);h.slice(-W).forEach((x,i,a)=>c[x]+=1+i/a.length/2);return c;};
+  // ties go to the number seen most recently (never to the lower number)
+  let seen=new Array(N).fill(-1);
+  const topBy=(sc,ex)=>[...Array(N).keys()].sort((a,b)=>((ex&&ex.has(a))-(ex&&ex.has(b)))||sc[b]-sc[a]||seen[b]-seen[a]).slice(0,K);
+  const E=[];
+  // hot numbers over different windows / cold numbers (the sleepers)
+  [6,9,12,18,25,37,50,80].forEach(W=>E.push({name:"Hot 15, last "+W,f:h=>fromSet(topBy(cnt(h,W)))}));
+  [25,50,100].forEach(W=>E.push({name:"Sleepers (cold 15), last "+W,f:h=>{const c=cnt(h,W);return fromSet(topBy(c.map(v=>-v)));}}));
+  // bursts of 15 that hold, then flip to the 15 they were missing (and back): window, trigger and memory all vary
+  [12,25,37].forEach(W=>[[4,3],[5,4],[6,5],[8,6],[10,7]].forEach(([k,m])=>{let S=null,old=null;
+    E.push({name:"Swing "+m+" of "+k+" misses, last "+W,f:h=>{const c=cnt(h,W);if(!S)S=topBy(c);
+      else if(h.slice(-k).filter(x=>!S.includes(x)).length>=m){const prev=S;
+        // go back to the old 15 if the misses are landing there, otherwise take the best 15 outside the current set
+        S=old&&h.slice(-k).filter(x=>old.includes(x)).length>=m-1?old:topBy(c,new Set(S));old=prev;}
+      return fromSet(S);}});}));
+  // wheel areas: where the last spins landed, with different spreads
+  [[4,2],[6,3],[10,3],[16,4],[30,4]].forEach(([W,bw])=>E.push({name:"Wheel area, last "+W+" spins",f:h=>kern(h.slice(-W).map((x,i,a)=>({c:POS[x],w:1+i/a.length})),bw)}));
+  // jumps learned from this table: distance from 1, 2 or 3 spins back (2 back catches 0-8-0-8 alternation)
+  [1,2,3].forEach(L=>[30,80].forEach(W=>E.push({name:"Jump from "+L+" back, learned over "+W,f:h=>{if(h.length<L+5)return new Array(N).fill(1/N);
+    const off=new Array(N).fill(0.3);for(let i=Math.max(L,h.length-W);i<h.length;i++)off[(POS[h[i]]-POS[h[i-L]]+N)%N]++;
+    const sm=off.map((v,d)=>v*2+off[(d+1)%N]+off[(d+N-1)%N]);const p=new Array(N);
+    for(let x=0;x<N;x++)p[x]=sm[(POS[x]-POS[h[h.length-L]]+N)%N];return norm(p);}})));
+  // ping-pong: back to the number/area 2 spins ago, or the opposite side of the last spin
+  E.push({name:"Ping-pong (area 2 spins back)",f:h=>h.length<2?new Array(N).fill(1/N):kern([{c:POS[h[h.length-2]],w:1}],2)});
+  E.push({name:"Opposite side of last spin",f:h=>kern([{c:(POS[h[h.length-1]]+18)%N,w:1}],3)});
+  // each expert is scored like a bet: its 15 numbers win or lose. Learners with different learning rates and switching
+  // speeds run side by side; the learner whose 15 has been winning lately gets the say.
+  const LR=[[0.15,0.01],[0.4,0.03],[0.8,0.08],[1.5,0.2]],W=LR.map(()=>E.map(()=>1/E.length)),top=LR.map(()=>1/LR.length),CH=K/N;
+  const score=E.map(()=>({b:0,h:0}));let bets=0,hits=0,mixTop=[],picks=[];const START=15;
+  let P=[];const vote=w=>{const q=new Array(N).fill(0);P.forEach((pe,i)=>pe.forEach((v,x)=>q[x]+=w[i]*v));return q;};
+  for(let t=START;t<=nums.length;t++){
+    const h=nums.slice(0,t);seen=new Array(N).fill(-1);h.forEach((x,i)=>seen[x]=i);
+    P=E.map(e=>e.f(h));picks=P.map(pe=>topBy(pe));
+    const Q=W.map(vote),sets=Q.map(q=>topBy(q)),q=new Array(N).fill(0);Q.forEach((qa,a)=>qa.forEach((v,x)=>q[x]+=top[a]*v));mixTop=topBy(q);
+    if(t===nums.length)break;
+    const y=nums[t];
+    if(t>=40){bets++;if(mixTop.includes(y))hits++;picks.forEach((s,i)=>{score[i].b++;if(s.includes(y))score[i].h++;});}
+    W.forEach((w,a)=>{const [eta,al]=LR[a];let s=0;w.forEach((v,i)=>{w[i]=v*Math.exp(eta*((picks[i].includes(y)?1:0)-CH));s+=w[i];});w.forEach((v,i)=>w[i]=(1-al)*v/s+al/E.length);});
+    let s=0;top.forEach((v,a)=>{top[a]=v*Math.exp(0.5*((sets[a].includes(y)?1:0)-CH));s+=top[a];});top.forEach((v,a)=>top[a]=Math.max(0.02,v/s));
+  }
+  const wt=E.map((e,i)=>W.reduce((acc,w,a)=>acc+top[a]*w[i],0)),tw=wt.reduce((a,b)=>a+b,0);
+  const leaders=E.map((e,i)=>({name:e.name,w:wt[i]/tw,b:score[i].b,h:score[i].h})).sort((a,b)=>b.w-a.w).slice(0,5);
+  const speed=["very slow","slow","fast","very fast"][top.indexOf(Math.max(...top))];
+  return {top:mixTop,leaders,speed,bets,hits};
 }
 // hard numbers for Ask Claude, so its picks rest on measured evidence instead of a glance at the list
 function aiStats(seq){
@@ -854,17 +907,11 @@ function aiStats(seq){
       "\n- Of the last 10 spins, the ones OUTSIDE the previous picks: "+(miss.join(" ")||"none")+(miss.length?" (they bunch most around "+m8[0].num+": "+m8[0].h+" of them within 4 pockets)":"")+
       "\n- Last 8 spins: "+l8.join(" ");
   }
-  // swing model (best of 33 rules backtested on the player's own spins, 2026-10-15): hold the 15 most hit in the last 25;
-  // when 5 of the last 6 spins miss the set, switch to the 15 most hit numbers outside it
-  const top15=(h,ex)=>{const c=new Array(37).fill(0);h.slice(-25).forEach(x=>c[x]++);return [...Array(37).keys()].sort((a,b)=>((ex&&ex.has(a))-(ex&&ex.has(b)))||c[b]-c[a]).slice(0,15);};
-  let S=null,sw=0,lastSw=-1,sb=0,shh=0;
-  for(let i=25;i<=n;i++){
-    const h=nums.slice(0,i);
-    if(!S)S=top15(h);else if(h.slice(-6).filter(x=>!S.includes(x)).length>=5){S=top15(h,new Set(S));sw++;lastSw=i;}
-    if(i<n&&i>=40){sb++;if(S.includes(nums[i]))shh++;}
-  }
-  const swing=S?"\n- Swing model (holds the 15 most hit in the last 25; when 5 of the last 6 miss them it switches to the 15 most hit outside them): now "+S.join(" ")+
-    "; switched "+sw+" times here, last switch "+(lastSw<0?"never":(n-lastSw)+" spins ago")+(sb?"; hit "+shh+" of "+sb+" here (chance 40.5%)":""):"";
+  // learning model (see learnModel): its 15, the experts it trusts most right now, and how it has done at this table
+  const LM=n>=40?learnModel(nums):null;
+  const swing=LM?"\n- Learning model (dozens of pattern experts with different windows/triggers, reweighted after every spin by whether their 15 won; it can switch fast when the table changes): its 15 now "+LM.top.join(" ")+
+    "; switching speed it has learned here: "+LM.speed+"; trusts most: "+LM.leaders.map(l=>l.name+" "+Math.round(100*l.w)+"% (alone "+l.h+"/"+l.b+")").join(", ")+
+    (LM.bets?"; the model's own 15 hit "+LM.hits+" of "+LM.bets+" here (chance "+(LM.bets*15/37).toFixed(1)+")":""):"";
   return "- Hottest wheel areas:\n  "+areaTxt+shift+swing+
     "\n- Most repeated jumps over the last "+jn+" spins:\n  "+jTxt+
     "\n- Numbers hit 3+ times in the last "+l36.length+": "+reps+
