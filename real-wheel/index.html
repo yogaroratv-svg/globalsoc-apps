@@ -149,9 +149,10 @@ const gk=(d,s)=>d+s;
    Each earlier spin with the same direction and speed votes for its travel from start to landing (recent spins count more),
    spread over the pockets either side; the same direction at the other speed votes at a third of the weight. The 15
    neighbouring pockets with the most votes, counted from this spin's start number, are the call; the 3 strongest are circled. ---------- */
-const MIN_TABLE=15,MIN_DIR=4;
+const MIN_TABLE=15,MIN_DIR=4,FRESH=5;
 function travelVotes(seq,d,s){
-  const rows=seq.filter(sp=>sp.a!=null),v=new Array(37).fill(0.02),add=(arr,w0)=>arr.forEach((sp,i)=>{const t=travel(sp.a,sp.n),w=w0*(0.5+(i+1)/arr.length);
+  // freshness first: a spin's vote halves for every FRESH more spins in that direction since it, so old patterns fade fast
+  const rows=seq.filter(sp=>sp.a!=null),v=new Array(37).fill(0.02),add=(arr,w0)=>arr.forEach((sp,i)=>{const t=travel(sp.a,sp.n),w=w0*Math.pow(0.5,(arr.length-1-i)/FRESH);
     for(let k=-3;k<=3;k++)v[(t+k+37)%37]+=w*(4-Math.abs(k));});
   const same=rows.filter(x=>x.d===d&&x.v===s),other=rows.filter(x=>x.d===d&&x.v!==s);
   add(same,1);add(other,1/3);return {v,n:same.length,no:other.length};
@@ -218,7 +219,7 @@ function render(){
   else{const P=predict(seq,state.dir,state.speed,st);
     if(P.nums){pr.classList.add("live");$("pBig").textContent="Bet: around "+P.centre;
       P.nums.forEach(n=>pc.appendChild(chip(n,P.more.includes(n)?"more":"")));
-      $("pWhy").textContent="Starting from "+st+(edited?" (edited)":" (last landing)")+". From "+P.n+" earlier "+label+" spin"+(P.n===1?"":"s")+(P.no?" (and "+P.no+" at the other speed)":"")+", the ball most often travelled about "+P.peak+" pockets clockwise from the start. These 15 neighbours hold "+Math.round(100*P.share)+"% of that history (an even spread would be 41%). Circled = the 3 strongest. If the dealer starts somewhere else, tap Edit start.";}
+      $("pWhy").textContent="Starting from "+st+(edited?" (edited)":" (last landing)")+". From "+P.n+" earlier "+label+" spin"+(P.n===1?"":"s")+(P.no?" (and "+P.no+" at the other speed)":"")+", mostly the latest ones (a spin 5 back counts half, 10 back a quarter), the ball most often travelled about "+P.peak+" pockets clockwise from the start. These 15 neighbours hold "+Math.round(100*P.share)+"% of that weighted history (an even spread would be 41%). Circled = the 3 strongest. If the dealer starts somewhere else, tap Edit start.";}
     else if(P.nostart){$("pBig").textContent="Tap where the ball landed";$("pWhy").textContent="First spin at this table. If you saw where it started, tap Edit start first.";}
     else if(P.table){$("pBig").textContent="Learning this table";$("pWhy").textContent="Calls start after "+MIN_TABLE+" spins ("+P.need+" more to go). Just tap each landing number; tap Edit start only when the dealer launched from a different number.";}
     else{$("pBig").textContent="Learning "+label+" spins";$("pWhy").textContent="Needs "+P.need+" more "+label+" spin"+(P.need===1?"":"s")+" before it can call. Tap where it landed.";}
