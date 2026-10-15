@@ -71,30 +71,32 @@ button:disabled{opacity:.45;cursor:default}
 .toggle{display:flex;align-items:center;gap:8px}
 .warnbtn{border-color:var(--bad);color:var(--bad)}
 @media (prefers-reduced-motion:no-preference){.pred.live{animation:glow 1.2s ease-in-out 1}}
+.opp{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}.oppline{font-weight:600;margin-bottom:8px}.oppline.lead{color:var(--brass)}
 @keyframes glow{50%{box-shadow:0 0 0 3px var(--brass) inset}}
 </style>
 
 <main>
 <header>
   <h1>Real <b>Wheel</b></h1>
-  <div class="meta"><span id="count">0 spins</span><span id="cloud">Connecting…</span></div>
+  <div class="meta"><span id="count">0 spins</span><span id="cloud">Connectingâ€¦</span></div>
 </header>
 
 <section class="card" aria-live="polite">
   <h2>This spin</h2>
   <div class="seg" role="group" aria-label="Direction">
-    <button type="button" id="dCW" aria-pressed="true">↻ Clockwise</button>
-    <button type="button" id="dACW" aria-pressed="false">↺ Anticlockwise</button>
+    <button type="button" id="dCW" aria-pressed="true">â†» Clockwise</button>
+    <button type="button" id="dACW" aria-pressed="false">â†º Anticlockwise</button>
   </div>
   <div class="seg" role="group" aria-label="Speed">
     <button type="button" id="sSlow" aria-pressed="true">Slow</button>
     <button type="button" id="sFast" aria-pressed="false">Fast</button>
   </div>
   <div class="steps">
-    <div class="step" id="stepA"><span class="k" id="kStart">Start number</span><span class="v" id="vStart">–</span></div>
+    <div class="step" id="stepA"><span class="k" id="kStart">Start number</span><span class="v" id="vStart">â€“</span></div>
     <div class="step now" id="stepB"><span class="k">Landing number</span><span class="v" id="vLand">tap the pad</span></div>
   </div>
-  <div class="pred" id="pred"><div class="big" id="pBig">Tap where the ball landed</div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div></div>
+  <div class="pred" id="pred"><div class="big" id="pBig">Tap where the ball landed</div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div>
+    <div class="opp" id="opp" hidden><div class="oppline" id="oppLine"></div><div class="chips" id="oppChips"></div></div></div>
   <div class="pad" id="pad"></div>
   <div class="tools">
     <button type="button" id="undo">Undo</button>
@@ -132,7 +134,7 @@ const POS=[];WHEEL.forEach((n,i)=>POS[n]=i);
 const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const colorClass=n=>n===0?"c-green":RED.has(n)?"c-red":"c-black";
 const $=id=>document.getElementById(id);
-const KEY="realWheel.v1",K=15,GL={cwS:"Clockwise · slow",cwF:"Clockwise · fast",acwS:"Anticlockwise · slow",acwF:"Anticlockwise · fast"};
+const KEY="realWheel.v1",K=15,GL={cwS:"Clockwise Â· slow",cwF:"Clockwise Â· fast",acwS:"Anticlockwise Â· slow",acwF:"Anticlockwise Â· fast"};
 const newRun=()=>Date.now().toString(36);
 let state={v:1,run:newRun(),table:1,spins:[],dir:"cw",speed:"S",start:null,alt:true};
 try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.spins))state=Object.assign(state,s);}catch(e){}
@@ -167,6 +169,18 @@ function predict(seq,d,s,start){
 const lastLanding=seq=>seq.length?seq[seq.length-1].n:null;
 const startNow=seq=>typeof state.start==="number"?state.start:lastLanding(seq);
 // how the calls have done: each spin re-predicted from the spins before it, with the start it was played from
+// the 15 directly across the wheel from a call (same middle, turned half a wheel)
+const opposite=nums=>{const c=POS[nums[(K-1)>>1]];return [...Array(K)].map((_,j)=>WHEEL[(c+18-((K-1)>>1)+j+37)%37]);};
+function renderOpp(seq,P){
+  const box=$("opp");box.hidden=!P||!P.nums;if(box.hidden)return;
+  const dn=state.dir==="cw"?"clockwise":"anticlockwise",calls=seq.filter(s=>Array.isArray(s.p)&&s.p.length===K);
+  const tally=a=>({own:a.filter(s=>s.hit).length,opp:a.filter(s=>opposite(s.p).includes(s.n)).length,n:a.length});
+  const L=tally(calls.filter(s=>s.d===state.dir).slice(-10)),T=tally(calls);
+  const ln=$("oppLine");ln.className="oppline"+(L.opp>L.own?" lead":"");
+  ln.textContent=(L.n?"Last "+L.n+" "+dn+": your 15 landed "+L.own+", opposite 15 landed "+L.opp+(L.opp>L.own?" â†’ opposite side is winning":L.own>L.opp?" â†’ your 15 is winning":" â†’ level")+". ":"No "+dn+" calls yet. ")+
+    "Whole table: your 15 "+T.own+"/"+T.n+", opposite "+T.opp+"/"+T.n+" ("+(T.n*K/37).toFixed(1)+" by luck). Opposite 15:";
+  const c=$("oppChips");c.innerHTML="";opposite(P.nums).forEach(n=>c.appendChild(chip(n)));
+}
 function record(seq){
   const out={};Object.keys(GL).forEach(k=>out[k]={calls:0,hits:0,n:0,trav:new Array(37).fill(0)});
   seq.forEach((sp,i)=>{const g=out[gk(sp.d,sp.v)];g.n++;if(sp.a!=null)g.trav[travel(sp.a,sp.n)]++;
@@ -191,11 +205,11 @@ function chip(n,extra){const c=document.createElement("span");c.className="chip 
 /* ---------- render ---------- */
 function render(){
   const seq=tableSpins(),st=startNow(seq),edited=typeof state.start==="number";
-  $("count").textContent="Table "+state.table+" · "+seq.length+" spin"+(seq.length===1?"":"s");
+  $("count").textContent="Table "+state.table+" Â· "+seq.length+" spin"+(seq.length===1?"":"s");
   $("dCW").setAttribute("aria-pressed",String(state.dir==="cw"));$("dACW").setAttribute("aria-pressed",String(state.dir==="acw"));
   $("sSlow").setAttribute("aria-pressed",String(state.speed==="S"));$("sFast").setAttribute("aria-pressed",String(state.speed==="F"));
   $("kStart").textContent=editing?"Tap the start number":edited?"Start number (edited)":"Start number (last landing)";
-  $("vStart").textContent=editing?"…":st==null?"–":st;
+  $("vStart").textContent=editing?"â€¦":st==null?"â€“":st;
   $("stepA").classList.toggle("now",editing);$("stepB").classList.toggle("now",!editing);
   $("editStart").textContent=editing?"Cancel":edited?"Use last landing":"Edit start";
   const pr=$("pred"),pc=$("pChips");pc.innerHTML="";pr.classList.remove("live");
@@ -207,7 +221,9 @@ function render(){
       $("pWhy").textContent="Starting from "+st+(edited?" (edited)":" (last landing)")+". From "+P.n+" earlier "+label+" spin"+(P.n===1?"":"s")+(P.no?" (and "+P.no+" at the other speed)":"")+", the ball most often travelled about "+P.peak+" pockets clockwise from the start. These 15 neighbours hold "+Math.round(100*P.share)+"% of that history (an even spread would be 41%). Circled = the 3 strongest. If the dealer starts somewhere else, tap Edit start.";}
     else if(P.nostart){$("pBig").textContent="Tap where the ball landed";$("pWhy").textContent="First spin at this table. If you saw where it started, tap Edit start first.";}
     else if(P.table){$("pBig").textContent="Learning this table";$("pWhy").textContent="Calls start after "+MIN_TABLE+" spins ("+P.need+" more to go). Just tap each landing number; tap Edit start only when the dealer launched from a different number.";}
-    else{$("pBig").textContent="Learning "+label+" spins";$("pWhy").textContent="Needs "+P.need+" more "+label+" spin"+(P.need===1?"":"s")+" before it can call. Tap where it landed.";}}
+    else{$("pBig").textContent="Learning "+label+" spins";$("pWhy").textContent="Needs "+P.need+" more "+label+" spin"+(P.need===1?"":"s")+" before it can call. Tap where it landed.";}
+    renderOpp(seq,P);}
+  if(editing)$("opp").hidden=true;
   document.querySelectorAll("#pad button").forEach(b=>b.classList.toggle("mark",!editing&&st!=null&&+b.dataset.n===st));
   // learned groups
   const R=record(seq),gw=$("groups");gw.innerHTML="";
@@ -215,18 +231,18 @@ function render(){
     const exp=(g.calls*K/37).toFixed(1),mx=Math.max(1,...g.trav);
     d.innerHTML='<div class="k '+(k.startsWith("acw")?"acw":"cw")+'"></div><div class="v"></div><div class="s"></div><div class="bars"></div>';
     d.querySelector(".k").textContent=GL[k];d.querySelector(".v").textContent=g.calls?g.hits+"/"+g.calls:g.n+" spins";
-    d.querySelector(".s").textContent=g.calls?"calls landed ("+exp+" expected) · "+g.n+" spins":(g.n?"learning":"no spins yet");
+    d.querySelector(".s").textContent=g.calls?"calls landed ("+exp+" expected) Â· "+g.n+" spins":(g.n?"learning":"no spins yet");
     const bars=d.querySelector(".bars");g.trav.forEach((c,t)=>{const i=document.createElement("i");i.style.height=(100*c/mx)+"%";i.title="travel "+t+": "+c;bars.appendChild(i);});
     gw.appendChild(d);});
   // history
   const h=$("hist");h.innerHTML="";seq.slice(-40).reverse().forEach(sp=>{const r=document.createElement("div");r.className="h";
-    const d=document.createElement("span");d.className="d "+sp.d;d.textContent=sp.d==="cw"?"↻":"↺";
+    const d=document.createElement("span");d.className="d "+sp.d;d.textContent=sp.d==="cw"?"â†»":"â†º";
     const s=document.createElement("span");s.className="sp";s.textContent=sp.v==="F"?"fast":"slow";
-    const m=document.createElement("span");m.className="r";if(sp.a!=null){m.appendChild(chip(sp.a,sp.sa?"":"more"));m.append("→");}m.appendChild(chip(sp.n));
-    const o=document.createElement("span");o.className="o";o.textContent=(sp.a!=null?"+"+travel(sp.a,sp.n):"no start")+(sp.p?(sp.hit?" ✓":" ✗"):"");
+    const m=document.createElement("span");m.className="r";if(sp.a!=null){m.appendChild(chip(sp.a,sp.sa?"":"more"));m.append("â†’");}m.appendChild(chip(sp.n));
+    const o=document.createElement("span");o.className="o";o.textContent=(sp.a!=null?"+"+travel(sp.a,sp.n):"no start")+(sp.p?(sp.hit?" âœ“":" âœ—"):"");
     if(sp.p)o.classList.add(sp.hit?"ok":"no");
     r.append(d,s,m,o);h.appendChild(r);});
-  if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start → landing (a ringed start was edited) and the travel in pockets.</div>';
+  if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start â†’ landing (a ringed start was edited) and the travel in pockets.</div>';
   $("undo").disabled=!seq.length&&!edited&&!editing;$("altIn").checked=!!state.alt;
 }
 
@@ -251,7 +267,7 @@ let cdb=null,cloudTimer=null,cloudBusy=false,cloudAgain=false,cloudState="connec
 let cloudSent={};try{cloudSent=JSON.parse(localStorage.getItem(KEY+".cloud")||"{}")||{};}catch(e){}
 const hashStr=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h+":"+s.length;};
 function cloudMsg(){const t=cloudAt?new Date(cloudAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"";
-  $("cloud").textContent=cloudState==="ok"?"Saved"+(t?" "+t:""):cloudState==="retry"?"Offline: saved on this phone":cloudState==="off"?"Saved on this phone":"Connecting…";}
+  $("cloud").textContent=cloudState==="ok"?"Saved"+(t?" "+t:""):cloudState==="retry"?"Offline: saved on this phone":cloudState==="off"?"Saved on this phone":"Connectingâ€¦";}
 function cloudQueue(){if(!cdb)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1200);}
 async function cloudPush(){
   if(!cdb)return;if(cloudBusy){cloudAgain=true;return;}cloudBusy=true;
