@@ -822,6 +822,7 @@ function aiPrompt(seq){
     "\nMeasured from this table (use these, they are exact):\n"+aiStats(seq)+"\n"+
     "Pick exactly "+AI_N+" different numbers (0-36) for the next spin. Do not pick at random or for variety: every number must come from the evidence above. "+
     "First decide which evidence is strongest at THIS table (prefer whatever the scorecard shows beating chance here; if nothing beats chance, say so and use the strongest wheel-area or jump evidence). "+
+    "Check for a swing first: this player has seen a table keep landing in one set of numbers, then switch to the numbers that set was missing. Use the 'previous picks' figures: if the previous picks are still landing at or above even in the last 10 spins, keep the sectors that are working; if they have missed most of the last 10 spins (or the last asks show a run of m), the table has swung, so drop those areas and build from where the recent misses landed, and start the reason with 'Switched:'. Weight the last 8-10 spins more than older ones.\n"+
     "Then build the "+AI_N+" numbers as 2 or 3 SEPARATE wheel sectors (never one single block of "+AI_N+"): each sector is a run of neighbouring pockets of 5-8 numbers, the sectors do not touch each other on the wheel, and each sector has its own evidence (for example one hot area plus the area a repeated jump points to).\n"+
     'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
 }
@@ -842,7 +843,18 @@ function aiStats(seq){
   const dec=replay(seq),A=dec[dec.length-1];
   const model=A.dist?[...Array(37).keys()].sort((a,b)=>A.dist[POS[b]]-A.dist[POS[a]]).slice(0,AI_N).join(" "):"not ready";
   const sc=scoreOf([seq]),rows=RULES.filter(r=>sc[r.id].bets>=5&&!r.id.startsWith("colour")).map(r=>{const t=sc[r.id];return r.label+": "+t.hits+"/"+t.bets+" hit ("+Math.round(100*t.hits/t.bets)+"% vs chance "+Math.round(100*t.exp/t.bets)+"%)";});
-  return "- Hottest wheel areas:\n  "+areaTxt+
+  // has the table swung away from Claude's last picks? (the player sees runs where the missed numbers take over)
+  const asked=seq.filter(s=>s.ai&&s.ai.length);let shift="\n- Previous Claude picks: none yet";
+  if(asked.length){
+    const last=asked[asked.length-1].ai,w=nums.slice(-10),inP=w.filter(x=>last.includes(x)).length,miss=w.filter(x=>!last.includes(x));
+    const rec=asked.slice(-10),rh=rec.filter(s=>s.ai.includes(s.n)).length,re=rec.reduce((t,s)=>t+s.ai.length/37,0);
+    const l8=nums.slice(-8),m8=WHEEL.map((num,c)=>({num,h:inA(c,miss)})).sort((a,b)=>b.h-a.h);
+    shift="\n- Claude's previous picks ("+last.join(" ")+"): "+inP+" of the last "+w.length+" spins landed in them (even "+(w.length*last.length/37).toFixed(1)+")"+
+      "\n- Claude's last "+rec.length+" asks: hit "+rh+" (even "+re.toFixed(1)+"); hit/miss oldest first: "+rec.map(s=>s.ai.includes(s.n)?"H":"m").join("")+
+      "\n- Of the last 10 spins, the ones OUTSIDE the previous picks: "+(miss.join(" ")||"none")+(miss.length?" (they bunch most around "+m8[0].num+": "+m8[0].h+" of them within 4 pockets)":"")+
+      "\n- Last 8 spins: "+l8.join(" ");
+  }
+  return "- Hottest wheel areas:\n  "+areaTxt+shift+
     "\n- Most repeated jumps over the last "+jn+" spins:\n  "+jTxt+
     "\n- Numbers hit 3+ times in the last "+l36.length+": "+reps+
     "\n- Longest unseen: "+sleep+
