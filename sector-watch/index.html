@@ -917,13 +917,14 @@ function lmNew(){
   const norm=p=>{const s=p.reduce((a,b)=>a+b,0);return p.map(v=>v/s);};
   const kern=(cs,bw)=>{const p=new Array(N).fill(0.02);cs.forEach(({c,w})=>{for(let x=0;x<N;x++){const d=pdist(POS[x],c);if(d<=bw)p[x]+=w*(bw+1-d);}});return norm(p);};
   const cnt=(h,W)=>{const c=new Array(N).fill(0);h.slice(-W).forEach((x,i,a)=>c[x]+=1+i/a.length/2);return c;};
-  const st={seen:new Array(N).fill(-1)};
-  // ties go to the number seen most recently (never to the lower number)
-  st.topBy=(sc,ex)=>[...Array(N).keys()].sort((a,b)=>((ex&&ex.has(a))-(ex&&ex.has(b)))||sc[b]-sc[a]||st.seen[b]-st.seen[a]).slice(0,K);
+  const st={seen:new Array(N).fill(-1),tie:new Array(N).fill(0)};
+  // ties go to the number seen most recently, then a neutral shuffle that changes every spin
+  // (v30 fell back to the lowest number, which pushed 0-9 into the 15 whenever an expert had fewer than 15 numbers of evidence)
+  st.topBy=(sc,ex)=>[...Array(N).keys()].sort((a,b)=>((ex&&ex.has(a))-(ex&&ex.has(b)))||sc[b]-sc[a]||st.seen[b]-st.seen[a]||st.tie[a]-st.tie[b]).slice(0,K);
   const topBy=st.topBy,E=[];
-  // hot numbers over different windows / cold numbers (the sleepers)
-  [6,9,12,18,25,37,50,80].forEach(W=>E.push({name:"hot 15 of the last "+W+" spins",f:h=>fromSet(topBy(cnt(h,W)))}));
-  [25,50,100].forEach(W=>E.push({name:"sleepers (coldest 15 of the last "+W+")",f:h=>{const c=cnt(h,W);return fromSet(topBy(c.map(v=>-v)));}}));
+  // hot numbers over different windows (only numbers that actually hit) / cold numbers (the sleepers, longest unseen first)
+  [6,9,12,18,25,37,50,80].forEach(W=>E.push({name:"hot 15 of the last "+W+" spins",f:h=>{const c=cnt(h,W);return fromSet(topBy(c).filter(x=>c[x]>0));}}));
+  [25,50,100].forEach(W=>E.push({name:"sleepers (coldest 15 of the last "+W+")",f:h=>{const c=cnt(h,W);return fromSet(topBy(c.map((v,x)=>-v*1000-st.seen[x])));}}));
   // bursts of 15 that hold, then flip to the 15 they were missing (and back): window, trigger and memory all vary
   [12,25,37].forEach(W=>[[4,3],[5,4],[6,5],[8,6],[10,7]].forEach(([k,m])=>{let S=null,old=null;
     E.push({name:"burst of 15 that flips after "+m+" misses in "+k+" (last "+W+")",f:h=>{const c=cnt(h,W);if(!S)S=topBy(c);
@@ -948,6 +949,7 @@ function lmNew(){
 // prediction before the next spin, from the spins so far (h); call once per spin, in order
 function lmPredict(st,h){
   const N=LM_N,K=LM_K;st.seen=new Array(N).fill(-1);h.forEach((x,i)=>st.seen[x]=i);
+  st.tie=st.tie.map((v,x)=>((x+1)*7919+(h.length+1)*104729)%9973);
   const P=st.E.map(e=>e.f(h)),picks=P.map(pe=>st.topBy(pe));
   const Q=st.W.map(w=>{const q=new Array(N).fill(0);P.forEach((pe,i)=>pe.forEach((v,x)=>q[x]+=w[i]*v));return q;});
   const sets=Q.map(q=>st.topBy(q)),q=new Array(N).fill(0);Q.forEach((qa,a)=>qa.forEach((v,x)=>q[x]+=st.top[a]*v));
