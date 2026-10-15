@@ -72,6 +72,9 @@ button:disabled{opacity:.45;cursor:default}
 .warnbtn{border-color:var(--bad);color:var(--bad)}
 @media (prefers-reduced-motion:no-preference){.pred.live{animation:glow 1.2s ease-in-out 1}}
 .pred.wait .big{color:var(--muted)}.pred.wait .chips{opacity:.55}
+.pred .k{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pred.ai{margin-top:10px}.state{font-weight:600;margin:4px 0}.state:empty{display:none}
+.s-holding{color:var(--good)}.s-shifting{color:var(--brass)}.s-changed{color:var(--acw)}.s-random,.s-new{color:var(--muted)}
 @keyframes glow{50%{box-shadow:0 0 0 3px var(--brass) inset}}
 </style>
 
@@ -95,7 +98,8 @@ button:disabled{opacity:.45;cursor:default}
     <div class="step" id="stepA"><span class="k" id="kStart">Start number</span><span class="v" id="vStart">â€“</span></div>
     <div class="step now" id="stepB"><span class="k">Landing number</span><span class="v" id="vLand">tap the pad</span></div>
   </div>
-  <div class="pred" id="pred"><div class="big" id="pBig">Tap where the ball landed</div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div></div>
+  <div class="pred" id="pred"><div class="k">This app</div><div class="big" id="pBig">Tap where the ball landed</div><div class="state" id="pState"></div><div class="chips" id="pChips"></div><div class="note" id="pWhy"></div></div>
+  <div class="pred ai" id="ai" hidden><div class="k">Claude</div><div class="big" id="aiBig"></div><div class="state" id="aiState"></div><div class="chips" id="aiChips"></div><div class="note" id="aiWhy"></div></div>
   <div class="pad" id="pad"></div>
   <div class="tools">
     <button type="button" id="undo">Undo</button>
@@ -150,11 +154,13 @@ const gk=(d,s)=>d+s;
    spread over the pockets either side; the same direction at the other speed votes at a third of the weight. The 15
    neighbouring pockets with the most votes, counted from this spin's start number, are the call; the 3 strongest are circled.
    Three memories race: all spins, recent spins (votes halve every 10 spins back) and latest spins (halve every 5).
-   After every spin each one is scored on whether its 15 would have landed; per direction, the one with the best recent
-   record makes the next call. Bet only while that record is above break-even (15 numbers pay 36, so 15/36 = 42%). ---------- */
+   After every spin each one is scored on where the ball actually travelled: did its learned pattern give that travel more
+   chance than a random wheel would (1 in 37)? A near miss scores almost as well as a hit; the far side of the wheel scores badly.
+   The pattern is blended half-and-half with a plain random wheel so one odd spin can't wreck it. Per direction, the memory
+   that has fitted recent spins best makes the call, and the app says Bet only while it fits better than random. ---------- */
 const MIN_TABLE=15,MIN_DIR=4;
 const MODELS=[{id:"all",name:"all spins",hl:0},{id:"r10",name:"recent spins",hl:10},{id:"r5",name:"latest spins",hl:5}];
-const BE=K/36,DECAY=0.85; // break-even hit rate; recent record fades by 15% per call in that direction
+const DECAY=0.85,MIX=0.5; // recent fit fades by 15% per spin in that direction; pattern blended 50/50 with a random wheel
 function travelVotes(seq,d,s,hl){
   const rows=seq.filter(sp=>sp.a!=null),v=new Array(37).fill(0.02),add=(arr,w0)=>arr.forEach((sp,i)=>{const t=travel(sp.a,sp.n),
     w=w0*(hl?Math.pow(0.5,(arr.length-1-i)/hl):0.5+(i+1)/arr.length);
@@ -174,24 +180,26 @@ function predict(seq,d,s,start,hl){
 // this spin's start: an edited number, otherwise the last landing number at this table
 const lastLanding=seq=>seq.length?seq[seq.length-1].n:null;
 const startNow=seq=>typeof state.start==="number"?state.start:lastLanding(seq);
-// replay the table: each spin re-predicted by all three memories from the spins before it, the race scored as it went,
-// and the call the app would have made (best memory, Bet or Wait) recorded
+// replay the table: each spin re-predicted by all three memories from the spins before it, each memory's fit scored on
+// where the ball went (in bits: above 0 = better than a random wheel), and the call the app would have made recorded
+function fitBits(prev,d,s,hl,t){const T=travelVotes(prev,d,s,hl),sum=T.v.reduce((a,b)=>a+b,0);return Math.log2(37*((1-MIX)*T.v[t]/sum+MIX/37));}
+const peakTravel=(seq,d,s,hl)=>{const v=travelVotes(seq,d,s,hl).v;let b=0;for(let o=0;o<37;o++){let t=0,u=0;for(let k=-2;k<=2;k++){t+=v[(o+k+37)%37];u+=v[(b+k+37)%37];}if(t>u)b=o;}return b;};
 function judge(seq){
-  const g={},sc={},wt={},last={},at={},rec={calls:0,hits:0,bet:0,betHits:0,wait:0,waitHits:0};
+  const g={},ev={},wt={},last={},rec={calls:0,hits:0,bet:0,betHits:0,wait:0,waitHits:0};
   Object.keys(GL).forEach(k=>g[k]={calls:0,hits:0,n:0,trav:new Array(37).fill(0)});
-  const S=d=>sc[d]||(sc[d]=MODELS.map(()=>0)),L=d=>last[d]||(last[d]=MODELS.map(()=>[])),A=d=>at[d]||(at[d]={c:0,h:0});
-  const decide=d=>{const s=S(d),w=wt[d]||0;let m=0;s.forEach((x,i)=>{if(x>s[m]+1e-9)m=i;});
-    const rate=w?s[m]/w:null,allRate=w?s[0]/w:null,a=A(d);
-    return {m,rate,bet:rate!=null&&rate>BE,changed:w>0&&a.c>0&&allRate<=BE&&a.h/a.c>BE,last:L(d)};};
+  const E=d=>ev[d]||(ev[d]=MODELS.map(()=>0)),L=d=>last[d]||(last[d]=MODELS.map(()=>[]));
+  const decide=d=>{const e=E(d),w=wt[d]||0;let m=0;e.forEach((x,i)=>{if(x>e[m]+1e-9)m=i;});
+    const fits=w>0&&e[m]>0,state=!w?"new":!fits?"random":m===0?"holding":e[0]>0?"shifting":"changed";
+    return {m,bet:fits,state,ev:e.slice(),last:L(d)};};
   seq.forEach((sp,i)=>{
     const G=g[gk(sp.d,sp.v)];G.n++;if(sp.a!=null)G.trav[travel(sp.a,sp.n)]++;
     const prev=seq.slice(0,i),D=decide(sp.d),Ps=MODELS.map(M=>predict(prev,sp.d,sp.v,sp.a,M.hl));
     if(!Ps[0].nums)return;
-    const hits=Ps.map(P=>P.nums.includes(sp.n)?1:0),h=hits[D.m];
+    const hits=Ps.map(P=>P.nums.includes(sp.n)?1:0),h=hits[D.m],t=travel(sp.a,sp.n);
     G.calls++;G.hits+=h;rec.calls++;rec.hits+=h;
     if(D.bet){rec.bet++;rec.betHits+=h;}else{rec.wait++;rec.waitHits+=h;}
-    const s=S(sp.d),l=L(sp.d),a=A(sp.d);a.c++;a.h+=hits[0];
-    hits.forEach((x,j)=>{s[j]=s[j]*DECAY+x;l[j].push(x);if(l[j].length>10)l[j].shift();});
+    const e=E(sp.d),l=L(sp.d);
+    MODELS.forEach((M,j)=>{e[j]=e[j]*DECAY+fitBits(prev,sp.d,sp.v,M.hl,t);l[j].push(hits[j]);if(l[j].length>10)l[j].shift();});
     wt[sp.d]=(wt[sp.d]||0)*DECAY+1;});
   return {g,rec,decide};
 }
@@ -204,9 +212,10 @@ function tapNumber(n){
   const sp={a,n,d:state.dir,v:state.speed,t:Date.now(),s:state.table};
   if(typeof state.start!=="number")sp.sa=1; // start taken from the last landing
   if(P.nums){sp.p=P.nums;sp.hit=P.nums.includes(n);sp.c=P.more;sp.m=MODELS[D.m].id;sp.b=D.bet?1:0;}
+  if(aiLive&&aiLive.key===aiKey()&&aiLive.nums){sp.cl=aiLive.nums;sp.cb=aiLive.bet?1:0;sp.chit=aiLive.nums.includes(n);}
   state.spins.push(sp);state.start=null;
   if(state.alt)state.dir=state.dir==="cw"?"acw":"cw";
-  save();render();
+  save();render();askClaude();
 }
 function chip(n,extra){const c=document.createElement("span");c.className="chip "+colorClass(n)+(extra?" "+extra:"");c.textContent=n;return c;}
 
@@ -220,7 +229,7 @@ function render(){
   $("vStart").textContent=editing?"â€¦":st==null?"â€“":st;
   $("stepA").classList.toggle("now",editing);$("stepB").classList.toggle("now",!editing);
   $("editStart").textContent=editing?"Cancel":edited?"Use last landing":"Edit start";
-  const pr=$("pred"),pc=$("pChips");pc.innerHTML="";pr.classList.remove("live","wait");
+  const pr=$("pred"),pc=$("pChips");pc.innerHTML="";pr.classList.remove("live","wait");$("pState").textContent="";
   const label=GL[gk(state.dir,state.speed)].toLowerCase();
   if(editing){$("pBig").textContent="Tap the number the dealer started from";$("pWhy").textContent="The call updates for the new start straight away.";}
   else{const D=J.decide(state.dir),M=MODELS[D.m],P=predict(seq,state.dir,state.speed,st,M.hl);
@@ -228,10 +237,15 @@ function render(){
       $("pBig").textContent=(D.bet?"Bet: around ":"Wait: watching around ")+P.centre;
       P.nums.forEach(n=>pc.appendChild(chip(n,P.more.includes(n)?"more":"")));
       const dl=state.dir==="cw"?"clockwise":"anticlockwise",tally=MODELS.map((x,j)=>{const l=D.last[j];return x.name+" "+l.reduce((p,q)=>p+q,0)+"/"+l.length;}).join(", ");
-      $("pWhy").textContent=(D.changed?"âš  The pattern from earlier has stopped landing lately, so the app is leaning on the newest spins. ":"")+
-        (D.rate==null?"Wait: no "+dl+" calls scored yet, so watch first. ":
-        "Using "+M.name+" (last 10 "+dl+" calls: "+tally+"). Its recent hit rate is "+Math.round(100*D.rate)+"%, "+
-        (D.bet?"above the 42% needed to break even, so bet. ":"not above the 42% needed to break even, so don't bet; just tap where it lands. "))+
+      const was=peakTravel(seq,state.dir,state.speed,0),now=peakTravel(seq,state.dir,state.speed,M.hl);
+      const ST={new:"Pattern: just started. No "+dl+" spins scored yet, so watch first.",
+        random:"Pattern: none lately. Recent "+dl+" spins landed no better than a random wheel, so wait and keep tapping.",
+        holding:"Pattern holding: recent "+dl+" spins still fit the table's pattern (about "+was+" pockets).",
+        shifting:"Pattern shifting: the newest "+dl+" spins fit best, now about "+now+" pockets (whole table: "+was+").",
+        changed:"âš  Pattern changed: the old pattern (about "+was+" pockets) stopped fitting; a new one is forming at about "+now+" pockets."};
+      $("pState").textContent=ST[D.state];$("pState").className="state s-"+D.state;
+      $("pWhy").textContent="Using "+M.name+". Fit vs a random wheel: "+MODELS.map((x,j)=>x.name+" "+(D.ev[j]>0?"+":"")+D.ev[j].toFixed(1)).join(", ")+
+        " (above 0 = better than random). Last 10 "+dl+" calls landed: "+tally+". "+
         "Starting from "+st+(edited?" (edited)":" (last landing)")+". From "+P.n+" earlier "+label+" spin"+(P.n===1?"":"s")+(P.no?" (and "+P.no+" at the other speed)":"")+", the ball most often travelled about "+P.peak+" pockets clockwise from the start. These 15 neighbours hold "+Math.round(100*P.share)+"% of that history (an even spread would be 41%). Circled = the 3 strongest. If the dealer starts somewhere else, tap Edit start.";}
     else if(P.nostart){$("pBig").textContent="Tap where the ball landed";$("pWhy").textContent="First spin at this table. If you saw where it started, tap Edit start first.";}
     else if(P.table){$("pBig").textContent="Learning this table";$("pWhy").textContent="Calls start after "+MIN_TABLE+" spins ("+P.need+" more to go). Just tap each landing number; tap Edit start only when the dealer launched from a different number.";}
@@ -257,6 +271,7 @@ function render(){
     r.append(d,s,m,o);h.appendChild(r);});
   if(!seq.length)h.innerHTML='<div class="note">No spins at this table yet. Each spin shows direction, speed, start â†’ landing (a ringed start was edited) and the travel in pockets.</div>';
   $("undo").disabled=!seq.length&&!edited&&!editing;$("altIn").checked=!!state.alt;
+  renderAI(seq);
 }
 
 /* ---------- controls ---------- */
@@ -274,6 +289,59 @@ $("altIn").addEventListener("change",e=>{state.alt=e.target.checked;save();rende
   clearTimeout(newArmed);newArmed=null;b.textContent="New table";state.table++;state.start=null;save();render();});
 let wipeArmed=null;$("wipe").addEventListener("click",()=>{const b=$("wipe");if(!wipeArmed){b.textContent="Tap again to clear everything on this phone";wipeArmed=setTimeout(()=>{wipeArmed=null;b.textContent="Clear all history";},3000);return;}
   clearTimeout(wipeArmed);wipeArmed=null;b.textContent="Clear all history";state.run=newRun();state.spins=[];state.table=1;state.start=null;save();render();});
+
+/* ---------- Claude's call: asked automatically for every spin (Claude app only), side by side with the app's own call.
+   Claude reads this table's spins and the app's pattern check, and answers with the travel it expects; the page turns that
+   into 15 neighbours from the start number, so the numbers can't drift off the wheel. ---------- */
+let aiSample=null,aiCtl=null,aiLive=null,aiTimer=null;
+const aiKey=()=>{const seq=tableSpins();return [state.table,seq.length,state.dir,state.speed,startNow(seq)].join("|");};
+function aiPrompt(){
+  const seq=tableSpins(),st=startNow(seq),J=judge(seq),D=J.decide(state.dir),M=MODELS[D.m],P=predict(seq,state.dir,state.speed,st,M.hl);
+  const rows=seq.slice(-120).map((sp,i)=>(seq.length-Math.min(120,seq.length)+i+1)+". "+sp.d+" "+(sp.v==="F"?"fast":"slow")+" start "+(sp.a==null?"?":sp.a)+" -> "+sp.n+
+    (sp.a==null?"":" travel "+travel(sp.a,sp.n))).join("\n");
+  const cl=seq.filter(s=>s.cl),clLine=cl.length?"Your earlier calls at this table landed "+cl.filter(s=>s.chit).length+"/"+cl.length+" (15/37 = 40.5% is luck).":"";
+  return "You are predicting a physical roulette wheel with a machine-launched ball (European single zero). Wheel order clockwise: "+WHEEL.join(",")+".\n"+
+    "Travel = pockets from the start number to the landing number counted clockwise in that order (0-36). Start = last landing unless edited. "+
+    "Ball direction alternates cw/acw. A lasting pattern shows as travel distances that cluster for one direction; machines can change and patterns fade.\n\n"+
+    "This table's spins, oldest first:\n"+rows+"\n\n"+
+    "Next spin: direction "+state.dir+", speed "+(state.speed==="F"?"fast":"slow")+", start number "+st+".\n"+
+    "The app's own check: state '"+D.state+"', using "+M.name+", centred on travel "+(P.peak!=null?P.peak:"?")+
+    ". Fit vs random (bits, above 0 = better than random): "+MODELS.map((x,j)=>x.name+" "+D.ev[j].toFixed(1)).join(", ")+". "+clLine+"\n\n"+
+    "Make your own independent call; you may disagree with the app. Pick the travel distance the 15 bet numbers should centre on, "+
+    "whether the evidence is good enough to bet (bet only if recent spins in this direction clearly beat a random wheel), and the pattern state.\n"+
+    'Reply with only JSON: {"travel": 0-36, "bet": true or false, "state": "holding" or "changed" or "random", "why": "2 short sentences for a phone screen, with the actual travels or counts behind it"}';
+}
+async function askClaude(){
+  const seq=tableSpins(),st=startNow(seq);
+  if(!aiSample||editing||st==null||seq.length<MIN_TABLE)return;
+  const key=aiKey();if(aiLive&&aiLive.key===key)return;
+  if(aiCtl)aiCtl.abort();const ctl=aiCtl=new AbortController();
+  aiLive={key,busy:true};render();
+  try{const r=await aiSample.json(aiPrompt(),{signal:ctl.signal,cache:false});if(ctl!==aiCtl)return;
+    let t=Math.round(+(r&&r.travel));if(!(t>=0&&t<=36))throw {code:"bad"};
+    const at=o=>WHEEL[(POS[st]+o+37)%37],nums=[...Array(K)].map((_,j)=>at(t-7+j));
+    aiLive={key,busy:false,nums,more:[at(t-1),at(t),at(t+1)],centre:at(t),travel:t,bet:!!(r&&r.bet===true),
+      state:String((r&&r.state)||"").toLowerCase(),why:String((r&&r.why)||"").slice(0,400)};}
+  catch(e){if(ctl!==aiCtl)return;const c=e&&e.code;
+    aiLive=c==="cancelled"?null:{key,busy:false,err:c==="rate_limited"?"Too many requests or usage limit reached; Claude will try again on the next spin.":
+      c==="not_granted"?"Claude isn't allowed for this page. Allow it in the page's permissions.":"Couldn't get Claude's answer this time; it will try again on the next spin."};}
+  render();
+}
+function renderAI(seq){
+  const box=$("ai");box.hidden=!aiSample||seq.length<MIN_TABLE||editing;if(box.hidden)return;
+  clearTimeout(aiTimer);if(!aiLive||aiLive.key!==aiKey())aiTimer=setTimeout(askClaude,500);
+  const c=$("aiChips");c.innerHTML="";box.classList.remove("wait");$("aiState").textContent="";
+  const cl=seq.filter(s=>s.cl),rec=cl.length?" Claude so far: "+cl.filter(s=>s.chit).length+"/"+cl.length+" landed, bets "+cl.filter(s=>s.cb&&s.chit).length+"/"+cl.filter(s=>s.cb).length+".":"";
+  if(!aiLive||aiLive.key!==aiKey()||aiLive.busy){$("aiBig").textContent="Claude is thinkingâ€¦";$("aiWhy").textContent="Usually 5â€“30 seconds. You can tap the landing number any time."+rec;return;}
+  if(aiLive.err){$("aiBig").textContent="No answer this spin";$("aiWhy").textContent=aiLive.err+rec;return;}
+  box.classList.toggle("wait",!aiLive.bet);
+  $("aiBig").textContent=(aiLive.bet?"Bet: around ":"Wait: watching around ")+aiLive.centre;
+  const S={holding:"Claude: pattern holding",changed:"Claude: âš  pattern changed",random:"Claude: no pattern lately"};
+  $("aiState").textContent=S[aiLive.state]||"";$("aiState").className="state s-"+(aiLive.state==="changed"?"changed":aiLive.state==="holding"?"holding":"random");
+  aiLive.nums.forEach(n=>c.appendChild(chip(n,aiLive.more.includes(n)?"more":"")));
+  const mine=$("pChips").querySelectorAll(".chip"),same=[...mine].filter(x=>aiLive.nums.includes(+x.textContent)).length;
+  $("aiWhy").textContent=aiLive.why+" (travel "+aiLive.travel+" pockets; "+same+" of 15 numbers match the app's call.)"+rec;
+}
 
 /* ---------- cloud copy: each table mirrored to the artifact's db so Claude can read it and leave a note ---------- */
 let cdb=null,cloudTimer=null,cloudBusy=false,cloudAgain=false,cloudState="connecting",cloudAt=0;const CHUNK=400;
@@ -297,6 +365,7 @@ const use=n=>window.claude&&typeof window.claude.use==="function"?window.claude.
 use("db").then(d=>{cdb=d;if(!d){cloudState="off";cloudMsg();return;}cloudPush();
   d.doc("notes/latest").onSnapshot(s=>{const v=s.exists?s.data():null;$("noteCard").hidden=!(v&&v.text);if(v&&v.text){$("noteText").textContent=v.text;$("noteAt").textContent=v.at?"Written "+new Date(v.at).toLocaleString([],{weekday:"short",hour:"numeric",minute:"2-digit"}):"";}},()=>{});
 },()=>{cloudState="off";cloudMsg();});
+use("sample").then(s=>{aiSample=s||null;render();},()=>{});
 cloudMsg();render();
 </script>
 
