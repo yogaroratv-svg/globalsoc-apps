@@ -822,8 +822,8 @@ function aiPrompt(seq){
     "\nMeasured from this table (use these, they are exact):\n"+aiStats(seq)+"\n"+
     "Pick exactly "+AI_N+" different numbers (0-36) for the next spin. Do not pick at random or for variety: every number must come from the evidence above. "+
     "First decide which evidence is strongest at THIS table (prefer whatever the scorecard shows beating chance here; if nothing beats chance, say so and use the strongest wheel-area or jump evidence). "+
-    "Check for a swing first: this player has seen a table keep landing in one set of numbers, then switch to the numbers that set was missing. Use the 'previous picks' figures: if the previous picks are still landing at or above even in the last 10 spins, keep the sectors that are working; if they have missed most of the last 10 spins (or the last asks show a run of m), the table has swung, so drop those areas and build from where the recent misses landed, and start the reason with 'Switched:'. Weight the last 8-10 spins more than older ones.\n"+
-    "Then build the "+AI_N+" numbers as 2 or 3 SEPARATE wheel sectors (never one single block of "+AI_N+"): each sector is a run of neighbouring pockets of 5-8 numbers, the sectors do not touch each other on the wheel, and each sector has its own evidence (for example one hot area plus the area a repeated jump points to).\n"+
+    "Check for a swing first: this player has seen a table keep landing in one set of numbers, then switch to the numbers that set was missing. Use the 'previous picks' figures: if the previous picks are still landing at or above even in the last 10 spins, keep the sectors that are working; if they have missed most of the last 10 spins (or the last asks show a run of m), the table has swung, so drop those areas and build from where the recent misses landed, and start the reason with 'Switched:'. Weight the last 8-10 spins more than older ones. The swing model does this mechanically; use its 15 as your starting point unless the other evidence clearly disagrees, and say if you went against it.\n"+
+    "Then give the "+AI_N+" numbers as 2 or 3 groups (never one single wheel block of "+AI_N+"): when you build from wheel areas, each group is a run of 5-8 neighbouring pockets and the groups do not touch on the wheel; when you follow the swing model, its numbers need not be neighbours, so group them as you like. Each group needs its own evidence.\n"+
     'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
 }
 // hard numbers for Ask Claude, so its picks rest on measured evidence instead of a glance at the list
@@ -854,7 +854,18 @@ function aiStats(seq){
       "\n- Of the last 10 spins, the ones OUTSIDE the previous picks: "+(miss.join(" ")||"none")+(miss.length?" (they bunch most around "+m8[0].num+": "+m8[0].h+" of them within 4 pockets)":"")+
       "\n- Last 8 spins: "+l8.join(" ");
   }
-  return "- Hottest wheel areas:\n  "+areaTxt+shift+
+  // swing model (best of 33 rules backtested on the player's own spins, 2026-10-15): hold the 15 most hit in the last 25;
+  // when 5 of the last 6 spins miss the set, switch to the 15 most hit numbers outside it
+  const top15=(h,ex)=>{const c=new Array(37).fill(0);h.slice(-25).forEach(x=>c[x]++);return [...Array(37).keys()].sort((a,b)=>((ex&&ex.has(a))-(ex&&ex.has(b)))||c[b]-c[a]).slice(0,15);};
+  let S=null,sw=0,lastSw=-1,sb=0,shh=0;
+  for(let i=25;i<=n;i++){
+    const h=nums.slice(0,i);
+    if(!S)S=top15(h);else if(h.slice(-6).filter(x=>!S.includes(x)).length>=5){S=top15(h,new Set(S));sw++;lastSw=i;}
+    if(i<n&&i>=40){sb++;if(S.includes(nums[i]))shh++;}
+  }
+  const swing=S?"\n- Swing model (holds the 15 most hit in the last 25; when 5 of the last 6 miss them it switches to the 15 most hit outside them): now "+S.join(" ")+
+    "; switched "+sw+" times here, last switch "+(lastSw<0?"never":(n-lastSw)+" spins ago")+(sb?"; hit "+shh+" of "+sb+" here (chance 40.5%)":""):"";
+  return "- Hottest wheel areas:\n  "+areaTxt+shift+swing+
     "\n- Most repeated jumps over the last "+jn+" spins:\n  "+jTxt+
     "\n- Numbers hit 3+ times in the last "+l36.length+": "+reps+
     "\n- Longest unseen: "+sleep+
