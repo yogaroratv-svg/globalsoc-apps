@@ -720,6 +720,28 @@ function analyze(nums,hist,hot,lockIn,ctx){
   return A;
 }
 
+// main card (v15): the learning model's 15 replace the old Sector 1 / Sector 2 bets. It bets when this call is stronger than
+// its usual call at this table; circled numbers (support standing out from the rest) get a second chip.
+function lmMain(A,LP,nums){
+  if(!LP||nums.length<20)return;
+  A.lmOn=true;A.lm=LP;A.bet1=wheelRuns(LP.top).flat();A.bet2=null;A.bet=A.bet1.slice();A.modelBet=A.bet;A.key=LP.more.slice();
+  A.pick=A.key.length?A.key[0]:A.bet[0];
+  A.in1=nums.slice(-6).filter(x=>A.bet.includes(x)).length;
+  A.conf=Math.round(LP.rank*100);A.tier=A.conf>=80?"high":A.conf>=50?"medium":"low";
+  A.rules.main=LP.bet&&!A.stop&&!A.goal;A.stake=A.rules.main?1:0;A.lock=false;
+  A.rules.main1=A.rules.main;A.rules.main2=false;A.rules.sec1=A.rules.main;A.rules.sec2=false;A.noDouble=false;A.leader="model";
+  if(A.ruleBet){A.ruleBet.key=A.key;A.ruleBet.modelRaw=A.bet;}A.rules.key=A.rules.main&&A.key.length>0;
+  A.dead=(A.dead||[]).filter(x=>!A.bet.includes(x));
+  A.form=LP.bets?{n:LP.bets,hits:LP.hits,exp:LP.bets*LM_K/LM_N}:null;
+  const L=LP.leaders,pc=x=>Math.round(100*x)+"%";
+  A.why1="spins here lately fit "+L.slice(0,2).map(l=>l.name+" ("+pc(l.w)+" of its trust"+(l.b?", won "+l.h+" of "+l.b:"")+")").join(" and ")+
+    (A.key.length?". Circled "+A.key.join(" ")+": most of its experts agree on "+(A.key.length>1?"these":"this")+", so 2 chips":"");A.why2="";
+  A.nextWhy="learning model, switching speed it has learned here: "+LP.speed;
+  if(A.stop||A.goal)return;
+  A.label=A.rules.main?"pattern":"wait";
+  A.why=A.rules.main?"My model's 15 for the next spin. This call is stronger than "+A.conf+"% of its calls at this table, so bet.":
+    "My model's call is weaker than its usual here ("+A.conf+"% of its calls were weaker), so wait.";
+}
 /* Replays one session and returns decisions before each spin plus the live analysis. */
 /* ---- colour learner: START ---- */
 // Colour learner: no fixed streak rule. Many small colour-pattern experts (follow, switch, same as 2-3 back, hot/due colour over
@@ -785,6 +807,7 @@ function replay(seq){
     ctx.dir=i<seq.length?(seq[i].dir||null):(state.table==="real"?state.nextDir:null);
     const A=analyze(nums,hist,hot,lock,ctx);
     lock=A.lock;
+    lmMain(A,lmTrace(seq,i),nums);
     if(i===seq.length){out.push(A);break;}
     const sp=seq[i];
     const U=sp.u!==undefined?sp.u:state.unit; // $ per chip this spin was played at
@@ -884,57 +907,86 @@ function aiPrompt(seq){
     'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"more":[1-3 of your numbers for an extra chip],"colour":"red or black","colourWhy":"one short sentence","method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
 }
 // Learning model: dozens of pattern "experts", each with its own settings (window, trigger, spread), all scored after every spin.
-// Experts that called the last spins well gain weight, the rest lose it; a share of weight always flows back so the model can switch
-// fast when the table changes (three switching speeds run side by side and are weighted the same way).
-function learnModel(nums){
-  const N=37,EPS=0.12,K=15;
+// Experts whose 15 numbers won gain weight, the rest lose it; a share of weight always flows back so the model can switch fast
+// when the table changes (four learning speeds run side by side and are weighted the same way). Runs one spin at a time:
+// lmPredict before a spin, lmUpdate after it. It drives the main card and feeds Ask Claude.
+const LM_N=37,LM_K=15,LM_LR=[[0.15,0.01],[0.4,0.03],[0.8,0.08],[1.5,0.2]];
+function lmNew(){
+  const N=LM_N,EPS=0.12,K=LM_K;
   const fromSet=S=>{const p=new Array(N).fill(EPS/N);S.forEach(x=>p[x]+=(1-EPS)/S.length);return p;};
   const norm=p=>{const s=p.reduce((a,b)=>a+b,0);return p.map(v=>v/s);};
   const kern=(cs,bw)=>{const p=new Array(N).fill(0.02);cs.forEach(({c,w})=>{for(let x=0;x<N;x++){const d=pdist(POS[x],c);if(d<=bw)p[x]+=w*(bw+1-d);}});return norm(p);};
   const cnt=(h,W)=>{const c=new Array(N).fill(0);h.slice(-W).forEach((x,i,a)=>c[x]+=1+i/a.length/2);return c;};
+  const st={seen:new Array(N).fill(-1)};
   // ties go to the number seen most recently (never to the lower number)
-  let seen=new Array(N).fill(-1);
-  const topBy=(sc,ex)=>[...Array(N).keys()].sort((a,b)=>((ex&&ex.has(a))-(ex&&ex.has(b)))||sc[b]-sc[a]||seen[b]-seen[a]).slice(0,K);
-  const E=[];
+  st.topBy=(sc,ex)=>[...Array(N).keys()].sort((a,b)=>((ex&&ex.has(a))-(ex&&ex.has(b)))||sc[b]-sc[a]||st.seen[b]-st.seen[a]).slice(0,K);
+  const topBy=st.topBy,E=[];
   // hot numbers over different windows / cold numbers (the sleepers)
-  [6,9,12,18,25,37,50,80].forEach(W=>E.push({name:"Hot 15, last "+W,f:h=>fromSet(topBy(cnt(h,W)))}));
-  [25,50,100].forEach(W=>E.push({name:"Sleepers (cold 15), last "+W,f:h=>{const c=cnt(h,W);return fromSet(topBy(c.map(v=>-v)));}}));
+  [6,9,12,18,25,37,50,80].forEach(W=>E.push({name:"hot 15 of the last "+W+" spins",f:h=>fromSet(topBy(cnt(h,W)))}));
+  [25,50,100].forEach(W=>E.push({name:"sleepers (coldest 15 of the last "+W+")",f:h=>{const c=cnt(h,W);return fromSet(topBy(c.map(v=>-v)));}}));
   // bursts of 15 that hold, then flip to the 15 they were missing (and back): window, trigger and memory all vary
   [12,25,37].forEach(W=>[[4,3],[5,4],[6,5],[8,6],[10,7]].forEach(([k,m])=>{let S=null,old=null;
-    E.push({name:"Swing "+m+" of "+k+" misses, last "+W,f:h=>{const c=cnt(h,W);if(!S)S=topBy(c);
+    E.push({name:"burst of 15 that flips after "+m+" misses in "+k+" (last "+W+")",f:h=>{const c=cnt(h,W);if(!S)S=topBy(c);
       else if(h.slice(-k).filter(x=>!S.includes(x)).length>=m){const prev=S;
         // go back to the old 15 if the misses are landing there, otherwise take the best 15 outside the current set
         S=old&&h.slice(-k).filter(x=>old.includes(x)).length>=m-1?old:topBy(c,new Set(S));old=prev;}
       return fromSet(S);}});}));
   // wheel areas: where the last spins landed, with different spreads
-  [[4,2],[6,3],[10,3],[16,4],[30,4]].forEach(([W,bw])=>E.push({name:"Wheel area, last "+W+" spins",f:h=>kern(h.slice(-W).map((x,i,a)=>({c:POS[x],w:1+i/a.length})),bw)}));
+  [[4,2],[6,3],[10,3],[16,4],[30,4]].forEach(([W,bw])=>E.push({name:"wheel areas of the last "+W+" spins",f:h=>kern(h.slice(-W).map((x,i,a)=>({c:POS[x],w:1+i/a.length})),bw)}));
   // jumps learned from this table: distance from 1, 2 or 3 spins back (2 back catches 0-8-0-8 alternation)
-  [1,2,3].forEach(L=>[30,80].forEach(W=>E.push({name:"Jump from "+L+" back, learned over "+W,f:h=>{if(h.length<L+5)return new Array(N).fill(1/N);
+  [1,2,3].forEach(L=>[30,80].forEach(W=>E.push({name:"jumps from "+(L===1?"the last spin":L+" spins back")+" (learned over "+W+")",f:h=>{if(h.length<L+5)return new Array(N).fill(1/N);
     const off=new Array(N).fill(0.3);for(let i=Math.max(L,h.length-W);i<h.length;i++)off[(POS[h[i]]-POS[h[i-L]]+N)%N]++;
     const sm=off.map((v,d)=>v*2+off[(d+1)%N]+off[(d+N-1)%N]);const p=new Array(N);
     for(let x=0;x<N;x++)p[x]=sm[(POS[x]-POS[h[h.length-L]]+N)%N];return norm(p);}})));
-  // ping-pong: back to the number/area 2 spins ago, or the opposite side of the last spin
-  E.push({name:"Ping-pong (area 2 spins back)",f:h=>h.length<2?new Array(N).fill(1/N):kern([{c:POS[h[h.length-2]],w:1}],2)});
-  E.push({name:"Opposite side of last spin",f:h=>kern([{c:(POS[h[h.length-1]]+18)%N,w:1}],3)});
-  // each expert is scored like a bet: its 15 numbers win or lose. Learners with different learning rates and switching
-  // speeds run side by side; the learner whose 15 has been winning lately gets the say.
-  const LR=[[0.15,0.01],[0.4,0.03],[0.8,0.08],[1.5,0.2]],W=LR.map(()=>E.map(()=>1/E.length)),top=LR.map(()=>1/LR.length),CH=K/N;
-  const score=E.map(()=>({b:0,h:0}));let bets=0,hits=0,mixTop=[],picks=[];const START=15;
-  let P=[];const vote=w=>{const q=new Array(N).fill(0);P.forEach((pe,i)=>pe.forEach((v,x)=>q[x]+=w[i]*v));return q;};
-  for(let t=START;t<=nums.length;t++){
-    const h=nums.slice(0,t);seen=new Array(N).fill(-1);h.forEach((x,i)=>seen[x]=i);
-    P=E.map(e=>e.f(h));picks=P.map(pe=>topBy(pe));
-    const Q=W.map(vote),sets=Q.map(q=>topBy(q)),q=new Array(N).fill(0);Q.forEach((qa,a)=>qa.forEach((v,x)=>q[x]+=top[a]*v));mixTop=topBy(q);
-    if(t===nums.length)break;
-    const y=nums[t];
-    if(t>=40){bets++;if(mixTop.includes(y))hits++;picks.forEach((s,i)=>{score[i].b++;if(s.includes(y))score[i].h++;});}
-    W.forEach((w,a)=>{const [eta,al]=LR[a];let s=0;w.forEach((v,i)=>{w[i]=v*Math.exp(eta*((picks[i].includes(y)?1:0)-CH));s+=w[i];});w.forEach((v,i)=>w[i]=(1-al)*v/s+al/E.length);});
-    let s=0;top.forEach((v,a)=>{top[a]=v*Math.exp(0.5*((sets[a].includes(y)?1:0)-CH));s+=top[a];});top.forEach((v,a)=>top[a]=Math.max(0.02,v/s));
-  }
-  const wt=E.map((e,i)=>W.reduce((acc,w,a)=>acc+top[a]*w[i],0)),tw=wt.reduce((a,b)=>a+b,0);
-  const leaders=E.map((e,i)=>({name:e.name,w:wt[i]/tw,b:score[i].b,h:score[i].h})).sort((a,b)=>b.w-a.w).slice(0,5);
-  const speed=["very slow","slow","fast","very fast"][top.indexOf(Math.max(...top))];
-  return {top:mixTop,leaders,speed,bets,hits};
+  // ping-pong: back to the area 2 spins ago (0-8-0-8), or the opposite side of the last spin
+  E.push({name:"ping-pong back to 2 spins ago",f:h=>h.length<2?new Array(N).fill(1/N):kern([{c:POS[h[h.length-2]],w:1}],2)});
+  E.push({name:"opposite side of the last spin",f:h=>kern([{c:(POS[h[h.length-1]]+18)%N,w:1}],3)});
+  Object.assign(st,{E,W:LM_LR.map(()=>E.map(()=>1/E.length)),top:LM_LR.map(()=>1/LM_LR.length),score:E.map(()=>({b:0,h:0})),
+    strs:[],bets:0,hits:0,n:0});
+  return st;
+}
+// prediction before the next spin, from the spins so far (h); call once per spin, in order
+function lmPredict(st,h){
+  const N=LM_N,K=LM_K;st.seen=new Array(N).fill(-1);h.forEach((x,i)=>st.seen[x]=i);
+  const P=st.E.map(e=>e.f(h)),picks=P.map(pe=>st.topBy(pe));
+  const Q=st.W.map(w=>{const q=new Array(N).fill(0);P.forEach((pe,i)=>pe.forEach((v,x)=>q[x]+=w[i]*v));return q;});
+  const sets=Q.map(q=>st.topBy(q)),q=new Array(N).fill(0);Q.forEach((qa,a)=>qa.forEach((v,x)=>q[x]+=st.top[a]*v));
+  const top=st.topBy(q),tot=q.reduce((a,b)=>a+b,0),s=top.reduce((a,x)=>a+q[x],0)/tot;
+  // how strong this call is compared with its own earlier calls at this table (no fixed level)
+  const rank=st.strs.length?st.strs.filter(x=>x<s).length/st.strs.length:0.5;
+  // circled numbers: the ones whose support stands out from the rest of the 15
+  const v=top.map(x=>q[x]),mu=v.reduce((a,b)=>a+b,0)/K,sd=Math.sqrt(v.reduce((a,b)=>a+(b-mu)*(b-mu),0)/K);
+  const more=top.filter(x=>q[x]>=mu+sd).slice(0,3);
+  const wt=st.E.map((e,i)=>st.W.reduce((acc,w,a)=>acc+st.top[a]*w[i],0)),tw=wt.reduce((a,b)=>a+b,0);
+  const leaders=st.E.map((e,i)=>({name:e.name,w:wt[i]/tw,b:st.score[i].b,h:st.score[i].h})).sort((a,b)=>b.w-a.w).slice(0,5);
+  const speed=["very slow","slow","fast","very fast"][st.top.indexOf(Math.max(...st.top))];
+  return {top,more,s,rank,bet:h.length>=20&&st.strs.length>=10&&rank>=0.5,picks,sets,leaders,speed,bets:st.bets,hits:st.hits};
+}
+function lmUpdate(st,y,p){
+  const CH=LM_K/LM_N;st.strs.push(p.s);if(st.strs.length>300)st.strs.shift();
+  if(st.n>=40){st.bets++;if(p.top.includes(y))st.hits++;p.picks.forEach((s,i)=>{st.score[i].b++;if(s.includes(y))st.score[i].h++;});}
+  st.W.forEach((w,a)=>{const [eta,al]=LM_LR[a];let s=0;w.forEach((v,i)=>{w[i]=v*Math.exp(eta*((p.picks[i].includes(y)?1:0)-CH));s+=w[i];});w.forEach((v,i)=>w[i]=(1-al)*v/s+al/w.length);});
+  let s=0;st.top.forEach((v,a)=>{st.top[a]=v*Math.exp(0.5*((p.sets[a].includes(y)?1:0)-CH));s+=st.top[a];});st.top.forEach((v,a)=>st.top[a]=Math.max(0.02,v/s));
+  st.n++;
+}
+// the model's call before each spin of a table, kept between renders (rebuilt only if earlier spins change)
+let lmCache={};
+function lmTrace(seq,i){
+  const sid=seq.length?seq[0].s:0;let c=lmCache[sid];
+  const ok=c&&c.preds.length<=seq.length+1&&(c.done===0||(seq[c.done-1]&&seq[c.done-1].t===c.lastT&&seq[c.done-1].n===c.lastN));
+  if(!ok)c=lmCache[sid]={st:lmNew(),preds:[],done:0,lastT:null,lastN:null};
+  while(c.preds.length<=i){const j=c.preds.length;
+    if(j>c.done){lmUpdate(c.st,seq[j-1].n,c.preds[j-1]);c.done=j;c.lastT=seq[j-1].t;c.lastN=seq[j-1].n;}
+    c.preds[j]=lmPredict(c.st,seq.slice(0,j).map(s=>s.n));}
+  return c.preds[i];
+}
+function learnModel(nums){const st=lmNew();let p=null;for(let t=0;t<=nums.length;t++){p=lmPredict(st,nums.slice(0,t));if(t<nums.length)lmUpdate(st,nums[t],p);}return p;}
+// a set of numbers in wheel order, split into runs of neighbours; starts after the widest empty stretch so no run is cut
+function wheelRuns(nums){
+  const ps=nums.map(x=>POS[x]).sort((a,b)=>a-b);if(!ps.length)return [];let st=0,gw=-1;
+  ps.forEach((p,i)=>{const g=(p-ps[(i+ps.length-1)%ps.length]+37)%37||37;if(g>gw){gw=g;st=i;}});
+  const runs=[];ps.slice(st).concat(ps.slice(0,st)).forEach((p,i,a)=>{if(!i||(p-a[i-1]+37)%37>1)runs.push([]);runs[runs.length-1].push(WHEEL[p]);});
+  return runs;
 }
 // hard numbers for Ask Claude, so its picks rest on measured evidence instead of a glance at the list
 function aiStats(seq){
@@ -965,7 +1017,7 @@ function aiStats(seq){
       "\n- Last 8 spins: "+l8.join(" ");
   }
   // learning model (see learnModel): its 15, the experts it trusts most right now, and how it has done at this table
-  const LM=n>=40?learnModel(nums):null;
+  const LM=n>=40?lmTrace(seq,seq.length):null;
   const swing=LM?"\n- Learning model (dozens of pattern experts with different windows/triggers, reweighted after every spin by whether their 15 won; it can switch fast when the table changes): its 15 now "+LM.top.join(" ")+
     "; switching speed it has learned here: "+LM.speed+"; trusts most: "+LM.leaders.map(l=>l.name+" "+Math.round(100*l.w)+"% (alone "+l.h+"/"+l.b+")").join(", ")+
     (LM.bets?"; the model's own 15 hit "+LM.hits+" of "+LM.bets+" here (chance "+(LM.bets*15/37).toFixed(1)+")":""):"";
@@ -1081,7 +1133,7 @@ function addSpin(n){
   aiLive=null;
   state.spins.push({n,t:Date.now(),s:state.session,pre:!!state.setup,hot:state.hot.slice(),cold:(state.cold||[]).slice(),played:!skipNext,colPlayed:!skipCol,dv:1,bet:on?L.bet.slice():[],stake:on?L.stake:0,sbet:son?L.sbet.slice():[],cbet:con?L.cbet.slice():[],
     cv:1,cb:(!state.setup&&L&&L.colour&&!L.stop&&!L.goal)?L.colour:null,cs:L?L.colStake:0,ca:state.colAmt,
-    u:state.unit,kb:on&&state.heavy?heavyOf(L):[],ai:ai?ai.nums.slice():[],aik:ai&&ai.more?ai.more.slice():[],aib:!!(ai&&ai.bet),
+    u:state.unit,kb:on&&(L.lmOn||state.heavy)?heavyOf(L):[],ai:ai?ai.nums.slice():[],aik:ai&&ai.more?ai.more.slice():[],aib:!!(ai&&ai.bet),
     dir:state.table==="real"?state.nextDir:null});
   // real wheels alternate direction every spin
   if(state.table==="real")state.nextDir=state.nextDir==="cw"?"ccw":"cw";
@@ -1156,7 +1208,7 @@ function render(){
     cf.append("Confidence "+A.conf+" · "+tierTxt);
     const mt=document.createElement("span");mt.className="meter";const mi=document.createElement("i");mi.style.width=A.conf+"%";mt.appendChild(mi);cf.appendChild(mt);
     const st=document.createElement("span");st.className="stake"+(betting&&A.stake===2?" x2":"");
-    const hv=state.heavy?heavyOf(A):[];
+    const hv=A.lmOn||state.heavy?heavyOf(A):[];
     st.textContent=betting?"Stake "+A.stake+"× = "+money(A.stake*state.unit*(A.bet.length+hv.length),true)+(hv.length?" (incl. extra chip on "+hv.join(" ")+")":""):"No bet";cf.appendChild(st);
     if(betting||(!state.setup&&(A.rules.spike||A.rules.cycle))){const sk=document.createElement("button");sk.type="button";sk.id="skipBtn";sk.className="btn small"+(skipNext?" warn":"");sk.textContent=skipNext?"Skipping this bet":"Skip this bet";cf.appendChild(sk);}
   }
@@ -1170,10 +1222,15 @@ function render(){
   $("nextwhy").textContent=A.bet1&&!state.setup?"Pattern: "+A.nextWhy:"";
   $("s2lbl").textContent="Sector 2";
   if(A.form&&A.form.n&&!state.setup)$("nextwhy").textContent="Pattern: "+A.nextWhy+" · last "+A.form.n+" predictions: "+A.form.hits+" landed ("+A.form.exp.toFixed(1)+" expected)";
-  if(A.avoid.length&&!state.setup)$("nextwhy").textContent+=" · leaving out cold "+A.avoid.join(" ");
+  if(A.avoid.length&&!state.setup&&!A.lmOn)$("nextwhy").textContent+=" · leaving out cold "+A.avoid.join(" ");
   const cls=n=>[A.hotIn.includes(n)?"star":"",A.key&&A.key.includes(n)?"key":""].join(" ").trim();
-  if(A.bet1){const l=document.createElement("span");l.className="lbl";l.textContent="Sector 1 · "+A.in1+" of last 6";bs.appendChild(l);A.bet1.forEach(n=>bs.appendChild(chip(n,cls(n))));}
-  $("s1why").textContent=A.why1&&!state.setup?"Why Sector 1: "+A.why1:"";
+  if(A.lmOn){const l=document.createElement("span");l.className="lbl";l.textContent="Model's 15 · "+A.in1+" of last 6";bs.appendChild(l);
+    // wheel order, a gap between runs of neighbours; circled = 2 chips
+    wheelRuns(A.bet).forEach((run,ri)=>{if(ri){const g=document.createElement("span");g.style.width="10px";bs.appendChild(g);}
+      run.forEach(n=>bs.appendChild(chip(n,[A.hotIn.includes(n)?"star":"",A.key.includes(n)?"more":""].join(" ").trim())));});}
+  else if(A.bet1){const l=document.createElement("span");l.className="lbl";l.textContent="Sector 1 · "+A.in1+" of last 6";bs.appendChild(l);A.bet1.forEach(n=>bs.appendChild(chip(n,cls(n))));}
+  $("s1why").textContent=A.why1&&!state.setup?(A.lmOn?"Why: ":"Why Sector 1: ")+A.why1:"";
+  $("pick2").parentElement.hidden=!!A.lmOn;
   $("s2why").textContent=A.why2&&!state.setup?"Why Sector 2: "+A.why2:"";
   // table read panel
   const rd=!state.setup&&seq.length>0;
@@ -1184,7 +1241,9 @@ function render(){
   if(rd&&A.dead&&!A.dead.length)$("r4txt").textContent="none: no area is clear of Sectors 1 and 2 and the last 4 spins";
   else if(rd&&A.dead){$("r4txt").textContent=A.deadHits.h+" of the last "+A.deadHits.n+" spins landed here ("+(A.deadHits.n*A.dead.length/37).toFixed(1)+" expected)";A.dead.forEach(x=>r4.appendChild(chip(x,"dead")));}else $("r4txt").textContent=rd?"after 4 spins":"";
   const ad=A.adapt;
-  if(rd&&ad){const f=(lab,o)=>lab+" "+(o.t.bets?o.t.hits+"/"+o.t.bets+" ("+o.t.exp.toFixed(1)+" expected)":"no bets yet")+(o.s==="hot"?" ✓":o.s==="cold"?" ✗":"");
+  if(rd&&A.lmOn){const c=ad&&ad.cycle;$("rAdapt").textContent="At this table: learning model's 15 "+(A.form?"won "+A.form.hits+" of "+A.form.n+" ("+A.form.exp.toFixed(1)+" expected)":"is still learning")+
+    (c&&c.t.bets?" · Cycle "+c.t.hits+"/"+c.t.bets+" ("+c.t.exp.toFixed(1)+" expected)"+(c.s==="cold"?", cycle bet off":""):"")+".";}
+  else if(rd&&ad){const f=(lab,o)=>lab+" "+(o.t.bets?o.t.hits+"/"+o.t.bets+" ("+o.t.exp.toFixed(1)+" expected)":"no bets yet")+(o.s==="hot"?" ✓":o.s==="cold"?" ✗":"");
     $("rAdapt").textContent="At this table: "+[f("Model",ad.model),f("Cycle",ad.cycle),f("Old burst",ad.oldmain)].join(" · ")+" → "+
       (A.leader==="model"?"using the model":A.leader==="oldmain"?"switched to the old burst signal":"model off here")+(ad.cycle.s==="cold"?", cycle bet off":"")+".";}
   else $("rAdapt").textContent="";
