@@ -87,6 +87,14 @@ header .spacer{flex:1}
 .dirbtn{font-weight:700}
 .chip.key{box-shadow:0 0 0 2px var(--brass);font-weight:800}
 .chip.dead{opacity:.45;text-decoration:line-through}
+.chip.more{border-radius:50%;box-shadow:0 0 0 2px var(--brass);font-weight:800}
+/* Claude's picks drawn on the betting layout: 0 on the left, then 3 rows of 12 like the felt */
+.felt{flex-basis:100%;display:grid;grid-template-columns:26px repeat(12,minmax(0,1fr));grid-template-rows:repeat(3,26px);gap:2px;margin-top:6px}
+.felt span{display:grid;place-items:center;border-radius:4px;font-family:var(--display);font-weight:600;font-size:13px;background:var(--felt-3);color:var(--muted,#9aa);opacity:.35}
+.felt span.z{grid-row:1/4}
+.felt span.on{opacity:1;color:#fff}
+.felt span.c-red{background:var(--red)}.felt span.c-black{background:var(--black)}.felt span.c-zero{background:var(--zero)}
+.felt span.more{border-radius:50%;box-shadow:0 0 0 2px var(--brass);font-weight:800}
 .read{background:var(--felt-2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:8px}
 .read .rgrid{display:flex;gap:6px}
 .read .rgrid>div{flex:1;min-width:0}
@@ -755,7 +763,8 @@ function replay(seq){
       if(sb.length){A.cashSpike=(sb.includes(sp.n)?36-sb.length:-sb.length)*U;ctx.cash+=A.cashSpike;}}
     // Ask Claude picks: stored with the spin they were asked for; money only if you tapped "Bet these"
     if(sp.ai&&sp.ai.length&&A.ruleBet){A.rules.ai=true;A.ruleBet.ai=sp.ai;A.aihit=sp.ai.includes(sp.n);
-      if(!sp.pre&&sp.aib&&sp.played!==false){A.cashAI=(A.aihit?36-sp.ai.length:-sp.ai.length)*U;ctx.cash+=A.cashAI;}}
+      // circled numbers carry a second chip
+      if(!sp.pre&&sp.aib&&sp.played!==false){const k=sp.aik||[],chips=sp.ai.length+k.length;A.cashAI=((A.aihit?36*(1+(k.includes(sp.n)?1:0)):0)-chips)*U;ctx.cash+=A.cashAI;}}
     // burst-cycle bet: 1 chip per number; spins from v12 on keep the bet that was shown
     A.chit=A.cbet.includes(sp.n);
     if(!sp.pre&&sp.played!==false){const cb=sp.dv?(sp.cbet||[]):(A.rules.cycle?A.cbet:[]);
@@ -824,7 +833,8 @@ function aiPrompt(seq){
     "First decide which evidence is strongest at THIS table (prefer whatever the scorecard shows beating chance here; if nothing beats chance, say so and use the strongest wheel-area or jump evidence). "+
     "Check for a swing first: this player has seen a table keep landing in one set of numbers, then switch to the numbers that set was missing. Use the 'previous picks' figures: if the previous picks are still landing at or above even in the last 10 spins, keep the sectors that are working; if they have missed most of the last 10 spins (or the last asks show a run of m), the table has swung, so drop those areas and build from where the recent misses landed, and start the reason with 'Switched:'. Weight the last 8-10 spins more than older ones. Nothing here is a fixed rule: the learning model re-fits its weights to this table after every spin (bursts of 15 long or short, flips to the missed numbers and back, ping-pong like 0-8-0-8, opposite sides, jumps). Read which experts it trusts now and how its 15 has done here: lean on it as much as its record here earns, combine it with your own reading of the long string, and say how much you used it.\n"+
     "Then give the "+AI_N+" numbers as 2 or 3 groups (never one single wheel block of "+AI_N+"): when you build from wheel areas, each group is a run of 5-8 neighbouring pockets and the groups do not touch on the wheel; when you follow the learning model, its numbers need not be neighbours, so group them as you like. Each group needs its own evidence.\n"+
-    'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
+    "Also pick 1 to 3 of your "+AI_N+" numbers that the evidence backs most strongly; the player puts an extra chip on those.\n"+
+    'Reply with only JSON: {"sectors":[[neighbouring numbers],[neighbouring numbers],...],"more":[1-3 of your numbers for an extra chip],"method":"short name of the method you used","reason":"3-5 short sentences for a phone screen: for each sector, the actual figures (counts, percentages) behind it"}';
 }
 // Learning model: dozens of pattern "experts", each with its own settings (window, trigger, spread), all scored after every spin.
 // Experts that called the last spins well gain weight, the rest lose it; a share of weight always flows back so the model can switch
@@ -933,7 +943,8 @@ async function askClaude(){
     if(!nums.length)throw {code:"invalid_json"};
     // where each sector starts in nums, for a gap between sectors on screen
     const cuts=[];if(Array.isArray(r.sectors)){let i=0;r.sectors.forEach(s=>{if(i>0&&i<nums.length)cuts.push(nums[i]);i+=Array.isArray(s)?s.length:0;});}
-    aiLive=sessionSeq().length===forLen?{status:"done",forLen,nums,cuts,reason:((r&&r.method)?"["+String(r.method).slice(0,60)+"] ":"")+String((r&&r.reason)||"").slice(0,700),bet:false}:null;
+    const more=[...new Set((Array.isArray(r.more)?r.more:[]).map(Number))].filter(x=>nums.includes(x)).slice(0,3);
+    aiLive=sessionSeq().length===forLen?{status:"done",forLen,nums,cuts,more,reason:((r&&r.method)?"["+String(r.method).slice(0,60)+"] ":"")+String((r&&r.reason)||"").slice(0,700),bet:false}:null;
   }catch(e){const c=e&&e.code;aiLive=c==="cancelled"?null:{status:"error",forLen,msg:aiErr(c)};}
   render();
 }
@@ -983,8 +994,17 @@ function renderAI(seq){
   if(!ready)txt.textContent=state.setup?"":"Available after "+AI_MIN+" spins at this table ("+seq.length+" so far).";
   else if(thinking)txt.textContent="Thinking… this can take up to a minute. Picks only count for the next spin.";
   else if(aiLive&&aiLive.status==="error")txt.textContent=aiLive.msg;
-  else if(aiLive&&aiLive.status==="done"){txt.textContent="Picks for the next spin"+(aiLive.reason?": "+aiLive.reason:"");aiLive.nums.forEach(x=>{if(aiLive.cuts&&aiLive.cuts.includes(x)){const g=document.createElement("span");g.style.width="10px";bb.appendChild(g);}bb.appendChild(chip(x));});
-    bet.textContent=aiLive.bet?"Betting these · "+money(aiLive.nums.length*state.unit,true)+" (tap to cancel)":"Bet these ("+money(aiLive.nums.length*state.unit,true)+")";bet.classList.toggle("on",!!aiLive.bet);}
+  else if(aiLive&&aiLive.status==="done"){const more=aiLive.more||[];
+    txt.textContent="Picks for the next spin"+(more.length?" (circled = 2 chips)":"")+(aiLive.reason?": "+aiLive.reason:"");
+    // in number order, as they sit on the betting layout, plus the layout itself
+    aiLive.nums.slice().sort((a,b)=>a-b).forEach(x=>bb.appendChild(chip(x,more.includes(x)?"more":"")));
+    const felt=document.createElement("div");felt.className="felt";
+    const cell=x=>{const c=document.createElement("span");c.textContent=x;const on=aiLive.nums.includes(x);
+      c.className=(x===0?"z ":"")+(on?"on "+colorClass(x):"")+(more.includes(x)?" more":"");
+      if(x>0){c.style.gridColumn=String(1+Math.ceil(x/3));c.style.gridRow=String(3-(x-1)%3);}return c;};
+    for(let x=0;x<=36;x++)felt.appendChild(cell(x));bb.appendChild(felt);
+    const cost=(aiLive.nums.length+more.length)*state.unit;
+    bet.textContent=aiLive.bet?"Betting these · "+money(cost,true)+" (tap to cancel)":"Bet these ("+money(cost,true)+")";bet.classList.toggle("on",!!aiLive.bet);}
   else txt.textContent="Tap Ask for Claude's "+AI_N+" numbers for the next spin. Scored on the scorecard; money counts only if you tap Bet these.";
 }
 // board hot/cold kept moving like the casino screen: the screen's 250-spin counts are estimated from what was typed in
@@ -1012,7 +1032,7 @@ function addSpin(n){
   aiLive=null;
   state.spins.push({n,t:Date.now(),s:state.session,pre:!!state.setup,hot:state.hot.slice(),cold:(state.cold||[]).slice(),played:!skipNext,colPlayed:!skipCol,dv:1,bet:on?L.bet.slice():[],stake:on?L.stake:0,sbet:son?L.sbet.slice():[],cbet:con?L.cbet.slice():[],
     cv:1,cb:(!state.setup&&L&&L.colour&&!L.stop&&!L.goal)?L.colour:null,cs:L?L.colStake:0,ca:state.colAmt,
-    u:state.unit,kb:on&&state.heavy?heavyOf(L):[],ai:ai?ai.nums.slice():[],aib:!!(ai&&ai.bet),
+    u:state.unit,kb:on&&state.heavy?heavyOf(L):[],ai:ai?ai.nums.slice():[],aik:ai&&ai.more?ai.more.slice():[],aib:!!(ai&&ai.bet),
     dir:state.table==="real"?state.nextDir:null});
   // real wheels alternate direction every spin
   if(state.table==="real")state.nextDir=state.nextDir==="cw"?"ccw":"cw";
