@@ -353,7 +353,8 @@ function aiPrompt(){
   const seq=tableSpins(),st=startNow(seq),J=judge(seq),D=J.decide(state.dir),M=MODELS[D.m],P=predict(seq,state.dir,state.speed,st,M.hl);
   const rows=seq.slice(-120).map((sp,i)=>(seq.length-Math.min(120,seq.length)+i+1)+". "+sp.d+" "+(sp.v==="F"?"fast":"slow")+" start "+(sp.a==null?"?":sp.a)+" -> "+sp.n+
     (sp.a==null?"":" travel "+travel(sp.a,sp.n))).join("\n");
-  const cl=seq.filter(s=>s.cl),clLine=cl.length?"Your earlier calls at this table landed "+cl.filter(s=>s.chit).length+"/"+cl.length+" (15/37 = 40.5% is luck).":"";
+  const cl=seq.filter(s=>s.cl),cd=cl.filter(s=>s.d===state.dir).slice(-10),
+    clLine=cl.length?"Your earlier calls at this table landed "+cl.filter(s=>s.chit).length+"/"+cl.length+" (15/37 = 40.5% is luck); your last "+cd.length+" "+state.dir+" calls landed "+cd.filter(s=>s.chit).length+".":"";
   return "You are predicting a physical roulette wheel with a machine-launched ball (European single zero). Wheel order clockwise: "+WHEEL.join(",")+".\n"+
     "Travel = pockets from the start number to the landing number counted clockwise in that order (0-36). Start = last landing unless edited. "+
     "Ball direction alternates cw/acw. A lasting pattern shows as travel distances that cluster for one direction; machines can change and patterns fade.\n\n"+
@@ -361,8 +362,9 @@ function aiPrompt(){
     "Next spin: direction "+state.dir+", speed "+(state.speed==="F"?"fast":"slow")+", start number "+st+".\n"+
     "The app's own check: state '"+D.state+"', using "+M.name+", centred on travel "+(P.peak!=null?P.peak:"?")+
     ". Fit vs random (bits, above 0 = better than random): "+MODELS.map((x,j)=>x.name+" "+D.ev[j].toFixed(1)).join(", ")+". "+clLine+"\n\n"+
-    "Make your own independent call; you may disagree with the app. Pick the travel distance the 15 bet numbers should centre on, "+
-    "whether the evidence is good enough to bet (bet only if recent spins in this direction clearly beat a random wheel), and the pattern state.\n"+
+    "Make your own independent call; you may disagree with the app, including its state. Pick the travel distance the 15 bet numbers should centre on, "+
+    "and say bet if you judge those 15 more likely than 42% to land (15 numbers pay 36, so 42% is break-even), otherwise wait. "+
+    "Don't default to either: weigh the recent travels in this direction (a cluster in the last 6-10 is enough to bet) and your own record here. Then give the pattern state.\n"+
     'Reply with only JSON: {"travel": 0-36, "bet": true or false, "state": "holding" or "changed" or "random", "why": "2 short sentences for a phone screen, with the actual travels or counts behind it"}';
 }
 async function askClaude(){
