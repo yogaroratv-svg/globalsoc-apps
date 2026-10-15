@@ -165,6 +165,11 @@ summary{font-family:var(--display);font-weight:600;letter-spacing:.06em;text-tra
 select,input[type=number]{background:var(--felt);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
 textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px;font-family:Consolas,monospace;font-size:12px}
 @media (prefers-reduced-motion:reduce){.pad button:active{transform:none}}
+/* v16 simple layout: older panels kept running in the background but off the screen */
+.off{display:none!important}
+details.sec{margin-top:12px}
+details.sec>summary{padding:4px 0}
+#manyBox{margin-top:8px}
 </style>
 
 <header>
@@ -183,7 +188,7 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
   <div><div class="k">Bets</div><div class="v num" id="mWL">0W 0L</div></div>
 </div>
 
-<div class="read" id="readBox" aria-live="polite">
+<div class="read off" id="readBox" aria-live="polite">
   <div class="rgrid">
     <div><div class="k">Confidence</div><div class="v num" id="rConf">–</div></div>
     <div><div class="k">Burst-on</div><div class="v num" id="rBurst">–</div></div>
@@ -212,7 +217,7 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
   <div class="nextwhy" id="s2why"></div>
 </div>
 
-<div class="colour cycbox" id="cycBox" aria-live="polite">
+<div class="colour cycbox off" id="cycBox" aria-live="polite">
   <div class="dot" id="ydot"></div>
   <div class="txt"><span class="lbl">Burst cycle</span> · <span id="ytxt">Needs 8 spins.</span></div>
   <span class="pill cwait" id="ypill">Wait</span>
@@ -227,7 +232,7 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
   <div class="row" id="aiRow" hidden><button class="btn small" id="aiBetBtn" type="button">Bet these</button><button class="btn small" id="aiStop" type="button">Stop</button></div>
 </div>
 
-<div class="colour spikebox" id="spikeBox" aria-live="polite" hidden>
+<div class="colour spikebox off" id="spikeBox" aria-live="polite" hidden>
   <div class="dot" id="sdot"></div>
   <div class="txt"><span class="lbl">Number spike</span> · <span id="stxt"></span></div>
   <span class="pill pattern" id="spill"></span>
@@ -239,26 +244,28 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
   <span class="pill cwait" id="cpill">Wait</span>
 </div>
 
-<div class="tablebar">
-  <div class="seg" role="group" aria-label="Table type">
-    <button type="button" id="tComp" aria-pressed="true">Computerised</button>
-    <button type="button" id="tReal" aria-pressed="false">Real wheel</button>
-  </div>
-  <button class="btn dirbtn" id="dirBtn" type="button" hidden>Next spin: ↻ Clockwise</button>
-</div>
+<button class="btn dirbtn" id="dirBtn" type="button" hidden>Next spin: ↻ Clockwise</button>
 
 <div class="pad" id="pad"></div>
 
+<div class="row"><button class="btn" id="manyBtn" type="button">Add many</button><span class="note">Type or paste the screen's history in one go.</span></div>
+<div id="manyBox" hidden>
+  <label class="note" for="manyIn">Numbers oldest first, separated by spaces or commas. They count as history, not bets.</label>
+  <textarea id="manyIn" inputmode="numeric" placeholder="e.g. 17 4 32 0 26 11" style="min-height:70px;font-family:inherit;font-size:15px"></textarea>
+  <div class="row"><button class="btn on" id="manyAdd" type="button">Add these</button><span class="note" id="manyMsg"></span></div>
+</div>
+
 <div class="strip" id="strip" aria-label="Recent spins, newest first"></div>
 
-<section id="revSec">
-  <h2>Review this table</h2>
+<details class="sec" id="revSec">
+  <summary>Review this table</summary>
   <p class="note" id="revNote">Claude reads every spin and score saved for this table and earlier tables, then tells you how the table is behaving, which bets are working here, and what to do next. Same as asking "check" on the laptop, so the laptop can be off.</p>
   <div class="row"><button class="btn" id="revBtn" type="button">Review this table</button><button class="btn small" id="revStop" type="button" hidden>Stop</button></div>
   <div class="review" id="revOut"></div>
-</section>
+</details>
 
-<section>
+<details class="sec">
+  <summary>Board hot and cold numbers</summary>
   <h2>Board hot numbers</h2>
   <div class="board">
     <input id="h0" type="number" inputmode="numeric" min="0" max="36" aria-label="Hot number 1">
@@ -276,10 +283,10 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
     <span class="grow">Coldest 4 from the screen's last 250 spins, kept moving the same way. Left out of every bet until they land. Marked ❄ on the pad.</span>
   </div>
   <div class="row"><button class="btn" id="setupBtn" type="button">Enter screen history</button><span class="note" id="setupNote">Tap in the screen's recent results to start with signals ready.</span></div>
-</section>
+</details>
 
-<section>
-  <h2>Money</h2>
+<details class="sec">
+  <summary>Money and limits</summary>
   <div class="mgrid">
     <label class="field" for="bankIn">Starting balance ($)<input id="bankIn" type="number" inputmode="decimal" min="0" step="1"></label>
     <label class="field" for="unitIn">$ per number (chip, min $2.50)<input id="unitIn" type="number" inputmode="decimal" min="2.5" step="2.5"></label>
@@ -299,10 +306,10 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
   <div class="row"><input id="adjIn" type="number" inputmode="decimal" min="0" step="1" placeholder="$ amount" aria-label="Other bet amount in dollars"><button class="btn" id="adjWin" type="button">+ Won</button><button class="btn" id="adjLoss" type="button">− Lost</button></div>
   <div id="adjList"></div>
   <p class="note">The app counts its own suggested bets automatically when you tap the result. Tap <b>Skip this bet</b> on the card before entering a spin you didn't play. With a colour amount set, tap the colour pill to skip a colour bet.</p>
-</section>
+</details>
 
-<section>
-  <h2>Scorecard</h2>
+<details class="sec">
+  <summary>Scorecard</summary>
   <div class="seg" role="group" aria-label="Scorecard range">
     <button type="button" id="scopeSession" aria-pressed="true">This session</button>
     <button type="button" id="scopeAll" aria-pressed="false">All sessions</button>
@@ -314,9 +321,9 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
     </table>
   </div>
   <p class="note">Every rule is scored on every spin, side by side. Wheel rules bet the same numbers; they differ only in when they say BET. Units assume 1 unit per number (35:1 straight up), times the suggested stake for the main signal, or 1 unit on the colour (1:1). Compare the 1× and 2× rows to see if high confidence really wins more often. The rule marked best has the highest units with at least 20 bets.</p>
-</section>
+</details>
 
-<section>
+<section class="off">
   <h2>Wheel</h2>
   <div class="sides" id="sides"></div>
   <div class="wheelwrap"><svg id="wheel" viewBox="0 0 340 340" role="img" aria-label="Single-zero wheel with hot arc"></svg></div>
@@ -324,6 +331,10 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
 
 <details id="settings">
   <summary>Settings</summary>
+  <div class="row"><label>Table type</label><div class="seg" role="group" aria-label="Table type">
+    <button type="button" id="tComp" aria-pressed="true">Computerised</button>
+    <button type="button" id="tReal" aria-pressed="false">Real wheel</button>
+  </div></div>
   <div class="row"><label for="kSel">Numbers in each sector</label>
     <select id="kSel"><option value="3">7 per sector (14 total)</option><option value="4">9 per sector (18 total)</option><option value="5">11 per sector (22 total)</option></select></div>
   <div class="row"><label for="winIn">Recent window for the hot arc (spins)</label><input id="winIn" type="number" min="6" max="60" step="1"></div>
@@ -336,26 +347,12 @@ textarea{width:100%;min-height:110px;background:var(--felt);color:var(--ink);bor
 </details>
 
 <details id="howBox">
-  <summary>How the signals work</summary>
-  <p class="note"><b>Jump</b> is how many pockets apart a spin lands from the previous one on the wheel (0–18). Evenly spread spins average about 9.2.</p>
-  <p class="note"><b>Pattern model</b>: no fixed burst rules. On every spin the app learns three things from this table: where spins tend to land relative to the last spin (for example close by, or about 17 pockets clockwise), the same relative to the spin before last, and which areas keep getting hit. A fourth part assumes an even spread. Each part gains trust when it predicted the actual spin well and loses trust when it didn't, so the model shifts as the table changes from bursts to scatter and back. It also learns from your earlier sessions.</p>
-  <p class="note"><b>Sectors</b>: the model's two best non-overlapping 9-number areas. <b>BET</b> when it gives those 18 numbers at least 5 points more than an even spread (49%). The line under Sector 1 says which part it trusts most and how its last 20 predictions did.</p>
-  <p class="note"><b>Cool-off</b>: after the set number of BET misses in a row, the app pauses for at least 2 spins and resumes once a prediction lands again.</p>
-  <p class="note"><b>Confidence</b> (0–100) comes from how far the model is above an even spread and how its last 20 predictions did. <b>High</b> (62+) suggests 2×, but only if recent predictions beat chance and you haven't lost 2 in a row.</p>
-  <p class="note"><b>Burst cycle</b> (your theory): a burst between two areas, then scatter, then a burst between a new area and one of the old ones, then scatter. <b>Burst on</b> = the last 8 spins all landed in two 9-number areas; the app doesn't bet a burst that is already running. One stray spin outside the two areas doesn't end it; it ends when 2 of the last 3 spins miss them. Burst-on % also drops by at most 10 points for a single stray spin. <b>Scatter</b> = no burst now. <b>Burst coming</b> = at least 2 scatter spins after a burst, then the last 3 spins hit one of the old burst areas once and a new area twice: bet 1 chip on each number of those two areas. Cold numbers are left out.</p>
-  <p class="note"><b>Table read</b> (top panel). <b>Confidence</b> is the main card's score. <b>Burst-on %</b> compares how tightly the last 12 spins sit in two 9-number areas (recent spins count more) with evenly spread spins: 80% means tighter than 80% of normal stretches. <b>Random %</b> is the rest. <b>Sector 3</b> is where a new burst looks likely to start: the cycle's new area, or an area that 2 of the last 4 spins hit. <b>Sector 4</b> is the dead area, with the lowest chance from the model; it is left out of the cycle bet.</p>
-  <p class="note"><b>Key numbers</b> (gold ring) are the 3 numbers in each sector the model rates highest. <b>Why Sector 1 / 2</b> says which part of the model picked the area, how many of the last 12 spins landed there, and the model's chance for those numbers.</p>
-  <p class="note"><b>Switching per table</b>: the app scores the model, the cycle bet and the old burst signal at this table. Once one has 12+ bets and is 10+ points below chance here, it switches off. If the model is switched off and the old burst signal is 10+ points above chance, the main card uses the old burst signal instead. The "At this table" line shows the scores. Colour switches between switch and follow the same way.</p>
-  <p class="note"><b>Table type</b> (above the number pad): <b>Computerised</b> ignores direction. <b>Real wheel</b> shows a direction button: set it to the direction of the next spin once, and it flips by itself after every spin you enter (tap it to correct; Undo puts it back). The model then also learns the jump pattern separately for clockwise and anticlockwise spins, and trusts that part more only when it predicts better; the line under Sector 1 shows how much it trusts it.</p>
-  <p class="note"><b>Ask Claude</b> (from 50 spins at a table, screen history included): tap Ask and Claude reads this table's spins, board hot and cold numbers, plus measured stats from this table (hottest wheel areas, repeated jumps, repeat numbers, sleepers, the app model's top numbers and which methods are beating chance here), and picks 15 numbers from the strongest evidence. It shows the method in [brackets] and the figures behind it. It uses your Claude usage and can take up to a minute. Picks count only for the next spin you enter. They are always scored ("Ask Claude picks" row); money counts only if you tap Bet these (1 chip each).</p>
-  <p class="note"><b>Minimums</b>: $2.50 a number and $25 on red/black are built in. Each spin keeps the chip and colour amounts it was played at, so changing them later never rewrites past money. <b>Bet heavy</b> (Money section) adds 1 extra chip on the key numbers in the bet.</p>
-  <p class="note"><b>Cold numbers</b>: enter the 4 coldest from the screen's last 250 spins. They are left out of the model's sectors and the cycle bet until they land, then they come back in. The scorecard row "Cold numbers" shows how often they land anyway.</p>
-  <p class="note"><b>Number spike</b>: the app counts exactly how many pockets clockwise each spin lands from the one before. If one exact jump keeps repeating far more than chance (at least 6 times and well above the 1-in-37 expected), it shows the single number that jump points to from the last spin. Bet 1 chip on it (35:1). It switches off by itself if the jump stops repeating. Skip this bet skips the spike bet too.</p>
-  <p class="note"><b>Scorecard</b>: the old burst, re-forming and forming rules still run in the background as rows, so you can compare them with the model.</p>
-  <p class="note"><b>Safety</b>: STOP once the session is down by the loss limit. Money is saved with the bet that was actually shown, so app updates never change past results.</p>
-  <p class="note"><b>Colour</b>: after 2 of the same colour in a row (setting), bet the <b>switch</b> to the other colour. On your spins the colour switched after a streak 57% of the time, and following a streak of 3 lost. The app also learns each table: if this table's last 20 streaks mostly carried on (a streaky table), it follows the streak instead. <b>2×</b> is suggested only when the last colour bet won and the chosen side has won at least 60% of this table's recent streaks; never after a loss. Zero breaks the streak.</p>
+  <summary>How it works</summary>
+  <p class="note"><b>Model's 15</b> (main card): dozens of pattern ideas (bursts of 15 that hold or flip, hot and sleeping numbers, wheel areas, jumps, ping-pong, opposite side) each pick 15 numbers. After every spin the ideas that won gain trust and the rest lose it, so nothing is a fixed rule. It says <b>Bet</b> when this call is stronger than its usual call at this table, otherwise <b>Wait</b>. Circled numbers are the ones most ideas agree on: 2 chips.</p>
+  <p class="note"><b>Colour</b>: the same kind of learning model for red and black (follow, switch, repeats, what came after this run of colours before). It keeps learning across your tables.</p>
+  <p class="note"><b>Ask Claude</b> (from 50 spins): Claude reads the whole table plus both models and gives its own 15, circled numbers and a colour call.</p>
+  <p class="note"><b>Add many</b> puts the screen's history in quickly; those spins teach the models but are not bets. <b>Skip this bet</b> before entering a spin you didn't play. Your loss limit is in Money and limits.</p>
 </details>
-
 <details id="exportBox">
   <summary>Export</summary>
   <p class="note">Copy this and paste it to Claude after your session for a full analysis.</p>
@@ -1124,11 +1121,19 @@ function refreshBoard(){
 }
 // typing board numbers sets the starting point that refreshBoard moves on from
 function boardBase(){state.bAt=sessionSeq().length;state.bHot=state.hot.slice();state.bCold=(state.cold||[]).slice();}
+// Add many: the screen's history in one go, as history spins (no bets), with one save and one redraw
+function addMany(list){
+  if(state.example){state.spins=[];state.example=false;state.session=1;state.adj=[];}
+  list.forEach((n,i)=>state.spins.push({n,t:Date.now()+i,s:state.session,pre:true,hot:state.hot.slice(),cold:(state.cold||[]).slice(),played:true,colPlayed:true,dv:1,
+    bet:[],stake:0,sbet:[],cbet:[],cv:1,cb:null,cs:0,ca:state.colAmt,u:state.unit,kb:[],ai:[],aik:[],aib:false,dir:null}));
+  aiLive=null;refreshBoard();save();render();
+}
 // key numbers inside the bet that get an extra chip when "bet heavy" is on
 const heavyOf=A=>(A&&A.key?A.key.filter(x=>A.bet.includes(x)):[]);
 function addSpin(n){
   if(state.example){state.spins=[];state.example=false;state.session=1;state.adj=[];}
-  const L=liveA,on=!state.setup&&L&&L.rules.main,son=!state.setup&&L&&L.rules.spike,con=!state.setup&&L&&L.rules.cycle;
+  // v16: the spike and cycle cards are off the screen, so they no longer place (or count money for) bets
+  const L=liveA,on=!state.setup&&L&&L.rules.main,son=false,con=false;
   // Claude's picks belong to the spin they were asked for; a request still running is stopped (it would be late)
   const ai=aiLive&&aiLive.status==="done"&&aiLive.forLen===sessionSeq().length&&!state.setup?aiLive:null;
   if(aiLive&&aiLive.status==="thinking"&&aiCtl)aiCtl.abort();
@@ -1207,7 +1212,7 @@ function render(){
   const cf=$("conf");cf.innerHTML="";
   if(A.conf!==null&&!state.setup){
     const tierTxt={high:"High",medium:"Medium",low:"Low"}[A.tier];
-    cf.append("Confidence "+A.conf+" · "+tierTxt);
+    cf.append((A.lmOn?"Strength ":"Confidence ")+A.conf+" · "+tierTxt);
     const mt=document.createElement("span");mt.className="meter";const mi=document.createElement("i");mi.style.width=A.conf+"%";mt.appendChild(mi);cf.appendChild(mt);
     const st=document.createElement("span");st.className="stake"+(betting&&A.stake===2?" x2":"");
     const hv=A.lmOn||state.heavy?heavyOf(A):[];
@@ -1218,7 +1223,7 @@ function render(){
   pick.className="pick num "+(A.pick===null?"":colorClass(A.pick));pick.style.opacity=betting?1:.5;
   $("why").textContent=state.setup?"Tap the screen's recent numbers, oldest first, then Done.":A.why+(A.noDouble?" High confidence, but no doubling after 2 losses in a row.":"");
   const m=$("metric");
-  if(A.J===null)m.textContent="";
+  if(A.J===null||A.lmOn)m.textContent="";
   else{m.innerHTML="";m.append("Avg jump "+A.J.toFixed(1)+" (spread ≈ "+RANDOM_JUMP+")");const mt=document.createElement("span");mt.className="meter";const i=document.createElement("i");i.style.width=Math.max(4,Math.min(100,(1-A.J/18)*100))+"%";mt.appendChild(i);m.appendChild(mt);}
   const bs=$("betset");bs.innerHTML="";
   $("nextwhy").textContent=A.bet1&&!state.setup?"Pattern: "+A.nextWhy:"";
@@ -1398,6 +1403,10 @@ $("newBtn").addEventListener("click",()=>{
   armed=setTimeout(()=>{armed=null;b.textContent="New session";b.classList.remove("warn");},3000);
 });
 $("doneBtn").addEventListener("click",()=>{state.setup=false;save();render();});
+$("manyBtn").addEventListener("click",()=>{const b=$("manyBox");b.hidden=!b.hidden;if(!b.hidden)$("manyIn").focus();});
+$("manyAdd").addEventListener("click",()=>{const raw=$("manyIn").value.split(/[^0-9]+/).filter(Boolean).map(Number),ok=raw.filter(n=>Number.isInteger(n)&&n>=0&&n<=36);
+  if(!ok.length){$("manyMsg").textContent="No numbers from 0 to 36 found.";return;}
+  addMany(ok);$("manyIn").value="";$("manyMsg").textContent="Added "+ok.length+(raw.length!==ok.length?" (skipped "+(raw.length-ok.length)+" not 0-36)":"")+".";});
 $("setupBtn").addEventListener("click",()=>{state.setup=!state.setup;save();render();});
 for(let i=0;i<4;i++){$("h"+i).addEventListener("change",()=>{
   const vals=[];for(let j=0;j<4;j++){const v=$("h"+j).value;const n=Number(v);if(v!==""&&Number.isInteger(n)&&n>=0&&n<=36&&!vals.includes(n))vals.push(n);}
