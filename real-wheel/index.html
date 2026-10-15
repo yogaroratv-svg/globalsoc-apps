@@ -328,7 +328,10 @@ async function askClaude(){
   render();
 }
 function renderAI(seq){
-  const box=$("ai");box.hidden=!aiSample||seq.length<MIN_TABLE||editing;if(box.hidden)return;
+  const box=$("ai");box.hidden=!aiSample||editing;if(box.hidden)return;
+  if(seq.length<MIN_TABLE){$("aiChips").innerHTML="";$("aiState").textContent="";box.classList.remove("wait");
+    $("aiBig").textContent="Claude joins after "+MIN_TABLE+" spins";
+    $("aiWhy").textContent=(MIN_TABLE-seq.length)+" more to go. Then Claude makes its own call automatically after every spin. The first time, the Claude app asks you to allow it: tap Allow.";return;}
   clearTimeout(aiTimer);if(!aiLive||aiLive.key!==aiKey())aiTimer=setTimeout(askClaude,500);
   const c=$("aiChips");c.innerHTML="";box.classList.remove("wait");$("aiState").textContent="";
   const cl=seq.filter(s=>s.cl),rec=cl.length?" Claude so far: "+cl.filter(s=>s.chit).length+"/"+cl.length+" landed, bets "+cl.filter(s=>s.cb&&s.chit).length+"/"+cl.filter(s=>s.cb).length+".":"";
