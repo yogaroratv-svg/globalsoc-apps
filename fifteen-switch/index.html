@@ -1,0 +1,385 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>15 Switch</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: one phone column at the table. Bet card first, then the three groups, the pad, history, settings. Deliberately dark (casino floor). */
+:root{
+  --bg:#0e1514; --panel:#152120; --panel-2:#1c2b29; --line:#2b3d3a; --fg:#e8eee9; --muted:#93a59f;
+  --hot:#f07a3d; --other:#e4c14e; --cold:#73aee0; --good:#4fc28a; --bad:#e2574c;
+  --red:#c23b2e; --black:#232727; --green:#1f8a4c;
+  --display:"Saira Condensed","Arial Narrow",Arial,sans-serif; --body:"Source Sans 3","Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.4;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 40px}
+main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2,.lbl,.num,button{font-family:var(--display)}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-size:30px;font-weight:700;letter-spacing:.02em;margin:0}
+h1 b{color:var(--hot)}
+.meta{color:var(--muted);font-size:13px;display:flex;gap:10px;flex-wrap:wrap}
+h2{font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin:0;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.note{color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);font-size:16px;font-weight:600;letter-spacing:.04em;padding:8px 14px}
+button:focus-visible,textarea:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--other);outline-offset:2px}
+button:disabled{opacity:.45;cursor:default}
+/* bet card */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{font-size:22px;padding:12px 8px;text-transform:uppercase}
+.seg button[aria-pressed="true"].H{background:var(--hot);color:#1a0d05;border-color:var(--hot)}
+.seg button[aria-pressed="true"].O{background:var(--other);color:#1d1703;border-color:var(--other)}
+.suggest{border-radius:10px;padding:10px 12px;background:var(--panel-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.suggest.sw{border-color:var(--other);box-shadow:0 0 0 1px var(--other) inset}
+.suggest .big{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:.03em}
+.chips{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:30px}
+.chip{min-width:30px;height:28px;padding:0 4px;border-radius:7px;display:inline-grid;place-items:center;font-family:var(--display);font-weight:600;font-size:17px;color:#fff;position:relative;user-select:none;-webkit-user-select:none;touch-action:none}
+.c-red{background:var(--red)}.c-black{background:var(--black);box-shadow:inset 0 0 0 1px #3c4442}.c-green{background:var(--green)}
+.chip.pin::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--fg);box-shadow:0 0 0 2px var(--panel)}
+.chip.sel{outline:2px solid var(--fg);outline-offset:2px}
+.gap{width:8px;display:inline-block}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--panel-2);border-radius:10px;padding:8px 10px;min-width:0}
+.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.stat .v{font-family:var(--display);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12px;color:var(--muted)}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+/* groups */
+.grp{border-radius:12px;padding:10px;border:1px dashed var(--line);display:flex;flex-direction:column;gap:6px;min-width:0}
+.grp.H{border-left:4px solid var(--hot)}.grp.O{border-left:4px solid var(--other)}.grp.C{border-left:4px solid var(--cold)}
+.grp.drop{background:var(--panel-2);border-style:solid}
+.grp .lbl{font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.grp.H .lbl{color:var(--hot)}.grp.O .lbl{color:var(--other)}.grp.C .lbl{color:var(--cold)}
+.ghost{position:fixed;pointer-events:none;z-index:50;transform:translate(-50%,-60%) scale(1.25);box-shadow:0 6px 18px rgba(0,0,0,.5)}
+/* outcome strip */
+.strip{display:flex;gap:3px;overflow-x:auto;padding-bottom:4px}
+.oc{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px}
+.oc .chip{min-width:26px;height:24px;font-size:14px}
+.oc .t{font-family:var(--display);font-size:12px;font-weight:700}
+.t.H{color:var(--hot)}.t.O{color:var(--other)}.t.C{color:var(--cold)}
+.oc.hit .chip{outline:2px solid var(--good);outline-offset:1px}
+/* pad */
+.pad{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.pad button{padding:0;height:46px;font-size:21px;color:#fff;border:0;position:relative}
+.pad button.z{grid-column:span 6;height:40px}
+.pad button i{position:absolute;left:0;right:0;bottom:0;height:4px;border-radius:0 0 10px 10px}
+.pad button i.H{background:var(--hot)}.pad button i.O{background:var(--other)}.pad button i.C{background:var(--cold)}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+textarea{width:100%;box-sizing:border-box;min-height:70px;background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}
+select,input{background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit}
+.why{font-size:14px}
+.warnbtn{border-color:var(--bad);color:var(--bad)}
+@media (prefers-reduced-motion:no-preference){.suggest.sw{animation:pulse 1.6s ease-in-out 2}}
+@keyframes pulse{50%{box-shadow:0 0 0 3px var(--other) inset}}
+</style>
+
+<main>
+<header>
+  <h1><b>15</b> Switch</h1>
+  <div class="meta"><span id="count" class="num">0 spins</span><span id="cloud">Connecting…</span></div>
+</header>
+
+<section class="card" aria-live="polite">
+  <h2>Bet now</h2>
+  <div class="seg">
+    <button type="button" id="betH" class="H" aria-pressed="true">Hot 15</button>
+    <button type="button" id="betO" class="O" aria-pressed="false">Other 15</button>
+  </div>
+  <div class="chips" id="betChips"></div>
+  <div class="suggest" id="suggest"><div class="big" id="sugBig">–</div><div class="why" id="sugWhy"></div>
+    <div class="row"><button type="button" id="sugBtn" hidden>Switch</button><button type="button" id="askBtn" hidden>Ask Claude</button><button type="button" id="askStop" hidden>Stop</button></div>
+    <div class="why" id="askOut" hidden></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="k">Your bets</div><div class="v" id="stBets">–</div><div class="s" id="stBetsS"></div></div>
+    <div class="stat"><div class="k">Money</div><div class="v" id="stMoney">–</div><div class="s" id="stMoneyS"></div></div>
+    <div class="stat"><div class="k">Model's calls</div><div class="v" id="stModel">–</div><div class="s" id="stModelS"></div></div>
+  </div>
+  <div class="note" id="mix"></div>
+</section>
+
+<section class="card" id="noteCard" hidden>
+  <h2>Note from Claude</h2>
+  <div class="why" id="noteText"></div><div class="note" id="noteAt"></div>
+</section>
+
+<section class="card">
+  <div class="row" style="justify-content:space-between"><h2>Groups</h2><button type="button" id="resetPins">Undo my moves</button></div>
+  <div class="note">Drag a number to another group to correct it, or tap it and then tap the group. A dot marks numbers you moved.</div>
+  <div class="grp H" data-g="H"><div class="lbl">Hot <span id="nH"></span></div><div class="chips" id="gH"></div></div>
+  <div class="grp O" data-g="O"><div class="lbl">Other <span id="nO"></span></div><div class="chips" id="gO"></div></div>
+  <div class="grp C" data-g="C"><div class="lbl">Coldest <span id="nC"></span></div><div class="chips" id="gC"></div></div>
+</section>
+
+<section class="card">
+  <h2>Enter spin</h2>
+  <div class="pad" id="pad"></div>
+  <div class="tools">
+    <button type="button" id="undo">Undo</button>
+    <button type="button" id="pasteBtn">Add many</button>
+    <button type="button" id="newTable">New table</button>
+  </div>
+  <div id="pasteBox" hidden>
+    <label class="note" for="pasteIn">Type or paste the screen's numbers, oldest first, separated by spaces or commas. They count as history, not bets.</label>
+    <textarea id="pasteIn" inputmode="numeric" placeholder="e.g. 17 4 32 0 26 11"></textarea>
+    <div class="row"><button type="button" id="pasteAdd">Add these</button><span class="note" id="pasteMsg"></span></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Last spins</h2>
+  <div class="strip" id="strip"></div>
+  <div class="note">Letter = the group the number was in when it landed. Green ring = your bet won.</div>
+</section>
+
+<section class="card">
+  <h2>Settings</h2>
+  <div class="row"><label for="winSel">Hot and cold counted over the last</label>
+    <select id="winSel"><option value="25">25 spins</option><option value="37">37 spins</option><option value="50">50 spins</option><option value="100">100 spins</option><option value="0">all spins</option></select></div>
+  <div class="row"><label for="unitIn">Chip per number $</label><input id="unitIn" type="number" inputmode="decimal" min="0.5" step="0.5" style="width:90px"></div>
+  <div class="row"><button type="button" id="wipe" class="warnbtn">Clear all history</button></div>
+</section>
+</main>
+
+<script>
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const POS=[];WHEEL.forEach((n,i)=>POS[n]=i);
+const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const colorClass=n=>n===0?"c-green":RED.has(n)?"c-red":"c-black";
+const $=id=>document.getElementById(id);
+const KEY="fifteenSwitch.v1",MIN_SUGGEST=50,GN={H:"Hot",O:"Other",C:"Coldest"};
+const newRun=()=>Date.now().toString(36);
+let state={v:1,run:newRun(),table:1,spins:[],active:"H",pins:{},win:37,unit:2.5};
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&Array.isArray(s.spins))state=Object.assign(state,s);}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}cloudQueue();}
+const tableSpins=()=>state.spins.filter(s=>s.s===state.table);
+const money=x=>{const r=Math.round(x*100)/100,a=Math.abs(r);return (r>0?"+$":r<0?"−$":"$")+(Number.isInteger(a)?a:a.toFixed(2));};
+
+/* ---------- groups: hot 15 = most hits over the window (ties: hit more recently), coldest 7 = fewest (ties: unseen longest), other = the rest ---------- */
+function groupsOf(nums){
+  const W=state.win>0?state.win:nums.length,w=nums.slice(-W),c=new Array(37).fill(0),seen=new Array(37).fill(-1);
+  w.forEach(x=>c[x]++);nums.forEach((x,i)=>seen[x]=i);
+  const all=[...Array(37).keys()];
+  const hot=all.slice().sort((a,b)=>c[b]-c[a]||seen[b]-seen[a]||POS[a]-POS[b]).slice(0,15);
+  const cold=all.filter(x=>!hot.includes(x)).sort((a,b)=>c[a]-c[b]||seen[a]-seen[b]||POS[a]-POS[b]).slice(0,7);
+  const g={};all.forEach(x=>g[x]=hot.includes(x)?"H":cold.includes(x)?"C":"O");return g;
+}
+function withPins(g){const out=Object.assign({},g);Object.entries(state.pins||{}).forEach(([n,G])=>out[n]=G);return out;}
+const members=(g,G)=>[...Array(37).keys()].filter(x=>g[x]===G);
+
+/* ---------- switch model: no fixed rule. Many small ideas about which group comes next (stay, switch, same as 2 back,
+   the group ahead or behind over 3-20 spins, "what followed this same run of H/O/C before", and holders that flip after
+   m misses in k) are reweighted after every spin by whether their call won. Learners with different speeds run side by side.
+   It starts each table with what it learned at your earlier tables. ---------- */
+const FLIP=[[2,2],[2,3],[3,4],[3,5],[4,6],[5,8]];
+const swap=g=>g==="H"?"O":g==="O"?"H":null;
+function maj(a){let h=0,o=0;a.forEach(g=>g==="H"?h++:g==="O"?o++:0);return h===o?null:h>o?"H":"O";}
+function follow(o,L,W){const n=o.length;if(n<=L)return {g:null,h:0,o:0};let h=0,oo=0;
+  for(let i=Math.max(L,n-W);i<n;i++){let ok=true;for(let j=1;j<=L;j++)if(o[i-j]!==o[n-j]){ok=false;break;}if(!ok)continue;if(o[i]==="H")h++;else if(o[i]==="O")oo++;}
+  return {g:h===oo?null:h>oo?"H":"O",h,o:oo};}
+const EX=(()=>{const e=[{name:"stay with the group that just hit",f:(o)=>o.length&&o[o.length-1]!=="C"?o[o.length-1]:null},
+  {name:"switch from the group that just hit",f:(o)=>o.length?swap(o[o.length-1]):null},
+  {name:"same group as 2 spins back",f:(o)=>o.length>=2&&o[o.length-2]!=="C"?o[o.length-2]:null}];
+  [3,5,8,12,20].forEach(k=>{e.push({name:"the group ahead over the last "+k,f:(o)=>maj(o.slice(-k))});e.push({name:"the group behind over the last "+k,f:(o)=>swap(maj(o.slice(-k)))});});
+  [1,2,3,4].forEach(L=>[30,1000].forEach(W=>e.push({name:"what followed the last "+L+" result"+(L>1?"s":"")+(W<100?" (recent)":""),L,W,f:(o)=>follow(o,L,W).g})));
+  FLIP.forEach(([m,k],j)=>e.push({name:"stick with a group until it misses "+m+" of "+k,flip:j,f:(o,st)=>st.fl[j].g}));
+  return e;})();
+const LR=[[0.05,0.005],[0.15,0.02],[0.4,0.05]],CH=15/37;
+function mNew(){const E=EX.length;return {o:[],strs:[],W:LR.map(()=>new Array(E).fill(1/E)),top:LR.map(()=>1/LR.length),rec:EX.map(()=>[0,0]),fl:FLIP.map(()=>({g:"H"}))};}
+function mPredict(st){
+  const last=EX.map(e=>e.f(st.o,st));
+  const call=w=>{let h=0,o=0;last.forEach((p,i)=>{if(p==="H")h+=w[i];else if(p==="O")o+=w[i];});return {h,o};};
+  const per=st.W.map(w=>{const v=call(w);return v.h===v.o?null:v.h>v.o?"H":"O";});
+  let h=0,o=0;st.W.forEach((w,a)=>{const v=call(w),t=v.h+v.o||1;h+=st.top[a]*v.h/t;o+=st.top[a]*v.o/t;});
+  const g=h===o?null:h>o?"H":"O",s=Math.abs(h-o)/(h+o||1),rank=st.strs.length?st.strs.filter(x=>x<s).length/st.strs.length:0.5;
+  const wt=EX.map((e,i)=>st.W.reduce((acc,w,a)=>acc+st.top[a]*w[i],0)),tw=wt.reduce((x,y)=>x+y,0);
+  const lead=EX.map((e,i)=>({i,name:e.name,w:wt[i]/tw,b:st.rec[i][0],won:st.rec[i][1],call:last[i]})).sort((x,y)=>y.w-x.w);
+  let why="";const ag=lead.find(l=>l.call===g);
+  if(ag){const e=EX[ag.i];why=ag.name;
+    if(e.L){const m=follow(st.o,e.L,e.W),run=st.o.slice(-e.L).join("-");why="after "+run+" it went Hot "+m.h+", Other "+m.o+" times before";}
+    if(e.flip!==undefined)why="it has stuck with "+GN[g]+" and "+GN[g]+" hasn't missed enough to switch";
+    why+=" (this idea has won "+ag.won+" of "+ag.b+")";}
+  return {g,s,rank,last,per,why,lead:lead.slice(0,3)};
+}
+function mUpdate(st,y,P){
+  if(P.g)st.strs.push(P.s);if(st.strs.length>400)st.strs.shift();
+  P.last.forEach((p,i)=>{if(p){st.rec[i][0]++;if(p===y)st.rec[i][1]++;}});
+  st.W.forEach((w,a)=>{const [eta,al]=LR[a];let s=0;w.forEach((v,i)=>{if(P.last[i])w[i]=v*Math.exp(eta*((P.last[i]===y?1:0)-CH));s+=w[i];});w.forEach((v,i)=>w[i]=(1-al)*v/s+al/w.length);});
+  let s=0;st.top.forEach((v,a)=>{if(P.per[a])st.top[a]=v*Math.exp(0.5*((P.per[a]===y?1:0)-CH));s+=st.top[a];});st.top.forEach((v,a)=>st.top[a]=Math.max(0.02,v/s));
+  st.o.push(y);
+  // the holders: flip when their group missed m of the last k
+  FLIP.forEach(([m,k],j)=>{const f=st.fl[j];if(st.o.slice(-k).filter(x=>x!==f.g).length>=m&&st.o.length>=k)f.g=swap(f.g);});
+}
+// each table's group results (H/O/C), computed from its numbers alone
+function outcomes(nums){const o=[];for(let i=0;i<nums.length;i++)o.push(i<5?"-":groupsOf(nums.slice(0,i))[nums[i]]);return o;}
+let preCache={key:"",st:null};
+function mStart(){
+  const prev=state.spins.filter(s=>s.s<state.table),key=state.table+":"+prev.length+":"+state.win+":"+(prev.length?prev[prev.length-1].t:0);
+  if(preCache.key!==key){const st=mNew();[...new Set(prev.map(s=>s.s))].forEach(t=>{const o=outcomes(prev.filter(s=>s.s===t).map(s=>s.n));o.forEach((y,i)=>{if(i>=10)mUpdate(st,y,mPredict(st));});});preCache={key,st};}
+  return JSON.parse(JSON.stringify(preCache.st));
+}
+// run the model through this table: its call before each spin, and its call for the next one
+function runTable(seq){
+  const nums=seq.map(s=>s.n),o=outcomes(nums),st=mStart(),calls=[];
+  for(let i=0;i<nums.length;i++){const P=mPredict(st);calls.push(P);if(i>=10)mUpdate(st,o[i],P);}
+  return {o,calls,next:mPredict(st),seen:st.o.length};
+}
+
+/* ---------- entering spins ---------- */
+let aiLive=null;
+function addSpin(n,pre){
+  const seq=tableSpins(),nums=seq.map(s=>s.n),g=withPins(groupsOf(nums)),R=runTable(seq);
+  const sp={n,t:Date.now(),s:state.table,pre:!!pre};
+  if(!pre){sp.a=state.active;sp.k=members(g,state.active).length;sp.g=g[n];sp.hot=members(g,"H");sp.cold=members(g,"C");
+    if(seq.length>=MIN_SUGGEST&&R.next.g){sp.m=R.next.g;sp.mr=Math.round(R.next.rank*100);}
+    if(aiLive&&aiLive.forLen===seq.length&&aiLive.bet)sp.c=aiLive.bet;}
+  state.spins.push(sp);aiLive=null;
+}
+function wheelRuns(nums){
+  const ps=nums.map(x=>POS[x]).sort((a,b)=>a-b);if(!ps.length)return [];let st=0,gw=-1;
+  ps.forEach((p,i)=>{const gp=(p-ps[(i+ps.length-1)%ps.length]+37)%37||37;if(gp>gw){gw=gp;st=i;}});
+  const runs=[];ps.slice(st).concat(ps.slice(0,st)).forEach((p,i,a)=>{if(!i||(p-a[i-1]+37)%37>1)runs.push([]);runs[runs.length-1].push(WHEEL[p]);});return runs;
+}
+function chip(n,extra){const c=document.createElement("span");c.className="chip "+colorClass(n)+(extra?" "+extra:"");c.textContent=n;c.dataset.n=n;return c;}
+function fillRuns(el,nums,decorate){el.innerHTML="";wheelRuns(nums).forEach((r,i)=>{if(i){const g=document.createElement("span");g.className="gap";el.appendChild(g);}r.forEach(n=>el.appendChild(decorate?decorate(n):chip(n)));});}
+
+/* ---------- render ---------- */
+let selNum=null;
+function render(){
+  const seq=tableSpins(),nums=seq.map(s=>s.n),g=withPins(groupsOf(nums)),R=runTable(seq);
+  const live=seq.filter(s=>!s.pre);
+  $("count").textContent="Table "+state.table+" · "+seq.length+" spin"+(seq.length===1?"":"s")+(live.length!==seq.length?" ("+live.length+" live)":"");
+  ["H","O"].forEach(G=>$("bet"+G).setAttribute("aria-pressed",String(state.active===G)));
+  const act=members(g,state.active);
+  fillRuns($("betChips"),act);
+  // suggestion
+  const P=R.next,sg=$("suggest"),btn=$("sugBtn");btn.hidden=true;sg.classList.remove("sw");
+  if(seq.length<MIN_SUGGEST){$("sugBig").textContent="Switch tips from "+MIN_SUGGEST+" spins";$("sugWhy").textContent=seq.length+" so far. Use Add many to type in the screen's history and start sooner.";}
+  else if(!P.g){$("sugBig").textContent="Model: no lean";$("sugWhy").textContent="Its ideas are split right now. Stay where you are or sit this one out.";}
+  else{const strong=P.rank>=0.5,word=strong?"":"leaning ";
+    if(P.g!==state.active){sg.classList.add("sw");$("sugBig").textContent="Switch to "+GN[P.g]+" 15";btn.hidden=false;btn.textContent="Switch to "+GN[P.g];btn.dataset.g=P.g;}
+    else $("sugBig").textContent="Stay on "+GN[P.g]+" 15";
+    $("sugWhy").textContent="Model is "+word+GN[P.g]+": "+(P.why||"its ideas lean that way")+". "+(strong?"Stronger than its usual call.":"Weaker than its usual call.")+
+      " Learned from "+R.seen+" spins; trusts most: "+P.lead.map(l=>l.name+" "+Math.round(100*l.w)+"%").join(", ")+".";}
+  $("askBtn").hidden=!aiSample||seq.length<MIN_SUGGEST;
+  const ao=$("askOut");
+  if(aiLive&&aiLive.forLen===seq.length){ao.hidden=false;ao.textContent=aiLive.text;}else{ao.hidden=true;if(aiLive&&!aiLive.busy)aiLive=null;}
+  // results
+  const bets=live.filter(s=>s.a&&s.g),won=bets.filter(s=>s.g===s.a).length,exp=bets.reduce((t,s)=>t+(s.k||15)/37,0);
+  const units=bets.reduce((t,s)=>t+(s.g===s.a?36-(s.k||15):-(s.k||15)),0);
+  $("stBets").textContent=bets.length?won+"/"+bets.length:"–";$("stBetsS").textContent=bets.length?exp.toFixed(1)+" expected":"no live bets yet";
+  $("stMoney").textContent=bets.length?money(units*state.unit):"–";$("stMoney").className="v "+(units>0?"pos":units<0?"neg":"");
+  $("stMoneyS").textContent="$"+state.unit+" a number";
+  const mc=live.filter(s=>s.m&&s.g),mw=mc.filter(s=>s.g===s.m).length;
+  $("stModel").textContent=mc.length?mw+"/"+mc.length:"–";$("stModelS").textContent=mc.length?(mc.length*15/37).toFixed(1)+" expected if followed":"from "+MIN_SUGGEST+" spins";
+  const o=R.o,cnt=(k,G)=>o.slice(-k).filter(x=>x===G).length;
+  if(o.length>=12){const k=Math.min(37,o.length);$("mix").textContent="Last 12: Hot "+cnt(12,"H")+" · Other "+cnt(12,"O")+" · Coldest "+cnt(12,"C")+" (even 4.9 / 4.9 / 2.3). Last "+k+": Hot "+cnt(k,"H")+" · Other "+cnt(k,"O")+" · Coldest "+cnt(k,"C")+".";}
+  else $("mix").textContent="";
+  // groups
+  ["H","O","C"].forEach(G=>{const m=members(g,G);$("n"+G).textContent="· "+m.length;
+    fillRuns($("g"+G),m,n=>chip(n,[state.pins[n]?"pin":"",selNum===n?"sel":""].join(" ").trim()));});
+  $("resetPins").disabled=!Object.keys(state.pins).length;
+  // pad marks
+  document.querySelectorAll("#pad button[data-n]").forEach(b=>{b.querySelector("i").className=g[+b.dataset.n];});
+  // strip
+  const strip=$("strip");strip.innerHTML="";seq.slice(-30).reverse().forEach((s,ix)=>{const i=seq.length-1-ix;const d=document.createElement("div");
+    const G=s.g||o[i];d.className="oc"+(!s.pre&&s.a&&s.g===s.a?" hit":"");d.appendChild(chip(s.n,s.pre?"":""));if(s.pre)d.style.opacity=.55;
+    const t=document.createElement("span");t.className="t "+G;t.textContent=G;d.appendChild(t);strip.appendChild(d);});
+  $("undo").disabled=!seq.length;
+  $("winSel").value=String(state.win);if(document.activeElement!==$("unitIn"))$("unitIn").value=state.unit;
+}
+
+/* ---------- pad, paste, controls ---------- */
+(function buildPad(){const pad=$("pad");const mk=n=>{const b=document.createElement("button");b.type="button";b.className=colorClass(n)+(n===0?" z":"");b.textContent=n;b.dataset.n=n;
+  b.setAttribute("aria-label","Spin "+n);const i=document.createElement("i");b.appendChild(i);b.addEventListener("click",()=>{addSpin(n,false);save();render();});pad.appendChild(b);};
+  mk(0);for(let n=1;n<=36;n++)mk(n);})();
+$("undo").addEventListener("click",()=>{const seq=tableSpins();if(!seq.length)return;state.spins.splice(state.spins.lastIndexOf(seq[seq.length-1]),1);save();render();});
+$("pasteBtn").addEventListener("click",()=>{$("pasteBox").hidden=!$("pasteBox").hidden;if(!$("pasteBox").hidden)$("pasteIn").focus();});
+$("pasteAdd").addEventListener("click",()=>{const raw=$("pasteIn").value.split(/[^0-9]+/).filter(Boolean).map(Number);const ok=raw.filter(n=>Number.isInteger(n)&&n>=0&&n<=36);
+  if(!ok.length){$("pasteMsg").textContent="No numbers from 0 to 36 found.";return;}
+  ok.forEach(n=>addSpin(n,true));$("pasteIn").value="";$("pasteMsg").textContent="Added "+ok.length+(raw.length!==ok.length?" (skipped "+(raw.length-ok.length)+" not 0-36)":"")+".";save();render();});
+["H","O"].forEach(G=>$("bet"+G).addEventListener("click",()=>{state.active=G;save();render();}));
+$("sugBtn").addEventListener("click",e=>{const G=e.currentTarget.dataset.g;if(G){state.active=G;save();render();}});
+let newArmed=null;$("newTable").addEventListener("click",()=>{const b=$("newTable");if(!newArmed){b.textContent="Tap again";newArmed=setTimeout(()=>{newArmed=null;b.textContent="New table";},3000);return;}
+  clearTimeout(newArmed);newArmed=null;b.textContent="New table";state.table++;state.pins={};save();render();});
+let wipeArmed=null;$("wipe").addEventListener("click",()=>{const b=$("wipe");if(!wipeArmed){b.textContent="Tap again to clear everything on this phone";wipeArmed=setTimeout(()=>{wipeArmed=null;b.textContent="Clear all history";},3000);return;}
+  clearTimeout(wipeArmed);wipeArmed=null;b.textContent="Clear all history";state.run=newRun();state.spins=[];state.table=1;state.pins={};save();render();});
+$("resetPins").addEventListener("click",()=>{state.pins={};selNum=null;save();render();});
+$("winSel").addEventListener("change",e=>{state.win=Number(e.target.value);save();render();});
+$("unitIn").addEventListener("change",e=>{const v=Number(e.target.value);state.unit=v>0?v:2.5;save();render();});
+
+/* ---------- moving numbers between groups: drag, or tap a number then tap a group ---------- */
+function moveTo(n,G){const base=groupsOf(tableSpins().map(s=>s.n));if(base[n]===G)delete state.pins[n];else state.pins[n]=G;selNum=null;save();render();}
+let drag=null;
+document.addEventListener("pointerdown",e=>{const c=e.target.closest(".grp .chip");if(!c)return;drag={n:+c.dataset.n,x:e.clientX,y:e.clientY,ghost:null,moved:false};});
+document.addEventListener("pointermove",e=>{if(!drag)return;
+  if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<8)return;
+  if(!drag.moved){drag.moved=true;drag.ghost=chip(drag.n,"ghost");document.body.appendChild(drag.ghost);}
+  e.preventDefault();drag.ghost.style.left=e.clientX+"px";drag.ghost.style.top=e.clientY+"px";
+  document.querySelectorAll(".grp").forEach(g=>g.classList.remove("drop"));const over=document.elementFromPoint(e.clientX,e.clientY);const g=over&&over.closest(".grp");if(g)g.classList.add("drop");},{passive:false});
+document.addEventListener("pointerup",e=>{if(!drag)return;const d=drag;drag=null;document.querySelectorAll(".grp").forEach(g=>g.classList.remove("drop"));
+  if(d.ghost)d.ghost.remove();
+  if(d.moved){const over=document.elementFromPoint(e.clientX,e.clientY),g=over&&over.closest(".grp");if(g)moveTo(d.n,g.dataset.g);return;}
+  selNum=selNum===d.n?null:d.n;render();});
+document.addEventListener("pointercancel",()=>{if(drag&&drag.ghost)drag.ghost.remove();drag=null;});
+document.querySelectorAll(".grp").forEach(g=>g.addEventListener("click",e=>{if(selNum===null||e.target.closest(".chip"))return;moveTo(selNum,g.dataset.g);}));
+
+/* ---------- Ask Claude: reads this table and the model, says hot or other ---------- */
+let aiSample=null,aiCtl=null;
+function askPrompt(){
+  const seq=tableSpins(),nums=seq.map(s=>s.n),R=runTable(seq),g=withPins(groupsOf(nums)),P=R.next;
+  const live=seq.filter(s=>!s.pre&&s.a&&s.g);
+  return "A roulette player (single zero, computerised table) splits the 37 numbers into three groups each spin: Hot 15 (most hits over the last "+(state.win||"all")+" spins), Other 15 and Coldest 7, and bets either the Hot 15 or the Other 15. "+
+    "They have seen long runs where the Hot 15 keep landing, a few random spins, then the table swings to the Other 15. Decide which group to bet on the next spin.\n"+
+    "Wheel order clockwise from 0: "+WHEEL.join(" ")+"\n"+
+    "Spins at this table, oldest first: "+nums.join(" ")+"\n"+
+    "Group each spin landed in at the time (H=Hot, O=Other, C=Coldest), oldest first: "+R.o.join("")+"\n"+
+    "Groups now: Hot "+members(g,"H").join(" ")+" | Other "+members(g,"O").join(" ")+" | Coldest "+members(g,"C").join(" ")+"\n"+
+    "Player is betting: "+GN[state.active]+". Their live bets here: "+live.filter(s=>s.g===s.a).length+" won of "+live.length+".\n"+
+    "The app's learning model says "+(P.g?GN[P.g]:"no lean")+(P.g?" ("+(P.rank>=0.5?"stronger":"weaker")+" than its usual call): "+P.why:"")+"; trusts most: "+P.lead.map(l=>l.name+" "+Math.round(100*l.w)+"% (won "+l.won+"/"+l.b+")").join(", ")+"\n"+
+    "Read the long H/O/C string yourself: look for runs, swings and repeats, weight the last 10-15 spins most, compare with the model, and decide. Be plain: never promise a win.\n"+
+    'Reply with only JSON: {"bet":"hot" or "other","confidence":"low" or "medium" or "high","why":"2-3 short sentences for a phone screen with the actual counts behind it"}';
+}
+async function askClaude(){
+  if(!aiSample||(aiLive&&aiLive.busy))return;const forLen=tableSpins().length;aiCtl=new AbortController();
+  aiLive={forLen,busy:true,text:"Thinking… up to a minute."};$("askStop").hidden=false;render();
+  try{const r=await aiSample.json(askPrompt(),{signal:aiCtl.signal,cache:false});const b=r&&String(r.bet).toLowerCase()==="other"?"O":"H";
+    aiLive={forLen,busy:false,bet:b,text:"Claude: bet "+GN[b]+" 15 ("+(r&&r.confidence||"low")+" confidence). "+String((r&&r.why)||"").slice(0,400)};}
+  catch(e){const c=e&&e.code;aiLive=c==="cancelled"?null:{forLen,busy:false,text:c==="rate_limited"?"Too many requests or usage limit reached. Try later.":c==="not_granted"?"Claude isn't allowed for this page. Allow it in the page's permissions.":"Couldn't get an answer this time. Tap Ask Claude again."};}
+  $("askStop").hidden=true;render();
+}
+$("askBtn").addEventListener("click",askClaude);
+$("askStop").addEventListener("click",()=>{if(aiCtl)aiCtl.abort();});
+
+/* ---------- cloud copy: each table mirrored to the artifact's db so Claude can read results and leave a note ---------- */
+let cdb=null,cloudTimer=null,cloudBusy=false,cloudAgain=false,cloudState="connecting",cloudAt=0;const CHUNK=400;
+let cloudSent={};try{cloudSent=JSON.parse(localStorage.getItem(KEY+".cloud")||"{}")||{};}catch(e){}
+const hashStr=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h+":"+s.length;};
+function cloudMsg(){const t=cloudAt?new Date(cloudAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"";
+  $("cloud").textContent=cloudState==="ok"?"Saved"+(t?" "+t:""):cloudState==="retry"?"Offline: saved on this phone":cloudState==="off"?"Saved on this phone":"Connecting…";}
+function cloudQueue(){if(!cdb)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1200);}
+async function cloudPush(){
+  if(!cdb)return;if(cloudBusy){cloudAgain=true;return;}cloudBusy=true;
+  try{for(const t of [...new Set(state.spins.map(s=>s.s))]){const all=state.spins.filter(x=>x.s===t);
+      for(let p=0;p*CHUNK<Math.max(all.length,1);p++){const id=state.run+"_"+t+"_"+p;
+        const body={run:state.run,table:t,part:p,from:p*CHUNK,spins:all.slice(p*CHUNK,(p+1)*CHUNK),win:state.win,unit:state.unit,active:state.active,pins:state.pins,app:"15switch-v1"};
+        const sig=hashStr(JSON.stringify(body));if(cloudSent[id]===sig)continue;body.updated=Date.now();
+        await cdb.doc("tables/"+id).set(body);cloudSent[id]=sig;try{localStorage.setItem(KEY+".cloud",JSON.stringify(cloudSent));}catch(e){}}}
+    cloudState="ok";cloudAt=Date.now();}
+  catch(e){cloudState="retry";clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,30000);}
+  cloudBusy=false;cloudMsg();if(cloudAgain){cloudAgain=false;cloudQueue();}
+}
+const use=n=>window.claude&&typeof window.claude.use==="function"?window.claude.use(n):Promise.resolve(null);
+use("db").then(d=>{cdb=d;if(!d){cloudState="off";cloudMsg();return;}cloudPush();
+  d.doc("notes/latest").onSnapshot(s=>{const v=s.exists?s.data():null;$("noteCard").hidden=!(v&&v.text);if(v&&v.text){$("noteText").textContent=v.text;$("noteAt").textContent=v.at?"Written "+new Date(v.at).toLocaleString([],{weekday:"short",hour:"numeric",minute:"2-digit"}):"";}},()=>{});
+},()=>{cloudState="off";cloudMsg();});
+use("sample").then(s=>{aiSample=s||null;render();},()=>{});
+cloudMsg();render();
+</script>
+
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body></html>
