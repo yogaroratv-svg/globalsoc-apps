@@ -146,7 +146,7 @@ az group delete -n rg-globalsoc-api-lab --yes
 az group exists -n rg-globalsoc-api-lab
 # Expected after completion: false
 Remove-Item Env:LAB_KEY,Env:FP_SECRET,Env:TURNSTILE_SECRET -ErrorAction SilentlyContinue
-</code></pre><h2>Complete source files</h2><p>Copy each block to the filename shown. There are no third-party Python packages. The Docker image supplies Python; deploy.ps1 connects the Container Apps environment to Log Analytics and deploys the source. The tests cover actual HTTP behavior for capacity rejection, throttling, key rejection, and CAPTCHA failure. A successful external CAPTCHA requires the separate manual widget test described above.</p><h3>app.py</h3><pre><code class="language-python">&quot;&quot;&quot;Single-process teaching lab. Run python app.py; never place on a production route.&quot;&quot;&quot;
+</code></pre><figure><a href="screenshots/06a-cleanup-progress.jpg"><img loading="lazy" src="screenshots/06a-cleanup-progress.jpg" alt="Intermediate deletion state: only the Container Apps environment remained; the separate final screenshot verifies completion"></a><figcaption>Intermediate deletion state: only the Container Apps environment remained; the separate final screenshot verifies completion — click to view the full screenshot.</figcaption></figure><h2>Complete source files</h2><p>Copy each block to the filename shown. There are no third-party Python packages. The Docker image supplies Python; deploy.ps1 connects the Container Apps environment to Log Analytics and deploys the source. The tests cover actual HTTP behavior for capacity rejection, throttling, key rejection, and CAPTCHA failure. A successful external CAPTCHA requires the separate manual widget test described above.</p><h3>app.py</h3><pre><code class="language-python">&quot;&quot;&quot;Single-process teaching lab. Run python app.py; never place on a production route.&quot;&quot;&quot;
 import collections
 import hashlib
 import hmac
@@ -216,7 +216,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == &#x27;/&#x27;:
             html = &#x27;&#x27;&#x27;&lt;!doctype html&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1&quot;&gt;&lt;title&gt;GlobalSOC Azure Lab&lt;/title&gt;
 &lt;style&gt;body{max-width:850px;margin:60px auto;padding:24px;background:#f3f7fb;color:#10283a;font:18px/1.6 system-ui}h1{font-size:44px}input,button{font:inherit;padding:12px;margin:12px 0}button{background:#086c91;color:white;border:0;border-radius:6px}pre{white-space:pre-wrap;background:#10283a;color:#e3f5ff;padding:24px;border-radius:8px}.cf-turnstile{margin:20px 0}&lt;/style&gt;
-&lt;p&gt;GLOBAL SOC Â· AZURE CLASSROOM LAB&lt;/p&gt;&lt;h1&gt;API resilience lab&lt;/h1&gt;&lt;p&gt;Enter your lab key, then complete the challenge.&lt;/p&gt;&lt;p&gt;MODELABEL&lt;/p&gt;
+&lt;p&gt;GLOBAL SOC · AZURE CLASSROOM LAB&lt;/p&gt;&lt;h1&gt;API resilience lab&lt;/h1&gt;&lt;p&gt;Enter your lab key, then complete the challenge.&lt;/p&gt;&lt;p&gt;MODELABEL&lt;/p&gt;
 &lt;input id=&quot;key&quot; type=&quot;password&quot; placeholder=&quot;Lab key&quot;&gt;&lt;button onclick=&quot;callApi()&quot;&gt;Call API&lt;/button&gt;
 &lt;div class=&quot;cf-turnstile&quot; data-sitekey=&quot;SITEKEY&quot; data-action=&quot;lab&quot; data-callback=&quot;solved&quot;&gt;&lt;/div&gt;
 &lt;pre id=&quot;result&quot;&gt;&lt;/pre&gt;&lt;script src=&quot;https://challenges.cloudflare.com/turnstile/v0/api.js&quot; async defer&gt;&lt;/script&gt;
@@ -224,7 +224,7 @@ class Handler(BaseHTTPRequestHandler):
 let r=await fetch(&#x27;/api/work&#x27;,{headers:{&#x27;X-Lab-Key&#x27;:document.getElementById(&#x27;key&#x27;).value,
 &#x27;X-Captcha-Token&#x27;:token}});document.getElementById(&#x27;result&#x27;).textContent=r.status+&#x27; &#x27;+await r.text();
 token=&#x27;&#x27;;if(window.turnstile)turnstile.reset();}&lt;/script&gt;&#x27;&#x27;&#x27;.replace(&#x27;SITEKEY&#x27;, SITE_KEY)
-            html = html.replace(&#x27;MODELABEL&#x27;, &#x27;Mode: &#x27; + MODE + (&#x27; Â· PUBLIC TEST KEYS â€” no bot protection&#x27; if TEST_CAPTCHA else &#x27;&#x27;))
+            html = html.replace(&#x27;MODELABEL&#x27;, &#x27;Mode: &#x27; + MODE + (&#x27; · PUBLIC TEST KEYS — no bot protection&#x27; if TEST_CAPTCHA else &#x27;&#x27;))
             if not SITE_KEY:
                 html = html.replace(&#x27;&lt;div class=&quot;cf-turnstile&quot; data-sitekey=&quot;&quot; data-action=&quot;lab&quot; data-callback=&quot;solved&quot;&gt;&lt;/div&gt;&#x27;, &#x27;&lt;p&gt;CAPTCHA widget not configured. Challenge enforcement can still be tested without a token.&lt;/p&gt;&#x27;)
                 html = html.replace(&#x27;&lt;script src=&quot;https://challenges.cloudflare.com/turnstile/v0/api.js&quot; async defer&gt;&lt;/script&gt;&#x27;, &#x27;&#x27;)
