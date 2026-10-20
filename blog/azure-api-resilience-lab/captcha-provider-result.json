@@ -1,0 +1,41 @@
+{
+  "scope": "Official public dummy keys. Integration test only; no real bot protection or human challenge solved.",
+  "warmup": [
+    {
+      "status": 200,
+      "body": {
+        "message": "work_complete"
+      }
+    },
+    {
+      "status": 200,
+      "body": {
+        "message": "work_complete"
+      }
+    },
+    {
+      "status": 200,
+      "body": {
+        "message": "work_complete"
+      }
+    }
+  ],
+  "no_token": {
+    "status": 403,
+    "body": {
+      "error": "captcha_required"
+    }
+  },
+  "dummy_token": {
+    "status": 200,
+    "body": {
+      "message": "work_complete"
+    }
+  },
+  "invalid_token": {
+    "status": 200,
+    "body": {
+      "message": "work_complete"
+    }
+  }
+}

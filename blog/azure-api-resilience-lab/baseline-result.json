@@ -1,0 +1,8 @@
+{
+  "run": "class-baseline",
+  "counts": {
+    "200": 261,
+    "503": 939
+  },
+  "seconds": 30.64
+}

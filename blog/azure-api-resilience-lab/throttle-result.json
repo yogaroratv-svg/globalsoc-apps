@@ -1,0 +1,8 @@
+{
+  "run": "class-throttle",
+  "counts": {
+    "200": 9,
+    "429": 1191
+  },
+  "seconds": 30.17
+}

@@ -1,0 +1,482 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Azure API resilience lab: 503, rate limits and CAPTCHA | Global SOC</title><meta name="description" content="A complete classroom lab with Azure Container Apps, bounded load tests, 429 throttling, fingerprinting, CAPTCHA and Log Analytics."><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}header a{color:#a6e3ff}main{max-width:1000px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(36px,5vw,58px);line-height:1.12;letter-spacing:-.035em}h2{margin-top:56px;line-height:1.3;font-size:29px}h3{margin-top:38px}p{max-width:80ch}pre{background:#10283a;color:#e3f2fc;padding:24px;border-radius:10px;overflow:auto;font:14px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}a{color:#076383}figure{margin:28px 0}img{max-width:100%;height:auto;border:1px solid #ccd8e2;border-radius:8px}figcaption{color:#496274;font-size:14px}nav{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px}.meta{color:#47687c}table{width:100%;border-collapse:collapse;background:white;font-size:15px}td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}td code{overflow-wrap:anywhere}@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}</style><header><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></header><main><p class="meta">HANDS-ON AZURE SECURITY · Yogesh · 21 October 2026</p><h1>From HTTP 503 to rate limits and CAPTCHA</h1><p>A practical Azure API resilience lab, with complete code, test commands, inputs, outputs, screenshots and cleanup.</p><nav>Python REST API → Azure Container Apps → bounded traffic → 503 → 429 → browser fingerprint → CAPTCHA → Log Analytics → cleanup</nav><h2>What you will build</h2><p>Build a temporary Azure REST API, send a fixed budget of classroom requests, observe HTTP 503, then add HTTP 429 throttling and a browser fingerprint that triggers a CAPTCHA. Export the evidence from Log Analytics and delete the whole lab resource group.</p><p>The 503 is a deliberate application capacity limit: four concurrent work slots, each held for 250 ms. It demonstrates overload handling without exhausting Azure or disrupting globalsoc.com.au. A 503 here does not prove an Azure platform outage. The API runs on its own Azure hostname; the blog remains on globalsoc.com.au.</p><p>This is a single-process teaching server with one replica. It is not a production web stack. Its in-memory counters reset on restart. Production deployments need a supported web server, edge protection, distributed counters, trusted proxy handling, and an authenticated account quota.</p><h2>1. Prerequisites and a clean folder</h2><p>Use PowerShell 7, Python 3.12+, Azure CLI, and an Azure subscription with permission to create resource groups, Log Analytics, Container Apps, and Container Registry. No local Docker daemon is required for the Azure source build. These resources can incur charges; deleting the group at the end stops the lab resources, but does not reverse costs already incurred.</p><p>Save the complete files printed below into one empty folder. Keep generated secrets out of version control, screenshots, and transcripts. Do not run a load exercise against another site or a production route.</p><p><a href="student-lab.zip" download>Download the complete student lab ZIP</a> · <a href="queries.kql" download>Download the KQL queries</a>. Extract the ZIP and open PowerShell in that folder before running the commands.</p><pre><code class="language-powershell">az login
+az account list --query &quot;[].{Name:name,Id:id}&quot; -o table
+az extension add --name containerapp --upgrade --yes
+$env:LAB_KEY = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+$env:FP_SECRET = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+python -m unittest -v test_lab.py
+./deploy.ps1 -Subscription &#x27;&lt;YOUR-SUBSCRIPTION-ID&gt;&#x27;
+</code></pre><figure><a href="screenshots/00-unit-tests.jpg"><img loading="lazy" src="screenshots/00-unit-tests.jpg" alt="Local integration tests: baseline capacity, throttling, and CAPTCHA failure behavior"></a><figcaption>Local integration tests: baseline capacity, throttling, and CAPTCHA failure behavior — click to view the full screenshot.</figcaption></figure><h2>A bounded instruction for your AI lab assistant</h2><p>If you delegate the exercise to an AI assistant, give it the resource boundary and the exact stop condition. Replace the placeholders with the endpoint you just deployed; keep your lab key in the environment rather than pasting it into chat.</p><pre><code class="language-text">Use only my isolated Azure lab endpoint https://&lt;YOUR-LAB-HOST&gt;.
+Run load.py with --allow-host &lt;YOUR-LAB-HOST&gt;, --requests 1200,
+--rps 40, and run ID class-baseline. Record the JSON result.
+Stop after the fixed request budget. Do not increase the budget or target another host.
+Repeat the same budget after I enable throttle, then captcha mode.
+Export matching Log Analytics events, capture the outputs, and delete only
+the resource group rg-globalsoc-api-lab after the evidence is saved.</code></pre><h2>Expected deployment output</h2><p>The final line is a hostname such as api-lab.&lt;environment&gt;.&lt;region&gt;.azurecontainerapps.io. Use your own returned value, including https://, for every command below. Do not copy a hostname from a screenshot: the demonstrated resource group is deleted after the exercise.</p><p>The environment sends stdout JSON to its connected Log Analytics workspace. Each API response records event, status, mode, run, and a pseudonymous fingerprint. We do not log raw IP addresses, browser headers, the lab key, CAPTCHA tokens, or CAPTCHA secrets.</p><p>First-use provider registration and environment creation can take several minutes. Let an active deployment finish before retrying. The recorded app and workspace are in Australia East; the source-build registry was automatically created in East US. Review resource locations in your own inventory if your class has residency requirements.</p><p>The screenshots display recorded command inputs, outputs, and exported Azure data in an evidence reader. Native Portal sign-in timed out during this session. Portal navigation and query instructions are included in the text so you can inspect the workspace in your own lab.</p><pre><code class="language-powershell">$rg = &#x27;rg-globalsoc-api-lab&#x27;
+$hostName = az containerapp show -g $rg -n api-lab --query properties.configuration.ingress.fqdn -o tsv
+$base = &quot;https://$hostName&quot;
+Invoke-RestMethod &quot;$base/health&quot;
+# Expected: healthy = True
+</code></pre><figure><a href="screenshots/01-resources.jpg"><img loading="lazy" src="screenshots/01-resources.jpg" alt="Azure resources created for the isolated classroom lab"></a><figcaption>Azure resources created for the isolated classroom lab — click to view the full screenshot.</figcaption></figure><h2>2. Call the API once and inspect its response</h2><p>The homepage sets a signed, HttpOnly browser identity cookie. Fetch it before calling the API. Requests without the lab key return 401; requests without a valid cookie return 400. Keep the same WebSession when testing identity-based behavior.</p><pre><code class="language-powershell">Invoke-WebRequest &quot;$base/&quot; -SessionVariable session | Out-Null
+$headers = @{&#x27;X-Lab-Key&#x27;=$env:LAB_KEY; &#x27;X-Lab-Run&#x27;=&#x27;class-manual&#x27;}
+$r = Invoke-WebRequest &quot;$base/api/work&quot; -WebSession $session -Headers $headers -SkipHttpErrorCheck
+$r.StatusCode
+$r.Content
+# Expected: 200
+# {&quot;message&quot;: &quot;work_complete&quot;}
+</code></pre><table><tr><th>HTTP status</th><th>Meaning in this lab</th><th>JSON body</th></tr><tr><td>200</td><td>Work accepted</td><td><code>{&quot;message&quot;: &quot;work_complete&quot;}</code></td></tr><tr><td>503</td><td>Four work slots already occupied</td><td><code>{&quot;error&quot;: &quot;simulated_capacity_exceeded&quot;}</code></td></tr><tr><td>429</td><td>Per-browser quota exceeded</td><td><code>{&quot;error&quot;: &quot;client_rate_limit&quot;}</code></td></tr><tr><td>429</td><td>Global quota exceeded</td><td><code>{&quot;error&quot;: &quot;global_rate_limit&quot;}</code></td></tr><tr><td>403</td><td>Challenge token required</td><td><code>{&quot;error&quot;: &quot;captcha_required&quot;}</code></td></tr><tr><td>403</td><td>Challenge verification rejected</td><td><code>{&quot;error&quot;: &quot;captcha_failed&quot;}</code></td></tr><tr><td>401</td><td>Missing or incorrect lab key</td><td><code>{&quot;error&quot;: &quot;lab_key_required&quot;}</code></td></tr><tr><td>400</td><td>Missing or invalid signed identity</td><td><code>{&quot;error&quot;: &quot;open_homepage_first&quot;}</code></td></tr></table><h2>3. Baseline: send 1,200 bounded requests</h2><p>The load script uses 12 threads, at most 40 scheduled requests per second, and a hard maximum of 2,000 requests per invocation. It uses a single shared identity. The commands below schedule 40 requests per second, with a minimum duration of about 30 seconds. Connection latency can reduce the actual rate. It never retries failures. Ctrl+C stops the client; already accepted work may finish.</p><p>This deliberately tests rejected requests. The API returns Retry-After, but this test client only counts statuses and does not retry. A real client should respect Retry-After and use bounded backoff with jitter. No AI agent should decide to keep increasing traffic until an unrelated service fails.</p><pre><code class="language-powershell">az containerapp update -g $rg -n api-lab --set-env-vars MODE=baseline -o none
+# Wait for the new revision to be ready, then run:
+python load.py --url $base --allow-host $hostName --requests 1200 --rps 40 --run class-baseline
+</code></pre><h2>Read the baseline result</h2><p>Expect some 200 responses and some 503 responses with simulated_capacity_exceeded. The exact mix varies with network scheduling. Check the sum of the reported counts: it must equal 1,200. network_error means a transport failure, not HTTP 503. A result containing only 401 or 400 means setup failed; fix the key or cookie before proceeding.</p><figure><a href="screenshots/02-baseline.jpg"><img loading="lazy" src="screenshots/02-baseline.jpg" alt="Baseline command and captured HTTP status counts"></a><figcaption>Baseline command and captured HTTP status counts — click to view the full screenshot.</figcaption></figure><h3>Recorded input and output from our Azure run</h3><pre><code class="language-powershell">az containerapp update -g rg-globalsoc-api-lab -n api-lab --set-env-vars MODE=baseline -o none
+python load.py --url https://api-lab.blackbush-67f9249e.australiaeast.azurecontainerapps.io --allow-host api-lab.blackbush-67f9249e.australiaeast.azurecontainerapps.io --requests 1200 --rps 40 --run class-baseline
+</code></pre><pre><code class="language-json">{
+  &quot;run&quot;: &quot;class-baseline&quot;,
+  &quot;counts&quot;: {
+    &quot;200&quot;: 261,
+    &quot;503&quot;: 939
+  },
+  &quot;seconds&quot;: 30.64
+}
+</code></pre><h2>4. Enable throttling and repeat the same load</h2><p>MODE=throttle applies a global limit of eight requests per second before the work queue, plus three requests per identity per ten seconds. The API returns 429 and Retry-After. The global limit protects the lab even if a visitor clears cookies. Because the runner represents one identity, most repeated calls should now be rejected before they acquire a work slot.</p><pre><code class="language-powershell">az containerapp update -g $rg -n api-lab --set-env-vars MODE=throttle -o none
+python load.py --url $base --allow-host $hostName --requests 1200 --rps 40 --run class-throttle
+</code></pre><figure><a href="screenshots/03-throttle.jpg"><img loading="lazy" src="screenshots/03-throttle.jpg" alt="Same traffic budget after enabling 429 throttling"></a><figcaption>Same traffic budget after enabling 429 throttling — click to view the full screenshot.</figcaption></figure><h3>Recorded input and output from our Azure run</h3><pre><code class="language-powershell">az containerapp update -g rg-globalsoc-api-lab -n api-lab --set-env-vars MODE=throttle -o none
+python load.py --url https://api-lab.blackbush-67f9249e.australiaeast.azurecontainerapps.io --allow-host api-lab.blackbush-67f9249e.australiaeast.azurecontainerapps.io --requests 1200 --rps 40 --run class-throttle
+</code></pre><pre><code class="language-json">{
+  &quot;run&quot;: &quot;class-throttle&quot;,
+  &quot;counts&quot;: {
+    &quot;200&quot;: 9,
+    &quot;429&quot;: 1191
+  },
+  &quot;seconds&quot;: 30.17
+}
+</code></pre><h2>5. Fingerprinting and the CAPTCHA decision</h2><p>The fingerprint is an HMAC of a random signed cookie and a coarse User-Agent signal. It is a pseudonymous browser continuity signal, not proof of a human or a unique person. Clearing cookies changes it; copying cookies copies it; browser automation can mimic it. Do not use it as authentication or as the only abuse control. The code expires idle counter entries after 60 seconds; example telemetry retention is 30 days.</p><p>In MODE=captcha the first three requests per identity per ten seconds pass. Subsequent requests require a server-validated Turnstile token. The eight-per-second global limit still applies, including after a CAPTCHA succeeds. Requests without a token return 403 captcha_required; invalid tokens return 403 captcha_failed. This separates a challenge response from 429 throttling.</p><p>Create a Cloudflare Turnstile widget for your lab hostname and select a managed widget. Turnstile supplies the CAPTCHA service; Azure hosts the application and telemetry. Copy the site key and secret into environment variables locally without printing them. The application checks success, the expected hostname, and the action lab. A failed verification or unavailable provider fails closed. Cloudflare tokens expire after five minutes and are single-use; reset the widget after each call.</p><pre><code class="language-powershell"># Set these locally using your widget values; never put the secret in the blog.
+$env:TURNSTILE_SITE_KEY = &#x27;&lt;YOUR-SITE-KEY&gt;&#x27;
+$env:TURNSTILE_SECRET = &#x27;&lt;YOUR-SECRET&gt;&#x27;
+az containerapp secret set -g $rg -n api-lab --secrets &quot;turnstile-secret=$env:TURNSTILE_SECRET&quot; -o none
+az containerapp update -g $rg -n api-lab --set-env-vars MODE=captcha &quot;TURNSTILE_SITE_KEY=$env:TURNSTILE_SITE_KEY&quot; TURNSTILE_SECRET=secretref:turnstile-secret &quot;CAPTCHA_HOSTNAME=$hostName&quot; -o none
+python load.py --url $base --allow-host $hostName --requests 1200 --rps 40 --run class-captcha
+</code></pre><h2>Manual CAPTCHA test</h2><p>Open $base in a browser, enter your lab key in the password field, and make four calls within ten seconds. After the initial allowance, a request without a fresh token receives 403. Complete the widget as a human and submit again: a valid token receives 200 if global capacity allows. Replay that token: it must fail. A fourth request arriving after ten seconds can receive a fresh allowance, so keep the test timing clear.</p><p>For an explicit fail-closed exercise, first set only MODE=captcha, leaving the widget secrets unset. The first allowance succeeds and later requests receive 403. This checks the challenge path, but does not demonstrate a successfully solved CAPTCHA. Official dummy keys may be used in an isolated test configuration only; they do not provide bot protection.</p><figure><a href="screenshots/04-captcha.jpg"><img loading="lazy" src="screenshots/04-captcha.jpg" alt="Captured CAPTCHA challenge behavior; see validation record for test scope"></a><figcaption>Captured CAPTCHA challenge behavior; see validation record for test scope — click to view the full screenshot.</figcaption></figure><h3>Recorded input and output from our Azure run</h3><pre><code class="language-powershell">az containerapp update -g rg-globalsoc-api-lab -n api-lab --set-env-vars MODE=captcha -o none
+python load.py --url https://api-lab.blackbush-67f9249e.australiaeast.azurecontainerapps.io --allow-host api-lab.blackbush-67f9249e.australiaeast.azurecontainerapps.io --requests 1200 --rps 40 --run class-captcha
+</code></pre><pre><code class="language-json">{
+  &quot;run&quot;: &quot;class-captcha&quot;,
+  &quot;counts&quot;: {
+    &quot;403&quot;: 230,
+    &quot;429&quot;: 961,
+    &quot;200&quot;: 9
+  },
+  &quot;seconds&quot;: 30.61
+}
+</code></pre><h2>Optional: reproduce the CAPTCHA integration with official test keys</h2><p>For a reproducible classroom test without a Turnstile account, use the public dummy keys below. The page displays PUBLIC TEST KEYS — no bot protection. This tests wiring only: a dummy success is not proof that a real bot was blocked or a human solved a challenge. Turn off CAPTCHA_TEST_MODE and configure a real widget before claiming bot protection.</p><p>The test branch is enabled only when the explicit test flag and both exact official dummy keys match. It accepts the provider response only when success is true and metadata.result_with_testing_key is true. The normal branch requires the real hostname and action lab. Dummy keys do not model production expiry and token replay; use a real widget for those checks.</p><p><strong>Observed test-key limitation:</strong> the always-pass dummy configuration also returned 200 for an arbitrary invalid token. That result is included below. It proves why dummy keys must never be presented as bot protection. Missing-token enforcement was 403; the positive dummy-token integration was 200. Real-token rejection and replay tests require your own widget keys.</p><pre><code class="language-powershell">az containerapp secret set -g $rg -n api-lab --secrets turnstile-secret=1x0000000000000000000000000000000AA -o none
+az containerapp update -g $rg -n api-lab --set-env-vars MODE=captcha CAPTCHA_TEST_MODE=true TURNSTILE_SITE_KEY=1x00000000000000000000AA TURNSTILE_SECRET=secretref:turnstile-secret CAPTCHA_HOSTNAME=example.com -o none
+# Open $base and observe the explicit test-key label and widget.
+# To return to a real widget, set CAPTCHA_TEST_MODE=false and your real keys/hostname.
+</code></pre><p>After the test-key revision is ready, reproduce the server calls below in PowerShell. Keep the same session and perform them within ten seconds. These calls use public dummy tokens, not a solved human challenge.</p><pre><code class="language-powershell">Invoke-WebRequest &quot;$base/&quot; -SessionVariable capSession | Out-Null
+$capHeaders = @{&#x27;X-Lab-Key&#x27;=$env:LAB_KEY; &#x27;X-Lab-Run&#x27;=&#x27;class-provider-test&#x27;}
+1..3 | ForEach-Object {
+  (Invoke-WebRequest &quot;$base/api/work&quot; -WebSession $capSession -Headers $capHeaders -SkipHttpErrorCheck).StatusCode
+}
+# Expected initial allowance: 200, 200, 200
+$challenge = Invoke-WebRequest &quot;$base/api/work&quot; -WebSession $capSession -Headers $capHeaders -SkipHttpErrorCheck
+$challenge.StatusCode
+$challenge.Content
+# Expected: 403, {&quot;error&quot;:&quot;captcha_required&quot;}
+$capHeaders[&#x27;X-Captcha-Token&#x27;] = &#x27;XXXX.DUMMY.TOKEN.XXXX&#x27;
+$verified = Invoke-WebRequest &quot;$base/api/work&quot; -WebSession $capSession -Headers $capHeaders -SkipHttpErrorCheck
+$verified.StatusCode
+$verified.Content
+# Test-key integration: 200, {&quot;message&quot;:&quot;work_complete&quot;}
+</code></pre><pre><code class="language-json">{
+  &quot;scope&quot;: &quot;Official public dummy keys. Integration test only; no real bot protection or human challenge solved.&quot;,
+  &quot;warmup&quot;: [
+    {
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;message&quot;: &quot;work_complete&quot;
+      }
+    },
+    {
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;message&quot;: &quot;work_complete&quot;
+      }
+    },
+    {
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;message&quot;: &quot;work_complete&quot;
+      }
+    }
+  ],
+  &quot;no_token&quot;: {
+    &quot;status&quot;: 403,
+    &quot;body&quot;: {
+      &quot;error&quot;: &quot;captcha_required&quot;
+    }
+  },
+  &quot;dummy_token&quot;: {
+    &quot;status&quot;: 200,
+    &quot;body&quot;: {
+      &quot;message&quot;: &quot;work_complete&quot;
+    }
+  },
+  &quot;invalid_token&quot;: {
+    &quot;status&quot;: 200,
+    &quot;body&quot;: {
+      &quot;message&quot;: &quot;work_complete&quot;
+    }
+  }
+}</code></pre><figure><a href="screenshots/04b-captcha-widget.jpg"><img loading="lazy" src="screenshots/04b-captcha-widget.jpg" alt="Azure-hosted browser page using official public dummy CAPTCHA keys; integration test only"></a><figcaption>Azure-hosted browser page using official public dummy CAPTCHA keys; integration test only — click to view the full screenshot.</figcaption></figure><h2>6. Prove the volume in Log Analytics</h2><p>In Azure Portal, open rg-globalsoc-api-lab → law-api-lab → Logs. Choose KQL mode and a two-hour time range. Run each query below separately. Wait several minutes for ingestion. The chart shows status counts per minute, and the second query groups exact recorded counts by run and mode. A client request count and an ingested log count may differ because of network failures, ingestion latency, restarts, or collection loss. Do not label a graph as thousands of requests until its returned count supports that claim.</p><p>The run IDs join client summaries to server events. Compare baseline 503 with throttle 429 and CAPTCHA 403 at the same nominal traffic budget. Each run should produce 1,200 client attempts; the three runs total 3,600 attempts. Health checks and unrelated events are excluded by the event and run filters.</p><pre><code class="language-kql">// Choose the run prefix used in load.py. Console collection can take several minutes.
+ContainerAppConsoleLogs_CL
+| where TimeGenerated &gt; ago(2h)
+| where ContainerAppName_s == &quot;api-lab&quot;
+| extend d = parse_json(Log_s)
+| where tostring(d.event) == &quot;lab_request&quot;
+| where tostring(d.run) startswith &quot;class-&quot;
+| summarize Requests=count() by bin(TimeGenerated, 1m), Status=toint(d.status), Mode=tostring(d.mode)
+| render timechart
+
+// Run separately: exact observed volume and status mix, not an estimate.
+ContainerAppConsoleLogs_CL
+| where TimeGenerated &gt; ago(2h) and ContainerAppName_s == &quot;api-lab&quot;
+| extend d=parse_json(Log_s)
+| where tostring(d.event) == &quot;lab_request&quot; and tostring(d.run) startswith &quot;class-&quot;
+| summarize Requests=count() by Run=tostring(d.run), Mode=tostring(d.mode), Status=toint(d.status)
+| order by Run asc, Status asc
+</code></pre><p><a href="azure-events.csv" download>Download the exported Azure log events</a> · <a href="baseline-result.json">Baseline client output</a> · <a href="throttle-result.json">Throttle client output</a> · <a href="captcha-result.json">CAPTCHA client output</a>.</p><figure><a href="screenshots/05-log-analytics.jpg"><img loading="lazy" src="screenshots/05-log-analytics.jpg" alt="Full recorded view of the exported Azure Log Analytics traffic and status codes"></a><figcaption>Full recorded view of the exported Azure Log Analytics traffic and status codes — click to view the full screenshot.</figcaption></figure><h2>7. Troubleshooting</h2><p>No 503: verify MODE=baseline and the active revision; network latency may prevent concurrency from reaching four. Use the same bounded script at 40 rps, never an unbounded generator. 429 in CAPTCHA mode: the global quota is working; wait one second and retry manually. Repeated 400: reopen the homepage after changing FP_SECRET so you get a newly signed cookie.</p><p>No log rows: verify the environment is connected to law-api-lab, check table ContainerAppConsoleLogs_CL, broaden the time range, and check ContainerAppSystemLogs_CL for revision errors. Filter the correct run prefix. Deployment errors: confirm the subscription, required providers, extension, regional quota, registry build permissions, and the Container App revision health. If an unrelated local CLI extension is broken, fix or isolate the extension installation before deploying.</p><p>When changing modes, wait for provisioning to finish and confirm the new revision is active. The log mode property is the authoritative evidence of which behavior actually served each request. Discard transition traffic from comparisons.</p><h2>8. Export evidence, then delete the entire lab</h2><p>Before deleting anything, export both query results as CSV and capture full-page screenshots of the resource list, baseline output, throttle output, challenge output, and Logs chart. Save the exact commands and client JSON summaries alongside them. Exported evidence and the published blog remain available after deletion; the lab endpoint and workspace do not.</p><p>Verify the resource group name below refers only to the lab you created. The command deletes the Container App, its environment, the registry created within the group, and Log Analytics workspace. Azure services can retain soft-deleted data under their retention behavior; resource-group deletion is not a guarantee of immediate forensic data erasure. A service-specific irreversible purge is a separate action.</p><pre><code class="language-powershell">az resource list -g rg-globalsoc-api-lab --query &quot;[].{Name:name,Type:type}&quot; -o table
+az group delete -n rg-globalsoc-api-lab --yes
+az group exists -n rg-globalsoc-api-lab
+# Expected after completion: false
+Remove-Item Env:LAB_KEY,Env:FP_SECRET,Env:TURNSTILE_SECRET -ErrorAction SilentlyContinue
+</code></pre><h2>Complete source files</h2><p>Copy each block to the filename shown. There are no third-party Python packages. The Docker image supplies Python; deploy.ps1 connects the Container Apps environment to Log Analytics and deploys the source. The tests cover actual HTTP behavior for capacity rejection, throttling, key rejection, and CAPTCHA failure. A successful external CAPTCHA requires the separate manual widget test described above.</p><h3>app.py</h3><pre><code class="language-python">&quot;&quot;&quot;Single-process teaching lab. Run python app.py; never place on a production route.&quot;&quot;&quot;
+import collections
+import hashlib
+import hmac
+import json
+import os
+import secrets
+import threading
+import time
+import urllib.parse
+import urllib.request
+from http.cookies import SimpleCookie
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+MODE = os.getenv(&#x27;MODE&#x27;, &#x27;baseline&#x27;)
+assert MODE in (&#x27;baseline&#x27;, &#x27;throttle&#x27;, &#x27;captcha&#x27;)
+KEY = os.getenv(&#x27;LAB_KEY&#x27;) or secrets.token_hex(32)
+SALT = (os.getenv(&#x27;FP_SECRET&#x27;) or secrets.token_hex(32)).encode()
+SITE_KEY = os.getenv(&#x27;TURNSTILE_SITE_KEY&#x27;, &#x27;&#x27;)
+CAPTCHA_SECRET = os.getenv(&#x27;TURNSTILE_SECRET&#x27;, &#x27;&#x27;)
+EXPECTED_HOST = os.getenv(&#x27;CAPTCHA_HOSTNAME&#x27;, &#x27;&#x27;)
+EXPECTED_ACTION = os.getenv(&#x27;CAPTCHA_ACTION&#x27;, &#x27;lab&#x27;)
+TEST_CAPTCHA = (os.getenv(&#x27;CAPTCHA_TEST_MODE&#x27;) == &#x27;true&#x27;
+                and CAPTCHA_SECRET == &#x27;1x0000000000000000000000000000000AA&#x27;
+                and SITE_KEY == &#x27;1x00000000000000000000AA&#x27;)
+slots = threading.BoundedSemaphore(4)
+lock = threading.Lock()
+windows = collections.defaultdict(collections.deque)
+
+
+def limited(key, maximum, seconds):
+    now = time.monotonic()
+    with lock:
+        # Expire idle identities so the demo does not retain them indefinitely.
+        for old in list(windows):
+            if not windows[old] or windows[old][-1] &lt;= now - 60:
+                del windows[old]
+        queue = windows[key]
+        while queue and queue[0] &lt;= now - seconds:
+            queue.popleft()
+        if len(queue) &gt;= maximum:
+            return True
+        queue.append(now)
+        return False
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+    def reply(self, status, data, fingerprint=&#x27;&#x27;, retry=None):
+        body = json.dumps(data).encode()
+        self.send_response(status)
+        self.send_header(&#x27;Content-Type&#x27;, &#x27;application/json&#x27;)
+        self.send_header(&#x27;Cache-Control&#x27;, &#x27;no-store&#x27;)
+        self.send_header(&#x27;Content-Length&#x27;, str(len(body)))
+        if retry:
+            self.send_header(&#x27;Retry-After&#x27;, str(retry))
+        self.end_headers()
+        self.wfile.write(body)
+        run = self.headers.get(&#x27;X-Lab-Run&#x27;, &#x27;&#x27;)[:64]
+        print(json.dumps(dict(event=&#x27;lab_request&#x27;, status=status, mode=MODE,
+                              fingerprint=fingerprint, run=run)), flush=True)
+
+    def do_GET(self):
+        if self.path == &#x27;/health&#x27;:
+            return self.reply(200, {&#x27;healthy&#x27;: True})
+        if self.path == &#x27;/&#x27;:
+            html = &#x27;&#x27;&#x27;&lt;!doctype html&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1&quot;&gt;&lt;title&gt;GlobalSOC Azure Lab&lt;/title&gt;
+&lt;style&gt;body{max-width:850px;margin:60px auto;padding:24px;background:#f3f7fb;color:#10283a;font:18px/1.6 system-ui}h1{font-size:44px}input,button{font:inherit;padding:12px;margin:12px 0}button{background:#086c91;color:white;border:0;border-radius:6px}pre{white-space:pre-wrap;background:#10283a;color:#e3f5ff;padding:24px;border-radius:8px}.cf-turnstile{margin:20px 0}&lt;/style&gt;
+&lt;p&gt;GLOBAL SOC Â· AZURE CLASSROOM LAB&lt;/p&gt;&lt;h1&gt;API resilience lab&lt;/h1&gt;&lt;p&gt;Enter your lab key, then complete the challenge.&lt;/p&gt;&lt;p&gt;MODELABEL&lt;/p&gt;
+&lt;input id=&quot;key&quot; type=&quot;password&quot; placeholder=&quot;Lab key&quot;&gt;&lt;button onclick=&quot;callApi()&quot;&gt;Call API&lt;/button&gt;
+&lt;div class=&quot;cf-turnstile&quot; data-sitekey=&quot;SITEKEY&quot; data-action=&quot;lab&quot; data-callback=&quot;solved&quot;&gt;&lt;/div&gt;
+&lt;pre id=&quot;result&quot;&gt;&lt;/pre&gt;&lt;script src=&quot;https://challenges.cloudflare.com/turnstile/v0/api.js&quot; async defer&gt;&lt;/script&gt;
+&lt;script&gt;let token=&#x27;&#x27;;function solved(t){token=t;}async function callApi(){
+let r=await fetch(&#x27;/api/work&#x27;,{headers:{&#x27;X-Lab-Key&#x27;:document.getElementById(&#x27;key&#x27;).value,
+&#x27;X-Captcha-Token&#x27;:token}});document.getElementById(&#x27;result&#x27;).textContent=r.status+&#x27; &#x27;+await r.text();
+token=&#x27;&#x27;;if(window.turnstile)turnstile.reset();}&lt;/script&gt;&#x27;&#x27;&#x27;.replace(&#x27;SITEKEY&#x27;, SITE_KEY)
+            html = html.replace(&#x27;MODELABEL&#x27;, &#x27;Mode: &#x27; + MODE + (&#x27; Â· PUBLIC TEST KEYS â€” no bot protection&#x27; if TEST_CAPTCHA else &#x27;&#x27;))
+            if not SITE_KEY:
+                html = html.replace(&#x27;&lt;div class=&quot;cf-turnstile&quot; data-sitekey=&quot;&quot; data-action=&quot;lab&quot; data-callback=&quot;solved&quot;&gt;&lt;/div&gt;&#x27;, &#x27;&lt;p&gt;CAPTCHA widget not configured. Challenge enforcement can still be tested without a token.&lt;/p&gt;&#x27;)
+                html = html.replace(&#x27;&lt;script src=&quot;https://challenges.cloudflare.com/turnstile/v0/api.js&quot; async defer&gt;&lt;/script&gt;&#x27;, &#x27;&#x27;)
+            cookie = SimpleCookie()
+            try:
+                cookie.load(self.headers.get(&#x27;Cookie&#x27;, &#x27;&#x27;))
+            except Exception:
+                pass
+            identity = secrets.token_hex(16)
+            signature = hmac.new(SALT, identity.encode(), hashlib.sha256).hexdigest()
+            body = html.encode()
+            self.send_response(200)
+            self.send_header(&#x27;Content-Type&#x27;, &#x27;text/html; charset=utf-8&#x27;)
+            self.send_header(&#x27;Content-Length&#x27;, str(len(body)))
+            self.send_header(&#x27;Set-Cookie&#x27;, f&#x27;labid={identity}.{signature}; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600&#x27; + (&#x27;; Secure&#x27; if os.getenv(&#x27;COOKIE_SECURE&#x27;) == &#x27;true&#x27; else &#x27;&#x27;))
+            self.end_headers()
+            return self.wfile.write(body)
+        if self.path != &#x27;/api/work&#x27;:
+            return self.reply(404, {&#x27;error&#x27;: &#x27;not_found&#x27;})
+        if not hmac.compare_digest(self.headers.get(&#x27;X-Lab-Key&#x27;, &#x27;&#x27;), KEY):
+            return self.reply(401, {&#x27;error&#x27;: &#x27;lab_key_required&#x27;})
+        cookie = SimpleCookie()
+        try:
+            cookie.load(self.headers.get(&#x27;Cookie&#x27;, &#x27;&#x27;))
+            raw = cookie[&#x27;labid&#x27;].value
+            identity, signature = raw.split(&#x27;.&#x27;)
+            if len(identity) != 32 or not hmac.compare_digest(signature, hmac.new(SALT, identity.encode(), hashlib.sha256).hexdigest()):
+                raise ValueError()
+        except Exception:
+            return self.reply(400, {&#x27;error&#x27;: &#x27;open_homepage_first&#x27;})
+        # Pseudonymous, coarse browser signal; never treat as authentication.
+        fp = hmac.new(SALT, (identity + &#x27;|&#x27; + self.headers.get(&#x27;User-Agent&#x27;, &#x27;&#x27;)[:256]).encode(), hashlib.sha256).hexdigest()[:20]
+        if MODE != &#x27;baseline&#x27; and limited(&#x27;global&#x27;, 8, 1):
+            return self.reply(429, {&#x27;error&#x27;: &#x27;global_rate_limit&#x27;}, fp, 1)
+        if MODE == &#x27;throttle&#x27; and limited(fp, 3, 10):
+            return self.reply(429, {&#x27;error&#x27;: &#x27;client_rate_limit&#x27;}, fp, 10)
+        if MODE == &#x27;captcha&#x27; and limited(fp, 3, 10):
+            token = self.headers.get(&#x27;X-Captcha-Token&#x27;, &#x27;&#x27;)
+            if not token:
+                return self.reply(403, {&#x27;error&#x27;: &#x27;captcha_required&#x27;}, fp)
+            try:
+                if not CAPTCHA_SECRET or not EXPECTED_HOST or len(token) &gt; 2048:
+                    raise ValueError()
+                payload = urllib.parse.urlencode({&#x27;secret&#x27;: CAPTCHA_SECRET, &#x27;response&#x27;: token}).encode()
+                with urllib.request.urlopen(&#x27;https://challenges.cloudflare.com/turnstile/v0/siteverify&#x27;, data=payload, timeout=5) as result:
+                    verdict = json.load(result)
+                if TEST_CAPTCHA:
+                    verified = verdict.get(&#x27;success&#x27;) and verdict.get(&#x27;metadata&#x27;, {}).get(&#x27;result_with_testing_key&#x27;) is True
+                else:
+                    verified = verdict.get(&#x27;success&#x27;) and verdict.get(&#x27;hostname&#x27;) == EXPECTED_HOST and verdict.get(&#x27;action&#x27;) == EXPECTED_ACTION
+                if not verified:
+                    raise ValueError()
+            except Exception:
+                return self.reply(403, {&#x27;error&#x27;: &#x27;captcha_failed&#x27;}, fp)
+        if not slots.acquire(blocking=False):
+            return self.reply(503, {&#x27;error&#x27;: &#x27;simulated_capacity_exceeded&#x27;}, fp, 1)
+        try:
+            time.sleep(0.25)
+            return self.reply(200, {&#x27;message&#x27;: &#x27;work_complete&#x27;}, fp)
+        finally:
+            slots.release()
+
+
+if __name__ == &#x27;__main__&#x27;:
+    ThreadingHTTPServer((&#x27;0.0.0.0&#x27;, int(os.getenv(&#x27;PORT&#x27;, &#x27;8000&#x27;))), Handler).serve_forever()
+</code></pre><h3>Dockerfile</h3><pre><code class="language-text">FROM python:3.12-slim
+WORKDIR /app
+COPY app.py .
+RUN python -m py_compile app.py
+USER 10001
+EXPOSE 8000
+CMD [&quot;python&quot;, &quot;-u&quot;, &quot;app.py&quot;]
+</code></pre><h3>.dockerignore</h3><pre><code class="language-text">*
+!app.py
+!Dockerfile
+</code></pre><h3>deploy.ps1</h3><pre><code class="language-text">param([Parameter(Mandatory)][string]$Subscription,
+      [string]$ResourceGroup = &#x27;rg-globalsoc-api-lab&#x27;,
+      [string]$Location = &#x27;australiaeast&#x27;)
+$ErrorActionPreference = &#x27;Stop&#x27;
+function AzRun { param([string[]]$Arguments)
+    $result = &amp; az @Arguments
+    if ($LASTEXITCODE -ne 0) { throw &quot;Azure CLI failed: $($Arguments[0])&quot; }
+    return $result
+}
+if (-not $env:LAB_KEY -or -not $env:FP_SECRET) { throw &#x27;Set LAB_KEY and FP_SECRET to random secrets first.&#x27; }
+AzRun @(&#x27;account&#x27;,&#x27;set&#x27;,&#x27;--subscription&#x27;,$Subscription)
+foreach ($provider in @(&#x27;Microsoft.App&#x27;,&#x27;Microsoft.OperationalInsights&#x27;,&#x27;Microsoft.ContainerRegistry&#x27;)) {
+    AzRun @(&#x27;provider&#x27;,&#x27;register&#x27;,&#x27;--namespace&#x27;,$provider,&#x27;--wait&#x27;,&#x27;-o&#x27;,&#x27;none&#x27;)
+}
+AzRun @(&#x27;group&#x27;,&#x27;create&#x27;,&#x27;-n&#x27;,$ResourceGroup,&#x27;-l&#x27;,$Location,&#x27;-o&#x27;,&#x27;none&#x27;)
+AzRun @(&#x27;monitor&#x27;,&#x27;log-analytics&#x27;,&#x27;workspace&#x27;,&#x27;create&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;law-api-lab&#x27;,&#x27;--retention-time&#x27;,&#x27;30&#x27;,&#x27;-o&#x27;,&#x27;none&#x27;)
+$lawId = AzRun @(&#x27;monitor&#x27;,&#x27;log-analytics&#x27;,&#x27;workspace&#x27;,&#x27;show&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;law-api-lab&#x27;,&#x27;--query&#x27;,&#x27;customerId&#x27;,&#x27;-o&#x27;,&#x27;tsv&#x27;)
+$lawKey = AzRun @(&#x27;monitor&#x27;,&#x27;log-analytics&#x27;,&#x27;workspace&#x27;,&#x27;get-shared-keys&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;law-api-lab&#x27;,&#x27;--query&#x27;,&#x27;primarySharedKey&#x27;,&#x27;-o&#x27;,&#x27;tsv&#x27;)
+AzRun @(&#x27;containerapp&#x27;,&#x27;env&#x27;,&#x27;create&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;env-api-lab&#x27;,&#x27;-l&#x27;,$Location,&#x27;--logs-workspace-id&#x27;,$lawId,&#x27;--logs-workspace-key&#x27;,$lawKey,&#x27;-o&#x27;,&#x27;none&#x27;)
+AzRun @(&#x27;containerapp&#x27;,&#x27;up&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;api-lab&#x27;,&#x27;--environment&#x27;,&#x27;env-api-lab&#x27;,&#x27;--source&#x27;,&#x27;.&#x27;,&#x27;--ingress&#x27;,&#x27;external&#x27;,&#x27;--target-port&#x27;,&#x27;8000&#x27;)
+AzRun @(&#x27;containerapp&#x27;,&#x27;secret&#x27;,&#x27;set&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;api-lab&#x27;,&#x27;--secrets&#x27;,&quot;lab-key=$env:LAB_KEY&quot;,&quot;fp-secret=$env:FP_SECRET&quot;,&#x27;-o&#x27;,&#x27;none&#x27;)
+AzRun @(&#x27;containerapp&#x27;,&#x27;update&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;api-lab&#x27;,&#x27;--min-replicas&#x27;,&#x27;1&#x27;,&#x27;--max-replicas&#x27;,&#x27;1&#x27;,&#x27;--set-env-vars&#x27;,&#x27;LAB_KEY=secretref:lab-key&#x27;,&#x27;FP_SECRET=secretref:fp-secret&#x27;,&#x27;MODE=baseline&#x27;,&#x27;COOKIE_SECURE=true&#x27;,&#x27;-o&#x27;,&#x27;none&#x27;)
+AzRun @(&#x27;containerapp&#x27;,&#x27;show&#x27;,&#x27;-g&#x27;,$ResourceGroup,&#x27;-n&#x27;,&#x27;api-lab&#x27;,&#x27;--query&#x27;,&#x27;properties.configuration.ingress.fqdn&#x27;,&#x27;-o&#x27;,&#x27;tsv&#x27;)
+</code></pre><h3>load.py</h3><pre><code class="language-python">&quot;&quot;&quot;Bounded exercise: one explicitly named isolated lab; 2000 requests maximum.&quot;&quot;&quot;
+import argparse
+import collections
+import concurrent.futures
+import http.cookiejar
+import json
+import os
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+p = argparse.ArgumentParser()
+p.add_argument(&#x27;--url&#x27;, required=True)
+p.add_argument(&#x27;--allow-host&#x27;, required=True)
+p.add_argument(&#x27;--requests&#x27;, type=int, default=1200)
+p.add_argument(&#x27;--rps&#x27;, type=int, default=20)
+p.add_argument(&#x27;--run&#x27;, default=&#x27;student-lab&#x27;)
+a = p.parse_args()
+url = urllib.parse.urlsplit(a.url)
+assert url.hostname == a.allow_host and url.path in (&#x27;&#x27;, &#x27;/&#x27;) and not url.query and not url.fragment and not url.username
+assert url.scheme == &#x27;https&#x27; or (url.scheme == &#x27;http&#x27; and url.hostname in (&#x27;localhost&#x27;, &#x27;127.0.0.1&#x27;))
+assert 1 &lt;= a.requests &lt;= 2000 and 1 &lt;= a.rps &lt;= 40
+jar = http.cookiejar.CookieJar()
+opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+opener.open(a.url.rstrip(&#x27;/&#x27;) + &#x27;/&#x27;, timeout=10).read()
+cookie = &#x27;; &#x27;.join(f&#x27;{c.name}={c.value}&#x27; for c in jar)
+
+
+def send(_):
+    req = urllib.request.Request(a.url.rstrip(&#x27;/&#x27;) + &#x27;/api/work&#x27;, headers={
+        &#x27;X-Lab-Key&#x27;: os.environ[&#x27;LAB_KEY&#x27;], &#x27;X-Lab-Run&#x27;: a.run,
+        &#x27;Cookie&#x27;: cookie, &#x27;User-Agent&#x27;: &#x27;GlobalSOC-Classroom/1.0&#x27;})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            response.read()
+            return response.status
+    except urllib.error.HTTPError as error:
+        error.read()
+        return error.code
+    except Exception:
+        return &#x27;network_error&#x27;
+
+
+start = time.monotonic()
+counts = collections.Counter()
+# Batches avoid an unbounded queue; peak concurrency and request budget are fixed.
+with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+    for offset in range(0, a.requests, a.rps):
+        tick = time.monotonic()
+        counts.update(pool.map(send, range(min(a.rps, a.requests - offset))))
+        time.sleep(max(0, 1 - (time.monotonic() - tick)))
+print(json.dumps({&#x27;run&#x27;: a.run, &#x27;counts&#x27;: dict(counts), &#x27;seconds&#x27;: round(time.monotonic()-start, 2)}, indent=2))
+</code></pre><h3>test_lab.py</h3><pre><code class="language-python">import concurrent.futures
+import http.cookiejar
+import json
+import os
+import subprocess
+import sys
+import time
+import unittest
+import urllib.error
+import urllib.request
+
+
+class LabTests(unittest.TestCase):
+    def run_mode(self, mode):
+        env = dict(os.environ, MODE=mode, LAB_KEY=&#x27;local-test&#x27;, FP_SECRET=&#x27;local-test-secret&#x27;, PORT=&#x27;8765&#x27;)
+        log = open(f&#x27;test-{mode}.jsonl&#x27;, &#x27;w&#x27;)
+        process = subprocess.Popen([sys.executable, &#x27;-u&#x27;, &#x27;app.py&#x27;], env=env, stdout=log, stderr=log)
+        try:
+            jar = http.cookiejar.CookieJar()
+            client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+            for _ in range(100):
+                if process.poll() is not None:
+                    self.fail(&#x27;Server exited during startup; inspect test-&#x27; + mode + &#x27;.jsonl&#x27;)
+                try:
+                    client.open(&#x27;http://127.0.0.1:8765/&#x27;, timeout=1).read()
+                    break
+                except OSError:
+                    time.sleep(.05)
+            cookie = &#x27;; &#x27;.join(f&#x27;{c.name}={c.value}&#x27; for c in jar)
+            def call(token=&#x27;&#x27;, key=&#x27;local-test&#x27;):
+                request = urllib.request.Request(&#x27;http://127.0.0.1:8765/api/work&#x27;, headers={
+                    &#x27;Cookie&#x27;: cookie, &#x27;X-Lab-Key&#x27;: key, &#x27;X-Captcha-Token&#x27;: token,
+                    &#x27;X-Lab-Run&#x27;: &#x27;local-test&#x27;})
+                try:
+                    with urllib.request.urlopen(request, timeout=10) as response:
+                        return response.status
+                except urllib.error.HTTPError as error:
+                    error.read()
+                    return error.code
+            self.assertEqual(call(key=&#x27;wrong&#x27;), 401)
+            if mode == &#x27;baseline&#x27;:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+                    statuses = list(pool.map(lambda _: call(), range(24)))
+                self.assertIn(200, statuses)
+                self.assertIn(503, statuses)
+            else:
+                self.assertEqual([call() for _ in range(3)], [200, 200, 200])
+                self.assertEqual(call(), 429 if mode == &#x27;throttle&#x27; else 403)
+                if mode == &#x27;captcha&#x27;:
+                    self.assertEqual(call(token=&#x27;invalid&#x27;), 403)
+            print(mode, &#x27;PASS&#x27;, flush=True)
+        finally:
+            process.terminate()
+            process.wait(timeout=10)
+            log.close()
+
+    def test_baseline(self): self.run_mode(&#x27;baseline&#x27;)
+    def test_throttle(self): self.run_mode(&#x27;throttle&#x27;)
+    def test_captcha_fail_closed(self): self.run_mode(&#x27;captcha&#x27;)
+
+
+if __name__ == &#x27;__main__&#x27;:
+    unittest.main()
+</code></pre><h2>Validation record</h2><p>Executed on Azure Container Apps in Australia East. Temporary lab group: rg-globalsoc-api-lab.</p><p>Local HTTP integration tests passed: baseline 503, throttle 429, missing/invalid CAPTCHA 403, and unauthorized key 401.</p><p>Exported 3236 matching server events from Azure Log Analytics before deleting resources.</p><p>The three client runs attempted 3,600 requests; the export contains 3224 matching classroom events. These counts differ. The recorded export is evidence of ingested events, not proof that every response was retained. The cause of the shortfall was not established in this lab; do not attribute it to sampling without further diagnosis.</p><p>The class-provider-test identifier includes setup attempts as well as the final dummy-key test. Those additional rows are separate from the three 1,200-request comparisons.</p><p>class-baseline | baseline | HTTP 200 | 256 events</p><p>class-baseline | baseline | HTTP 503 | 845 events</p><p>class-captcha | captcha | HTTP 200 | 9 events</p><p>class-captcha | captcha | HTTP 403 | 198 events</p><p>class-captcha | captcha | HTTP 429 | 849 events</p><p>class-provider-test | captcha | HTTP 200 | 8 events</p><p>class-provider-test | captcha | HTTP 403 | 4 events</p><p>class-throttle | throttle | HTTP 200 | 8 events</p><p>class-throttle | throttle | HTTP 429 | 1059 events</p><p>Official Cloudflare dummy-key integration result: {
+  &quot;scope&quot;: &quot;Official public dummy keys. Integration test only; no real bot protection or human challenge solved.&quot;,
+  &quot;warmup&quot;: [
+    {
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;message&quot;: &quot;work_complete&quot;
+      }
+    },
+    {
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;message&quot;: &quot;work_complete&quot;
+      }
+    },
+    {
+      &quot;status&quot;: 200,
+      &quot;body&quot;: {
+        &quot;message&quot;: &quot;work_complete&quot;
+      }
+    }
+  ],
+  &quot;no_token&quot;: {
+    &quot;status&quot;: 403,
+    &quot;body&quot;: {
+      &quot;error&quot;: &quot;captcha_required&quot;
+    }
+  },
+  &quot;dummy_token&quot;: {
+    &quot;status&quot;: 200,
+    &quot;body&quot;: {
+      &quot;message&quot;: &quot;work_complete&quot;
+    }
+  },
+  &quot;invalid_token&quot;: {
+    &quot;status&quot;: 200,
+    &quot;body&quot;: {
+      &quot;message&quot;: &quot;work_complete&quot;
+    }
+  }
+}</p><p>Cleanup status at review publication: Azure resource-group deletion was requested and is still in progress. API, registry and workspace were removed; final group-deletion verification is pending. All evidence is preserved outside Azure.</p><p>Full-page screenshots of the recorded command inputs/outputs and exported Azure results are included. They are labelled evidence-reader views, not Azure Portal screenshots. Portal sign-in timed out in this session.</p><h2>Official references</h2><ul><li><a href="https://learn.microsoft.com/en-us/azure/container-apps/containerapp-up">Deploy Azure Container Apps from source</a></li><li><a href="https://learn.microsoft.com/en-us/azure/container-apps/log-monitoring">Container Apps and Log Analytics</a></li><li><a href="https://developers.cloudflare.com/turnstile/get-started/server-side-validation/">Turnstile server-side verification</a></li><li><a href="https://developers.cloudflare.com/turnstile/troubleshooting/testing/">Turnstile test keys</a></li></ul></main></html>

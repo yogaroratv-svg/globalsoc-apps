@@ -1,0 +1,17 @@
+// Choose the run prefix used in load.py. Console collection can take several minutes.
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(2h)
+| where ContainerAppName_s == "api-lab"
+| extend d = parse_json(Log_s)
+| where tostring(d.event) == "lab_request"
+| where tostring(d.run) startswith "class-"
+| summarize Requests=count() by bin(TimeGenerated, 1m), Status=toint(d.status), Mode=tostring(d.mode)
+| render timechart
+
+// Run separately: exact observed volume and status mix, not an estimate.
+ContainerAppConsoleLogs_CL
+| where TimeGenerated > ago(2h) and ContainerAppName_s == "api-lab"
+| extend d=parse_json(Log_s)
+| where tostring(d.event) == "lab_request" and tostring(d.run) startswith "class-"
+| summarize Requests=count() by Run=tostring(d.run), Mode=tostring(d.mode), Status=toint(d.status)
+| order by Run asc, Status asc
