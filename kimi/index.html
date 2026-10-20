@@ -75,8 +75,8 @@ textarea{flex:1;resize:none;font:inherit;font-size:16px;color:var(--ink);backgro
 
   <section id="gate" class="hidden">
     <h1>Enter your invite code</h1>
-    <p>Yogesh sent you a code that looks like <code>KIMI-XXXX-XXXX</code>. It's saved on this device only.</p>
-    <form id="gateform"><input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="KIMI-XXXX-XXXX" required>
+    <p>Yogesh sent you a code that looks like <code>YA07</code>. It's saved on this device only.</p>
+    <form id="gateform"><input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="YA07" required>
     <button class="primary" type="submit">Start</button></form>
     <p class="err hidden" id="gateerr" style="margin-top:10px"></p>
   </section>
@@ -148,7 +148,7 @@ function show(chat){
 $('gateform').onsubmit = e => {
   e.preventDefault();
   const v = $('code').value.trim().toUpperCase();
-  if (!/^KIMI-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)) { $('gateerr').textContent = 'Codes look like KIMI-XXXX-XXXX.'; $('gateerr').classList.remove('hidden'); return; }
+  if (!/^YA\d{2}$/.test(v)) { $('gateerr').textContent = 'Codes look like YA07.'; $('gateerr').classList.remove('hidden'); return; }
   code = v; store.set('kimi.code', v); show(true);
 };
 $('forget').onclick = e => { e.preventDefault(); store.del('kimi.code'); store.del('kimi.history'); code = null; history = []; show(false); };
