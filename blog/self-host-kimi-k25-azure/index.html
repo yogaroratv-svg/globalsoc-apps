@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Self-Hosting Kimi K2.5 on Azure: Feasibility & Playbook | Global SOC</title>
+<meta name="description" content="A feasibility review and reproducible playbook for running Moonshot&#x27;s Kimi K2.5 on Azure H200 GPUs with vLLM, secure phone access via nginx or Cloudflare Tunnel, and hard cost controls.">
+<meta name="author" content="Yogesh">
+<meta property="og:title" content="Can you self-host Kimi K2.5 on $5,000 of Azure credit?">
+<meta property="og:description" content="A feasibility review and reproducible playbook for running Moonshot&#x27;s Kimi K2.5 on Azure H200 GPUs with vLLM, secure phone access via nginx or Cloudflare Tunnel, and hard cost controls.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/self-host-kimi-k25-azure/">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#06222c,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.88;max-width:620px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px}
+article h2{font-size:27px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px}
+article h3{font-size:19px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:4px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 10px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.f{color:var(--fail)}.w{color:var(--warn)}.p{color:var(--pass)}.i{color:var(--info)}
+.grades{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0 20px}
+.grades div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;border-top:4px solid var(--c)}
+.grades b{display:block;font-size:26px;line-height:1.1;color:var(--c)}
+.grades span{font-size:12.5px;color:var(--muted)}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}.grades{grid-template-columns:repeat(5,minmax(58px,1fr))}}
+.diagram{margin:20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}.diagram figcaption{font-size:13px;color:var(--muted);margin-top:6px;text-align:center}article h2{scroll-margin-top:70px}article h3{scroll-margin-top:70px}article ul:has(input){list-style:none;margin-left:0}article li input{margin-right:8px;accent-color:var(--brand)}td:first-child code{white-space:nowrap}article p code,article li code{overflow-wrap:anywhere}.note{background:var(--soft);border-radius:12px;padding:14px 16px;font-size:15px;margin:0 0 22px}</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav><a href="/blog/">All posts</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero" style="background:linear-gradient(135deg,#120c2a,#2d1f6b 60%,#0e4d6e)"><div class="wrap">
+  <span class="tag">AI INFRASTRUCTURE · AZURE · SELF-HOSTED LLM</span>
+  <h1>Can you self-host Kimi K2.5 on $5,000 of Azure credit?</h1>
+  <p class="lede">Which Kimi model actually fits which Azure GPU, what $5,000 really buys, and every command to deploy it securely for use from your phone. Written as a pre-deployment engineering review: every claim is cited, calculated, or marked as needing a test.</p>
+  <div class="by"><div class="av">Y</div><div><b>Yogesh</b><span>Global SOC · 20 October 2026 · 56 min read</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<p class="note"><b>Status:</b> engineering review, not a run report. Nothing below has been provisioned or benchmarked yet. Prices are Azure list prices in USD, and versions were verified on 20 October 2026. Labels: <b>[DOC]</b> documented, <b>[CALC]</b> calculated, <b>[EXP]</b> needs a test, <b>[SUB]</b> depends on your subscription.</p>
+<div class="toc"><b>In this post</b><ol><li><a href="#0-scope-labels-and-placeholders">0. Scope, labels and placeholders</a></li><li><a href="#feasibility-decision">Feasibility decision</a></li><li><a href="#missing-inputs">Missing inputs</a></li><li><a href="#target-architecture">Target architecture</a></li><li><a href="#1-azure-infrastructure-provisioning">1. Azure infrastructure provisioning</a></li><li><a href="#2-system-driver-and-container-setup">2. System, driver and container setup</a></li><li><a href="#3-reproducible-vllm-deployment">3. Reproducible vLLM deployment</a></li><li><a href="#4-secure-remote-access">4. Secure remote access</a></li><li><a href="#5-mobile-setup-and-daily-work">5. Mobile setup and daily work</a></li><li><a href="#6-cost-control-shutdown-and-recovery">6. Cost control, shutdown and recovery</a></li><li><a href="#acceptance-criteria">Acceptance criteria</a></li><li><a href="#sources">Sources</a></li></ol></div>
+<h2 id="0-scope-labels-and-placeholders">0. Scope, labels and placeholders</h2>
+<p>This is an engineering review and playbook only. Nothing here has been provisioned, run or measured; every command is for you to run later, after the feasibility gates pass.</p>
+<p><strong>Evidence labels used on every claim</strong></p>
+<div class="tw"><table><thead><tr><th>Label</th><th>Meaning</th></tr></thead><tbody><tr><td><strong>[DOC]</strong></td><td>Stated in official vendor documentation or an official model card, with a link</td></tr><tr><td><strong>[CALC]</strong></td><td>My arithmetic from documented inputs; the inputs are shown</td></tr><tr><td><strong>[EXP]</strong></td><td>Plausible but not documented for this exact combination; must be validated by experiment</td></tr><tr><td><strong>[SUB]</strong></td><td>Can only be answered from inside your Azure subscription or account</td></tr><tr><td><strong>Illustrative expected output</strong></td><td>What output should roughly look like. It is not a real log from a real run</td></tr></tbody></table></div>
+<p><strong>Where each command runs</strong></p>
+<div class="tw"><table><thead><tr><th>Tag</th><th>Location</th></tr></thead><tbody><tr><td><code>[WS]</code></td><td>Your local workstation (Windows 11, PowerShell or WSL bash) with Azure CLI</td></tr><tr><td><code>[CS]</code></td><td>Azure Cloud Shell (bash)</td></tr><tr><td><code>[VM]</code></td><td>The GPU VM, over SSH via Azure Bastion or the tunnel</td></tr><tr><td><code>[PH]</code></td><td>Your phone</td></tr></tbody></table></div>
+<p><strong>Placeholders (defined once, used everywhere)</strong></p>
+<pre><code class="language-bash"># [CS] or [WS-bash] — paste once per shell session
+export SUB_ID=&quot;&lt;YOUR_SUBSCRIPTION_ID&gt;&quot;            # [SUB]
+export LOCATION=&quot;&lt;REGION_WITH_CAPACITY&gt;&quot;          # e.g. eastus2, southcentralus — [SUB] quota decides
+export RG=&quot;rg-kimi-inference&quot;
+export VNET=&quot;vnet-kimi&quot;; export SUBNET=&quot;snet-gpu&quot;
+export NSG=&quot;nsg-kimi-gpu&quot;
+export VM_NAME=&quot;vm-kimi-01&quot;
+export VM_SIZE=&quot;&lt;SELECTED_SKU&gt;&quot;                   # chosen in the feasibility section
+export ADMIN_USER=&quot;kimiadmin&quot;
+export DATA_DISK=&quot;disk-kimi-models&quot;
+export DATA_DISK_GB=&quot;&lt;SIZE_FROM_MEMORY_PLAN&gt;&quot;
+export DOMAIN=&quot;&lt;YOUR_DOMAIN&gt;&quot;                     # needed for Option A or B
+export API_HOST=&quot;kimi.${DOMAIN}&quot;
+export MODEL_REPO=&quot;&lt;HF_REPO_ID&gt;&quot;                   # fixed in the feasibility section
+export MODEL_REV=&quot;&lt;40-char HF commit SHA&gt;&quot;         # resolved by command, never &#39;main&#39;
+export VLLM_IMAGE_TAG=&quot;&lt;pinned vLLM tag&gt;&quot;
+export VLLM_DIGEST=&quot;&lt;sha256:... resolved by command&gt;&quot;
+export SERVED_ALIAS=&quot;kimi-work&quot;</code></pre>
+<p>Credit currency, credit type and expiry are unknown to me. All money figures below are in <strong>USD list price</strong> unless labelled otherwise, because Azure&#39;s retail price API returns USD by default; convert using your own invoice currency.</p>
+<h2 id="feasibility-decision">Feasibility decision</h2>
+<p><strong>Verdict: feasible, with one change of hardware and no change of model.</strong> Run <strong><code>moonshotai/Kimi-K2.5</code> (native INT4) on one <code>Standard_ND96isr_H200_v5</code> (8× H200 141 GB)</strong> with vLLM, TP=8. vLLM&#39;s recipe for Kimi K2.5 documents exactly this setup [DOC]. The two configurations you named are not suitable: <strong>8× A100-80GB and 8× H100-80GB cannot hold the K2.5 weights plus working memory</strong> [CALC], and <strong>the NVFP4 variant needs Blackwell GPUs</strong>, which Azure only offers as rack-scale GB200 VMs [DOC]. <strong>The latest open-weight Kimi, K3, is not feasible on your budget</strong>: its smallest documented deployment is 32× H200 [DOC].</p>
+<p>At list price, $5,000 USD of credit buys about <strong>45 billed GPU-hours (roughly 30–37 hours of actual use)</strong> of the recommended VM, not 180 (Section 6). If your credit is that tight, a pay-per-token Kimi endpoint in Azure AI Foundry may serve you better. That would not be self-hosted; see the last row of the table below.</p>
+<h3 id="which-kimi-model-is-which-verified-2026-10-20">Which Kimi model is which (verified 2026-10-20)</h3>
+<div class="tw"><table><thead><tr><th>Checkpoint</th><th>Publisher</th><th>Size on disk</th><th>Format</th><th>Hardware it is documented on</th></tr></thead><tbody><tr><td><a href="https://huggingface.co/moonshotai/Kimi-K3" target="_blank" rel="noopener"><code>moonshotai/Kimi-K3</code></a> — <strong>latest open-weight release</strong> (paper 27 Jul 2026)</td><td>Moonshot</td><td>1,561 GB [DOC: HF treesize API]</td><td>MXFP4 weights + MXFP8 activations (QAT); 2.8T total / 104B active; 1M context; Kimi K3 License</td><td>32× H200 (TP8×PP4) or 16× GB200/GB300 (<a href="https://docs.nvidia.com/dynamo/recipes/kimi-k3" target="_blank" rel="noopener">NVIDIA Dynamo recipe</a>); vLLM ≥ v0.29.0 (<a href="https://recipes.vllm.ai/moonshotai" target="_blank" rel="noopener">vLLM recipes</a>)</td></tr><tr><td><a href="https://huggingface.co/moonshotai/Kimi-K2.6" target="_blank" rel="noopener"><code>moonshotai/Kimi-K2.6</code></a></td><td>Moonshot</td><td>595 GB</td><td>Native INT4, &quot;same architecture as Kimi-K2.5&quot;; Modified MIT</td><td>8× H200 verified; vLLM ≥ 0.25.0 (<a href="https://recipes.vllm.ai/moonshotai/Kimi-K2.6" target="_blank" rel="noopener">recipe</a>)</td></tr><tr><td><a href="https://huggingface.co/moonshotai/Kimi-K2.5" target="_blank" rel="noopener"><code>moonshotai/Kimi-K2.5</code></a> — <strong>what you asked for</strong></td><td>Moonshot</td><td>595.2 GB</td><td>compressed-tensors <code>pack-quantized</code>, INT4 group-size 32 on routed experts; attention, shared experts, dense MLP, lm_head and vision tower left BF16; 1T total / 32B active; 256K context; Modified MIT</td><td>8× H200 TP8, 8× MI300X/MI355X TP8, GB200 TP4 (<a href="https://docs.vllm.ai/projects/recipes/en/latest/moonshotai/Kimi-K2.5.html" target="_blank" rel="noopener">vLLM recipe</a>)</td></tr><tr><td><a href="https://huggingface.co/nvidia/Kimi-K2.5-NVFP4" target="_blank" rel="noopener"><code>nvidia/Kimi-K2.5-NVFP4</code></a></td><td>NVIDIA (quantised from K2.5)</td><td>590.9 GB</td><td>NVFP4 on MoE linear layers only; NVIDIA Open Model License + Modified MIT</td><td>&quot;NVIDIA Blackwell&quot;, tested on B200; TP4</td></tr></tbody></table></div>
+<p>The K2.5 repository at revision <code>4d01dfe0332d63057c186e0b262165819efb6611</code> (lastModified 2026-04-30) was observed on 2026-10-20 [DOC: HF API]. Re-resolve it with the command in Section 3 before you rely on it.</p>
+<p><strong>I have not swapped your model.</strong> K2.6 is a drop-in successor with the same architecture. Use it only if you choose to: set <code>MODEL_REPO=moonshotai/Kimi-K2.6</code>, resolve its SHA, and keep everything else.</p>
+<p><strong>Activated parameters are not the memory requirement.</strong> K2.5 activates 32B parameters per token, but all 1T parameters (384 experts) must stay resident in GPU memory. The 595 GB checkpoint is what has to fit.</p>
+<h3 id="candidate-comparison">Candidate comparison</h3>
+<p>All prices are Azure retail Linux pay-as-you-go in USD, from the <a href="https://prices.azure.com/api/retail/prices" target="_blank" rel="noopener">Retail Prices API</a> on 2026-10-20. A price listing shows that a SKU exists in a region. It does not prove you have quota or that capacity is available.</p>
+<div class="tw"><table><thead><tr><th>Candidate (Azure SKU)</th><th>GPU / arch</th><th>GPU memory</th><th>K2.5 fits?</th><th>Evidence</th><th>Cheapest list $/h (region)</th><th>Melbourne-adjacent $/h</th><th>Verdict</th></tr></thead><tbody><tr><td><code>Standard_ND96amsr_A100_v4</code></td><td>8× A100 80GB, Ampere SM80</td><td>640 GB</td><td><strong>No.</strong> About 5 GiB per GPU left after weights; nothing left for workspace, CUDA graphs or KV [CALC]</td><td>None for K2.5; no H100/A100 entry in any Kimi recipe</td><td>32.77 (eastus2)</td><td>47.52 (australiaeast)</td><td>Reject</td></tr><tr><td><code>Standard_ND96isr_H100_v5</code></td><td>8× H100 80GB, Hopper SM90</td><td>640 GB</td><td><strong>No.</strong> Same memory as A100 [CALC]. The K2.6 recipe&#39;s phrase &quot;equivalent aggregate VRAM (~640 GB)&quot; conflicts with the vLLM index&#39;s &quot;INT4 714G&quot;; I treat 640 GB as marginal and undocumented</td><td>Not listed</td><td>98.32 (eastus2)</td><td>142.60 (australiaeast)</td><td>Reject: costs more than H200 and fits less</td></tr><tr><td><strong><code>Standard_ND96isr_H200_v5</code></strong></td><td>8× H200 141GB, Hopper SM90, NVLink 900 GB/s</td><td>1,128 GB</td><td><strong>Yes.</strong> About 40 GiB of KV per GPU at 0.90 utilisation [CALC]</td><td>vLLM K2.5 recipe: &quot;8×H200&quot; TP8 [DOC]</td><td><strong>84.80</strong> (eastus2, westus2, westus3)</td><td>110.24 (australiasoutheast), 122.96 (australiaeast)</td><td><strong>Recommended</strong></td></tr><tr><td><code>Standard_ND96isr_MI300X_v5</code></td><td>8× AMD MI300X 192GB, ROCm</td><td>1,535 GB</td><td>Yes, with large headroom</td><td>vLLM: &quot;Verified on 8× MI300X/MI355X&quot; [DOC]</td><td>48.00 (eastus2, westus3)</td><td>67.20 (australiasoutheast)</td><td><strong>Lower-cost alternative.</strong> ROCm stack and flags differ; this playbook does not cover them step by step</td></tr><tr><td><code>Standard_ND128isr_NDR_GB200_v6</code></td><td>4× GB200, Blackwell, Grace <strong>aarch64</strong></td><td>4× ~186 GB [EXP: confirm]</td><td>Yes, for NVFP4 at TP4</td><td>vLLM GB200 TP4 for INT4 and NVFP4 [DOC]</td><td>108.16 (eastus2)</td><td>151.44 (australiasoutheast)</td><td>Reject: rack-scale SKU, aarch64 image, higher price, quota rarely granted to small subscriptions [SUB]</td></tr><tr><td>Kimi K3 on any single VM</td><td>—</td><td>needs &gt;1,561 GB for weights alone</td><td><strong>No</strong></td><td>Dynamo: 32× H200 minimum</td><td>≥ 339/h (4× H200 VMs)</td><td>—</td><td>Infeasible: about 12 h of credit, multi-node InfiniBand</td></tr><tr><td>Azure AI Foundry hosted Kimi (not self-hosted)</td><td>managed</td><td>—</td><td>n/a</td><td><a href="https://ai.azure.com/catalog/models/Kimi-K2.5" target="_blank" rel="noopener">Foundry catalog: Kimi-K2.5</a> [SUB: check eligibility and price in your tenant]</td><td>per token</td><td>—</td><td>Mention only; outside your brief</td></tr></tbody></table></div>
+<p>The H200 Spot rows in the price API show the same price as on-demand. That looks like a data anomaly, and Spot eviction would kill long sessions anyway, so it is excluded.</p>
+<p><strong>Region.</strong> Nothing in Australia is required. Australian H200 list prices are 30–45% higher than US prices, and a US region adds roughly 150–200 ms of network round trip from Melbourne [EXP]. That is small next to model latency. Pick a US region unless data residency matters to you. The final choice depends on your quota and capacity [SUB].</p>
+<h3 id="memory-plan-k25-on-8-h200-32768-token-context-calc">Memory plan: K2.5 on 8× H200, 32,768-token context [CALC]</h3>
+<p>Inputs: <a href="https://huggingface.co/moonshotai/Kimi-K2.5/raw/main/config.json" target="_blank" rel="noopener">config.json</a> gives <code>num_hidden_layers=61</code>, <code>kv_lora_rank=512</code> and <code>qk_rope_head_dim=64</code>. The checkpoint is 595.2 GB = 554.3 GiB. The vision tower is MoonViT, about 400M parameters in BF16.</p>
+<div class="tw"><table><thead><tr><th>Item</th><th>Per GPU</th><th>How derived</th></tr></thead><tbody><tr><td>Usable HBM (conservative)</td><td>131.3 GiB</td><td>141 GB ÷ 1.0737. Confirm real <code>memory.total</code> with <code>nvidia-smi</code></td></tr><tr><td>vLLM budget at <code>--gpu-memory-utilization 0.90</code></td><td>118.2 GiB</td><td>0.90 × 131.3</td></tr><tr><td>Sharded weights (experts, MLA, embeddings, lm_head)</td><td>≈ 69.2 GiB</td><td>(554.3 − 0.75) ÷ 8, assuming even TP sharding [EXP]</td></tr><tr><td>Vision encoder, replicated (<code>--mm-encoder-tp-mode data</code>)</td><td>≈ 0.75 GiB</td><td>0.4B × 2 bytes</td></tr><tr><td>Activations, MoE workspace, CUDA graphs, NCCL buffers</td><td>reserve 8 GiB</td><td>Allowance; measure it [EXP]</td></tr><tr><td><strong>Left for KV cache</strong></td><td><strong>≈ 40 GiB</strong></td><td>118.2 − 69.2 − 0.75 − 8</td></tr><tr><td>KV bytes per token (BF16)</td><td>70,272 B</td><td>(512 + 64) × 61 layers × 2 bytes. MLA&#39;s latent KV is <strong>replicated on every TP rank</strong>, not split</td></tr><tr><td>One 32,768-token sequence</td><td>2.14 GiB on every GPU</td><td>32,768 × 70,272 B</td></tr><tr><td>Full-length sequences that fit</td><td>≈ 18</td><td>40 ÷ 2.14</td></tr></tbody></table></div>
+<p><strong>Chosen settings:</strong> <code>--max-model-len 32768</code>, <code>--max-num-seqs 4</code>, KV cache dtype <code>auto</code> (BF16). That is four times your likely single-user concurrency and avoids FP8-KV accuracy questions. The same arithmetic on 80 GB GPUs leaves negative headroom: 0.95 × 74.5 − 69.95 − 8 &lt; 0. That is why A100 and H100 are rejected.</p>
+<h3 id="storage-download-and-startup-calc">Storage, download and startup [CALC]</h3>
+<ul><li><p>The weights need <strong>≥ 600 GB</strong> of storage, plus about 25 GB for the container image.</p></li><li><p>A managed disk is capped by the VM&#39;s uncached throughput of 612 MBps (<a href="https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/nd-h200-v5-series" target="_blank" rel="noopener">ND H200 v5 spec</a>). Reading 595 GB from it takes <strong>at least about 16 minutes</strong> on every cold start. A P30 disk (200 MBps) would take about 50 minutes.</p></li><li><p>The plan therefore keeps the <strong>durable copy in Blob storage</strong> (about $11/month) and <strong>restores it to the VM&#39;s local NVMe</strong> (8 disks, 28 TiB, ephemeral) at each start with <code>azcopy</code>. Restore time is unknown until measured [EXP]. The VM has 80 Gbps of network bandwidth, but Blob throughput is the limit.</p></li><li><p>The first download from Hugging Face is a one-time cost. Inbound data transfer is free [DOC: price API, &quot;Standard Data Transfer In 0.0&quot;].</p></li></ul>
+<h3 id="gates-before-any-spend">Gates before any spend</h3>
+<ol><li><p><strong>[SUB]</strong> <code>Standard NDSH200v5 Family vCPUs</code> quota of at least 96 in the chosen region. A new subscription usually has 0 and must file a quota request.</p></li><li><p><strong>[SUB]</strong> The SKU is unrestricted for your subscription in that region (<code>az vm list-skus</code>, Section 1).</p></li><li><p><strong>[SUB]</strong> Your credit type covers ND-series compute. Some sponsorship and free credits exclude GPU or Marketplace items; check Cost Management.</p></li><li><p><strong>[EXP]</strong> A real allocation succeeds. Approved quota does not guarantee physical capacity.</p></li></ol>
+<p>If gate 1 or 4 fails in every US region, fall back to <strong><code>Standard_ND96isr_MI300X_v5</code></strong>, which runs the same model through vLLM ROCm per the recipe, or stop.</p>
+<h2 id="missing-inputs">Missing inputs</h2>
+<p>The playbook runs with the assumptions below. Each one changes a specific setting if your real answer differs.</p>
+<div class="tw"><table><thead><tr><th>Input</th><th>Assumption used</th><th>What it changes</th><th>How to find it</th></tr></thead><tbody><tr><td>Credit currency, type, expiry</td><td>USD 5,000, expiring in <code>&lt;CREDIT_EXPIRY_MONTHS&gt;</code> = 3</td><td>Usable hours (Section 6)</td><td>Portal → Cost Management → Credits [SUB]</td></tr><tr><td>Services covered by the credit</td><td>ND-series compute, managed disks, Blob, public IP</td><td>Whether this plan is free to you at all</td><td>Offer terms of the subscription [SUB]</td></tr><tr><td>Preferred regions</td><td>Any US region with H200 quota</td><td><code>LOCATION</code></td><td>Quota output, Section 1 [SUB]</td></tr><tr><td>Available quota</td><td>Unknown, probably 0</td><td>Whether you can start at all</td><td><code>az quota</code> / <code>az vm list-usage</code> [SUB]</td></tr><tr><td>Phone OS</td><td>Unknown; both iOS and Android covered</td><td>Client choice (Section 5)</td><td>You</td></tr><tr><td>Workload</td><td>Chat, drafting, code, light tool use</td><td>Thinking vs instant mode, <code>max_tokens</code></td><td>You</td></tr><tr><td>Concurrency</td><td>1 user, ≤ 2 in-flight requests</td><td><code>--max-num-seqs 4</code></td><td>You</td></tr><tr><td>Documents and images</td><td>Images yes, PDFs via the chat front end</td><td>Whether the vision encoder and Open WebUI are needed</td><td>You</td></tr><tr><td>Acceptable latency</td><td>First token in ≤ 10 s for a 4K-token prompt</td><td>Benchmark pass threshold</td><td>You</td></tr><tr><td>Operating hours</td><td>On demand, ≤ 4 h per session</td><td>Auto-deallocate cap (<code>MAX_RUNTIME_HOURS=4</code>)</td><td>You</td></tr><tr><td>Domain</td><td>You own one on Cloudflare DNS, or can add one</td><td>Option A cert or Option B tunnel</td><td>You</td></tr></tbody></table></div>
+<h2 id="target-architecture">Target architecture</h2>
+<figure class="diagram"><svg viewBox="0 0 760 500" role="img" aria-label="Target architecture" font-family="Inter,sans-serif" style="width:100%;height:auto;display:block"><defs><marker id="ka" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs><text x="24" y="28" font-weight="600" font-size="15" fill="var(--ink)">Only two API routes reach vLLM; port 8000 never leaves the VM</text><rect x="408" y="52" width="336" height="336" rx="8" fill="var(--soft)" stroke="var(--muted)" stroke-width="1.25"/><text x="424" y="76" font-weight="600" font-size="13" fill="var(--ink)">GPU VM · Standard_ND96isr_H200_v5</text><path d="M144 120H424" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M84 148V260H176" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M376 260H424" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M568 128H584V260" fill="none" stroke="var(--muted)" stroke-width="1.25"/><path d="M568 260H584" fill="none" stroke="var(--muted)" stroke-width="1.25"/><path d="M584 128H600" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M584 260H600" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M664 164V224" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M664 316V296" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M496 420V372" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M664 420V388" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><path d="M376 448H392V340H408" fill="none" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ka)"/><rect x="24" y="92" width="120" height="56" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="84" y="116" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">Your phone</text><text x="84" y="134" text-anchor="middle" font-size="11.5" fill="var(--muted)">browser or app</text><rect x="176" y="224" width="200" height="72" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="276" y="248" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">Cloudflare edge (B)</text><text x="276" y="266" text-anchor="middle" font-size="11.5" fill="var(--muted)">Access policy check</text><text x="276" y="282" text-anchor="middle" font-size="11.5" fill="var(--muted)">TLS ends here: sees plaintext</text><rect x="424" y="92" width="144" height="72" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="496" y="116" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">nginx :443 (A)</text><text x="496" y="134" text-anchor="middle" font-size="11.5" fill="var(--muted)">TLS, gateway key</text><text x="496" y="150" text-anchor="middle" font-size="11.5" fill="var(--muted)">2 routes, 429 limit</text><rect x="424" y="224" width="144" height="72" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="496" y="248" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">cloudflared (B)</text><text x="496" y="266" text-anchor="middle" font-size="11.5" fill="var(--muted)">dials out, no port</text><text x="496" y="282" text-anchor="middle" font-size="11.5" fill="var(--muted)">checks Access JWT</text><rect x="600" y="92" width="128" height="72" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="664" y="116" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">Open WebUI</text><text x="664" y="134" text-anchor="middle" font-size="11.5" fill="var(--muted)">127.0.0.1:3000</text><text x="664" y="150" text-anchor="middle" font-size="11.5" fill="var(--muted)">history, files</text><rect x="600" y="224" width="128" height="72" rx="8" fill="var(--brand)" fill-opacity="0.12" stroke="var(--brand)" stroke-width="2"/><text x="664" y="248" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">vLLM, TP=8</text><text x="664" y="266" text-anchor="middle" font-size="11.5" fill="var(--ink)">127.0.0.1:8000</text><text x="664" y="282" text-anchor="middle" font-size="11.5" fill="var(--ink)">alias kimi-work</text><rect x="424" y="316" width="304" height="56" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="576" y="340" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">Local NVMe RAID0 /mnt/kimi</text><text x="576" y="358" text-anchor="middle" font-size="11.5" fill="var(--muted)">595 GB weights · wiped on deallocate</text><rect x="176" y="420" width="200" height="56" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="276" y="444" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">Automation runbook</text><text x="276" y="462" text-anchor="middle" font-size="11.5" fill="var(--muted)">hourly cap, then deallocate</text><rect x="424" y="420" width="144" height="56" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="496" y="444" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">Blob storage</text><text x="496" y="462" text-anchor="middle" font-size="11.5" fill="var(--muted)">durable weights</text><rect x="600" y="420" width="128" height="56" rx="8" fill="var(--card)" stroke="var(--muted)" stroke-width="1.25"/><text x="664" y="444" text-anchor="middle" font-weight="600" font-size="13" fill="var(--ink)">Key Vault</text><text x="664" y="462" text-anchor="middle" font-size="11.5" fill="var(--muted)">keys via identity</text><text x="284" y="110" text-anchor="middle" font-size="11.5" fill="var(--muted)">A: HTTPS :443 (NSG open)</text><text x="92" y="214" font-size="11.5" fill="var(--muted)">B: HTTPS</text><text x="672" y="198" font-size="11.5" fill="var(--muted)">API key</text><text x="504" y="406" font-size="11.5" fill="var(--muted)">azcopy at boot</text></svg><figcaption>Target architecture · Option A or B, never both</figcaption></figure>
+<p>You choose one edge path: nginx on the VM (A) or Cloudflare&#39;s edge plus <code>cloudflared</code> (B). Both converge on vLLM, which listens only on loopback; Open WebUI talks to it on the private Docker network. Weights come from Blob storage to local NVMe at each boot, and two independent mechanisms can deallocate the VM.</p>
+<h2 id="1-azure-infrastructure-provisioning">1. Azure infrastructure provisioning</h2>
+<p>This section builds one GPU VM in a private-by-default subnet. It has a Standard public IP used <strong>for outbound traffic</strong> (Hugging Face, apt, Cloudflare) and <strong>no inbound internet rule</strong> except the ones a chosen access option adds. A public IP costs $0.005/h; a NAT Gateway would also charge per GB processed on the 595 GB download. Weights live in a Blob container that only the VM&#39;s managed identity can reach. Billing starts at <code>az vm create</code>, so run nothing past step 1.5 until gates 1–3 pass.</p>
+<h3 id="11-subscription-and-providers-cs">1.1 Subscription and providers — <code>[CS]</code></h3>
+<pre><code class="language-bash">az login                                   # Cloud Shell is already logged in
+az account set --subscription &quot;$SUB_ID&quot;
+az account show --query &quot;{name:name,id:id,tenant:tenantId}&quot; -o table
+for ns in Microsoft.Compute Microsoft.Network Microsoft.Storage Microsoft.KeyVault Microsoft.Automation Microsoft.Quota Microsoft.CostManagement; do
+  az provider register --namespace &quot;$ns&quot; --wait
+  echo &quot;$ns: $(az provider show -n &quot;$ns&quot; --query registrationState -o tsv)&quot;
+done</code></pre>
+<p><strong>Success:</strong> each line prints <code>Registered</code>. <strong>Failure:</strong> <code>AuthorizationFailed</code> means you lack Owner or Contributor on the subscription. Ask the subscription owner; there is no workaround.</p>
+<h3 id="12-quota-approval-cs">1.2 Quota (approval) — <code>[CS]</code></h3>
+<pre><code class="language-bash">az vm list-usage --location &quot;$LOCATION&quot; -o table | grep -Ei &#39;H200|Total Regional&#39;</code></pre>
+<p><strong>Success:</strong> the <code>Standard NDSH200v5 Family vCPUs</code> row (the exact family label comes from your output [SUB]) has <code>Limit − CurrentValue ≥ 96</code>, and so does <code>Total Regional vCPUs</code>. <strong>Failure:</strong> a limit of 0 is normal. Request 96 vCPUs in Portal → Quotas → Compute → filter &quot;H200&quot; → New quota request, and repeat for each candidate region. GPU requests can take days and may be refused.</p>
+<h3 id="13-sku-restrictions-cs">1.3 SKU restrictions — <code>[CS]</code></h3>
+<pre><code class="language-bash">az vm list-skus --location &quot;$LOCATION&quot; --size Standard_ND96isr_H200_v5 --all \
+  --query &quot;[].{sku:name, zones:locationInfo[0].zones, restrictions:restrictions[].reasonCode}&quot; -o json</code></pre>
+<p><strong>Success:</strong> one entry with <code>&quot;restrictions&quot;: []</code>. <strong>Failure:</strong> <code>NotAvailableForSubscription</code> means the SKU is blocked for you in this region, even if quota exists. Try another region or open a support ticket.</p>
+<p><strong>Quota is not capacity.</strong> Approved quota lets you ask for 96 vCPUs. Azure can still answer <code>AllocationFailed</code> or <code>ZonalAllocationFailed</code> at create or start time, and again after every deallocation. Section 6 covers what to do when that happens.</p>
+<h3 id="14-image-check-cs">1.4 Image check — <code>[CS]</code></h3>
+<p>The Ubuntu-HPC 24.04 image ships the NVIDIA datacenter driver, Fabric Manager (needed for NVSwitch on 8-GPU HGX), CUDA, NCCL and DOCA-OFED. <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/high-performance-compute/configure" target="_blank" rel="noopener">Azure HPC docs</a> recommend it for ND-series. The <a href="https://github.com/Azure/azhpc-images/releases" target="_blank" rel="noopener">azhpc-images release</a> <code>ubuntu-hpc-2026092501</code> lists driver <strong>580.178.04</strong>, CUDA <strong>13.0.88</strong>, Fabric Manager <strong>580.178.04-1ubuntu1</strong>, NCCL <strong>2.31.2-1</strong>, DOCA OFED <strong>3.2.3</strong> and Docker (Moby) <strong>29.8.1</strong> [DOC].</p>
+<pre><code class="language-bash">export IMAGE_URN=&quot;microsoft-dsvm:ubuntu-hpc:2404:24.04.2026092501&quot;
+az vm image show --location &quot;$LOCATION&quot; --urn &quot;$IMAGE_URN&quot; \
+  --query &quot;{version:name, gen:hyperVGeneration, plan:plan, arch:architecture}&quot; -o json</code></pre>
+<p><strong>Success:</strong> <code>gen</code> is <code>V2</code>, <code>arch</code> is <code>x64</code>, <code>plan</code> is <code>null</code>. <strong>If <code>plan</code> is not null:</strong> run <code>az vm image terms accept --urn &quot;$IMAGE_URN&quot;</code> first. <strong>If the image is missing in the region:</strong> list versions with <code>az vm image list --publisher microsoft-dsvm --offer ubuntu-hpc --sku 2404 --all -o table</code>, pick the newest x86 <code>24.04.*</code>, and re-read its release notes for the driver version.</p>
+<h3 id="15-network-nsg-and-public-ip-cs">1.5 Network, NSG and public IP — <code>[CS]</code></h3>
+<pre><code class="language-bash">export MY_IP=&quot;$(curl -s https://api.ipify.org)/32&quot;     # your workstation&#39;s IP, for SSH only
+az group create -n &quot;$RG&quot; -l &quot;$LOCATION&quot;
+
+az network nsg create -g &quot;$RG&quot; -n &quot;$NSG&quot;
+# SSH: created DISABLED. Open only during admin work (see 1.9)
+az network nsg rule create -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -n allow-ssh-admin --priority 100 \
+  --direction Inbound --access Deny --protocol Tcp --source-address-prefixes &quot;$MY_IP&quot; \
+  --destination-port-ranges 22
+# Explicit deny-all from the Internet (stronger than relying on defaults)
+az network nsg rule create -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -n deny-internet-all --priority 4000 \
+  --direction Inbound --access Deny --protocol &#39;*&#39; --source-address-prefixes Internet \
+  --destination-port-ranges &#39;*&#39;
+
+az network vnet create -g &quot;$RG&quot; -n &quot;$VNET&quot; --address-prefixes 10.40.0.0/24 \
+  --subnet-name &quot;$SUBNET&quot; --subnet-prefixes 10.40.0.0/26
+az network vnet subnet update -g &quot;$RG&quot; --vnet-name &quot;$VNET&quot; -n &quot;$SUBNET&quot; \
+  --network-security-group &quot;$NSG&quot; --default-outbound false \
+  --service-endpoints Microsoft.Storage Microsoft.KeyVault
+
+az network public-ip create -g &quot;$RG&quot; -n pip-kimi --sku Standard --allocation-method Static --version IPv4</code></pre>
+<p><strong>Check:</strong></p>
+<pre><code class="language-bash">az network vnet subnet show -g &quot;$RG&quot; --vnet-name &quot;$VNET&quot; -n &quot;$SUBNET&quot; \
+  --query &quot;{nsg:networkSecurityGroup.id, defaultOutbound:defaultOutboundAccess}&quot; -o json
+az network nsg rule list -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -o table</code></pre>
+<p><strong>Success:</strong> <code>defaultOutbound</code> is <code>false</code>, the NSG is attached, and the only custom rules are the Deny-state SSH rule and <code>deny-internet-all</code>. Port 8000 appears nowhere, and it never will. The <code>default-outbound</code> setting follows Microsoft&#39;s <a href="https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/default-outbound-access" target="_blank" rel="noopener">default outbound access</a> guidance: new VNets are private by default for API versions after 31 March 2026, and the VM gets an explicit outbound path through its public IP.</p>
+<h3 id="16-blob-storage-for-the-durable-weight-copy-cs">1.6 Blob storage for the durable weight copy — <code>[CS]</code></h3>
+<pre><code class="language-bash">export SA=&quot;stkimi$RANDOM$RANDOM&quot;           # must be globally unique, 3–24 lowercase alphanumerics
+az storage account create -g &quot;$RG&quot; -n &quot;$SA&quot; -l &quot;$LOCATION&quot; --sku Standard_LRS --kind StorageV2 \
+  --access-tier Hot --min-tls-version TLS1_2 --allow-blob-public-access false \
+  --allow-shared-key-access false --default-action Deny --https-only true
+az storage account network-rule add -g &quot;$RG&quot; --account-name &quot;$SA&quot; --vnet-name &quot;$VNET&quot; --subnet &quot;$SUBNET&quot;
+az storage container-rm create -g &quot;$RG&quot; --storage-account &quot;$SA&quot; -n models   # management plane; needs no data role
+echo &quot;export SA=$SA&quot; &gt;&gt; ~/.kimi.env</code></pre>
+<p><strong>Success:</strong> <code>az storage account show -n &quot;$SA&quot; --query &quot;{shared:allowSharedKeyAccess,net:networkRuleSet.defaultAction}&quot;</code> returns <code>false</code> and <code>Deny</code>.</p>
+<h3 id="17-key-vault-for-secrets-cs">1.7 Key Vault for secrets — <code>[CS]</code></h3>
+<pre><code class="language-bash">export KV=&quot;kv-kimi-$RANDOM&quot;
+az keyvault create -g &quot;$RG&quot; -n &quot;$KV&quot; -l &quot;$LOCATION&quot; --enable-rbac-authorization true --retention-days 7
+az role assignment create --assignee &quot;$(az ad signed-in-user show --query id -o tsv)&quot; \
+  --role &quot;Key Vault Secrets Officer&quot; --scope &quot;$(az keyvault show -n &quot;$KV&quot; --query id -o tsv)&quot;
+# vLLM API key: 256 random bits. Never typed into a chat app except the one client that needs it
+az keyvault secret set --vault-name &quot;$KV&quot; -n vllm-api-key --value &quot;$(openssl rand -hex 32)&quot; -o none
+echo &quot;export KV=$KV&quot; &gt;&gt; ~/.kimi.env</code></pre>
+<h3 id="18-gpu-vm-cs-billing-starts-here">1.8 GPU VM — <code>[CS]</code> (billing starts here)</h3>
+<pre><code class="language-bash">az vm create -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; -l &quot;$LOCATION&quot; --size Standard_ND96isr_H200_v5 \
+  --image &quot;$IMAGE_URN&quot; --security-type Standard \
+  --admin-username &quot;$ADMIN_USER&quot; --ssh-key-values &quot;&lt;PATH_TO_YOUR_ed25519.pub&gt;&quot; \
+  --vnet-name &quot;$VNET&quot; --subnet &quot;$SUBNET&quot; --nsg &quot;&quot; --public-ip-address pip-kimi \
+  --os-disk-size-gb 256 --storage-sku Premium_LRS --os-disk-delete-option Detach \
+  --assign-identity &#39;[system]&#39; --accelerated-networking true</code></pre>
+<ul><li><p><code>--security-type Standard</code>: Secure Boot blocks unsigned DKMS kernel modules, and the <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/extensions/hpccompute-gpu-linux" target="_blank" rel="noopener">driver extension doc</a> says Secure Boot is unsupported for driver extensions. Whether Trusted Launch with Secure Boot off works on this SKU and image is [EXP].</p></li><li><p>The OS disk is a 256 GiB Premium SSD (P15). It persists through deallocation and holds the OS, Docker images, Open WebUI data and config. It does <strong>not</strong> hold the weights.</p></li><li><p><code>--os-disk-delete-option Detach</code> keeps the disk if you delete the VM by mistake. Final cleanup is in Section 6.</p></li></ul>
+<p><strong>Check:</strong></p>
+<pre><code class="language-bash">az vm get-instance-view -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; --query &quot;instanceView.statuses[?starts_with(code,&#39;PowerState&#39;)].displayStatus&quot; -o tsv
+az vm show -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; --query &quot;{size:hardwareProfile.vmSize, mi:identity.type, zone:zones}&quot; -o json</code></pre>
+<p><strong>Success:</strong> <code>VM running</code>, size <code>Standard_ND96isr_H200_v5</code>, identity <code>SystemAssigned</code>. <strong>Failures:</strong> <code>AllocationFailed</code> / <code>ZonalAllocationFailed</code> means no capacity. Delete the failed VM if one was half-created, then retry later or in another approved region. <code>QuotaExceeded</code> sends you back to 1.2. <code>OperationNotAllowed ... security type</code> means the SKU or image disagrees with the security type: retry with <code>--security-type TrustedLaunch --enable-secure-boot false --enable-vtpm true</code> [EXP].</p>
+<h3 id="19-managed-identity-with-narrow-permissions-cs">1.9 Managed identity with narrow permissions — <code>[CS]</code></h3>
+<p>The VM identity gets exactly three things: read (and, during seeding only, write) the <code>models</code> container; read Key Vault secrets; read and deallocate <strong>itself</strong>.</p>
+<pre><code class="language-bash">PID=$(az vm show -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; --query identity.principalId -o tsv)
+VM_ID=$(az vm show -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; --query id -o tsv)
+C_SCOPE=&quot;$(az storage account show -n &quot;$SA&quot; --query id -o tsv)/blobServices/default/containers/models&quot;
+
+# Seeding phase only. Downgraded to Reader in Section 3.3
+az role assignment create --assignee-object-id &quot;$PID&quot; --assignee-principal-type ServicePrincipal \
+  --role &quot;Storage Blob Data Contributor&quot; --scope &quot;$C_SCOPE&quot;
+az role assignment create --assignee-object-id &quot;$PID&quot; --assignee-principal-type ServicePrincipal \
+  --role &quot;Key Vault Secrets User&quot; --scope &quot;$(az keyvault show -n &quot;$KV&quot; --query id -o tsv)&quot;
+
+cat &gt; vm-self-deallocate.json &lt;&lt;EOF
+{
+  &quot;Name&quot;: &quot;VM Self Deallocate (kimi)&quot;,
+  &quot;Description&quot;: &quot;Read and deallocate one VM. Nothing else.&quot;,
+  &quot;Actions&quot;: [&quot;Microsoft.Compute/virtualMachines/read&quot;,
+              &quot;Microsoft.Compute/virtualMachines/instanceView/read&quot;,
+              &quot;Microsoft.Compute/virtualMachines/deallocate/action&quot;],
+  &quot;AssignableScopes&quot;: [&quot;/subscriptions/$SUB_ID/resourceGroups/$RG&quot;]
+}
+EOF
+az role definition create --role-definition @vm-self-deallocate.json
+az role assignment create --assignee-object-id &quot;$PID&quot; --assignee-principal-type ServicePrincipal \
+  --role &quot;VM Self Deallocate (kimi)&quot; --scope &quot;$VM_ID&quot;
+
+az role assignment list --assignee &quot;$PID&quot; --all -o table</code></pre>
+<p><strong>Success:</strong> exactly three assignments, each scoped to the container, the vault or the VM, and none at subscription or resource-group scope. A new custom role can take a few minutes to replicate; retry the assignment if it says the role is not found.</p>
+<p><strong>Admin access (SSH), on demand only — <code>[CS]</code>:</strong></p>
+<pre><code class="language-bash">az network nsg rule update -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -n allow-ssh-admin --access Allow \
+  --source-address-prefixes &quot;$(curl -s https://api.ipify.org)/32&quot;
+ssh -i &lt;PRIVATE_KEY&gt; &quot;$ADMIN_USER@$(az network public-ip show -g &quot;$RG&quot; -n pip-kimi --query ipAddress -o tsv)&quot;
+# when finished:
+az network nsg rule update -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -n allow-ssh-admin --access Deny</code></pre>
+<p>If SSH is blocked or broken, <code>az vm run-command invoke -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; --command-id RunShellScript --scripts &quot;...&quot;</code> runs commands through the Azure agent with no inbound port.</p>
+<h3 id="110-discover-local-storage-before-touching-it-vm">1.10 Discover local storage before touching it — <code>[VM]</code></h3>
+<pre><code class="language-bash">lsblk -d -o NAME,SIZE,MODEL,TYPE,MOUNTPOINTS
+lsblk -f
+findmnt -t ext4,xfs -o TARGET,SOURCE,SIZE
+sudo blkid
+cat /proc/mdstat</code></pre>
+<p><em>Illustrative expected output (shape only):</em> one OS disk of about 256G with partitions mounted at <code>/</code>; one temp disk of about 1T, often already mounted at <code>/mnt</code>; and eight <code>nvme*n1</code> devices of about 3.5T each, model text resembling &quot;Microsoft NVMe Direct Disk&quot;. Device names and the image&#39;s own NVMe handling vary [EXP].</p>
+<p>Apply these rules before any format:</p>
+<ol><li><p>If <code>findmnt</code> shows the NVMe devices <strong>already</strong> assembled and mounted by the image (for example a RAID under <code>/mnt/nvme</code>), <strong>use that mount</strong> and skip to 1.11.</p></li><li><p>Otherwise, select only devices that are type <code>disk</code>, report the NVMe Direct Disk model, are not the OS disk, have no partitions, no filesystem signature (<code>sudo wipefs -n /dev/X</code> prints nothing), and are not in <code>/proc/mdstat</code>.</p></li><li><p>Never format the OS disk or any device with existing data.</p></li></ol>
+<pre><code class="language-bash"># [VM] Build the candidate list from evidence, then STOP and read it before continuing.
+CAND=$(lsblk -dn -o NAME,TYPE,MODEL | awk &#39;$2==&quot;disk&quot; &amp;&amp; /NVMe Direct/ {print &quot;/dev/&quot;$1}&#39;)
+for d in $CAND; do
+  echo &quot;$d parts=$(lsblk -n &quot;$d&quot; | wc -l) sig=$(sudo wipefs -n &quot;$d&quot; | wc -l)&quot;
+done</code></pre>
+<p><strong>Proceed only if</strong> every listed device shows <code>parts=1</code> (the disk itself) and <code>sig=0</code>. Then:</p>
+<pre><code class="language-bash"># [VM] local-nvme.sh — also reused at every boot (Section 6), because NVMe is wiped on deallocate
+set -euo pipefail
+N=$(echo $CAND | wc -w)
+sudo mdadm --create /dev/md/kimi --level=0 --raid-devices=&quot;$N&quot; $CAND --force --run
+sudo mkfs.xfs -f -L kimi-nvme /dev/md/kimi
+sudo mkdir -p /mnt/kimi &amp;&amp; sudo mount -o noatime LABEL=kimi-nvme /mnt/kimi
+sudo chown &quot;$USER&quot;:&quot;$USER&quot; /mnt/kimi
+df -h /mnt/kimi</code></pre>
+<p><strong>Success:</strong> <code>df</code> shows about 28T at <code>/mnt/kimi</code>. Do <strong>not</strong> add it to <code>/etc/fstab</code> with a hard mount. After deallocation the devices come back blank and boot would hang; the boot unit in Section 6 recreates it.</p>
+<h3 id="111-persistent-vs-ephemeral-storage">1.11 Persistent vs ephemeral storage</h3>
+<div class="tw"><table><thead><tr><th>Storage</th><th>Survives deallocate?</th><th>Holds</th><th>Restore path</th></tr></thead><tbody><tr><td>OS disk, P15 Premium SSD 256 GiB</td><td>Yes</td><td>OS, Docker images, configs, Open WebUI DB</td><td>Nothing to do</td></tr><tr><td>Local NVMe RAID0, <code>/mnt/kimi</code></td><td><strong>No</strong>, wiped</td><td>Working copy of the weights</td><td><code>azcopy</code> from Blob at boot (Section 6)</td></tr><tr><td>Temp disk, <code>/mnt</code></td><td><strong>No</strong></td><td>Nothing</td><td>—</td></tr><tr><td>Blob container <code>models</code></td><td>Yes</td><td>Durable copy of the weights at the pinned revision</td><td>Re-download from HF if lost</td></tr></tbody></table></div>
+<h2 id="2-system-driver-and-container-setup">2. System, driver and container setup</h2>
+<p><strong>One driver method: the driver baked into the Ubuntu-HPC image.</strong> Do not also add the NVIDIA GPU Driver Extension or apt <code>nvidia-driver-*</code> packages. Two driver sources on one host is the most common way to break NVML. The extension&#39;s documented OS list is Ubuntu 22.04 for CUDA, which also rules it out for this 24.04 image (<a href="https://learn.microsoft.com/en-us/azure/virtual-machines/extensions/hpccompute-gpu-linux" target="_blank" rel="noopener">doc</a>).</p>
+<h3 id="pinned-stack">Pinned stack</h3>
+<div class="tw"><table><thead><tr><th>Layer</th><th>Version</th><th>Source</th></tr></thead><tbody><tr><td>OS image</td><td><code>microsoft-dsvm:ubuntu-hpc:2404:24.04.2026092501</code></td><td>azhpc-images release notes [DOC]</td></tr><tr><td>NVIDIA driver (host)</td><td>580.178.04 (R580 branch)</td><td>same</td></tr><tr><td>Fabric Manager</td><td>580.178.04-1ubuntu1, must equal the driver version</td><td>same</td></tr><tr><td>Container runtime</td><td>Docker/Moby 29.8.1 as shipped in the image</td><td>same</td></tr><tr><td>NVIDIA Container Toolkit</td><td>1.20.1-1</td><td><a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html" target="_blank" rel="noopener">NVIDIA install guide</a> example version [DOC]</td></tr><tr><td>vLLM container</td><td><code>vllm/vllm-openai:v0.31.0-x86_64</code> (built 2026-10-04)</td><td>Docker Hub; digest pinned in Section 3</td></tr><tr><td>Host CUDA Toolkit</td><td><strong>Not installed separately.</strong> The container carries its own CUDA user-space</td><td>—</td></tr></tbody></table></div>
+<p><strong>Host driver vs container CUDA.</strong> The container ships the CUDA runtime libraries; the host provides only the kernel driver and <code>libcuda</code>. A container works when the host driver is at least the minimum for the container&#39;s CUDA major/minor version. NVIDIA&#39;s <a href="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html" target="_blank" rel="noopener">release notes</a> list R580 for CUDA 13.0 and ≥ 580 as the 13.x minor-version-compatibility floor; CUDA 12.9 needs ≥ 575.51.03 [DOC]. vLLM&#39;s default images are CUDA 13.0 per the <a href="https://github.com/vllm-project/vllm/releases" target="_blank" rel="noopener">v0.32.0 release notes</a>; that v0.31.0 is also 13.0 is [EXP], and step 2.5 verifies it. If the container reports CUDA newer than 13.0, switch to <code>v0.31.0-x86_64-cu129</code> rather than upgrading the host driver.</p>
+<p><strong>Version choice.</strong> vLLM v0.32.0 (2026-10-18) is two days old. v0.31.0 has been out for 16 days and is well above both the K2.5 recipe&#39;s verified v0.17.0 and the K2.6 recipe&#39;s ≥ 0.25.0 minimum. The recipe&#39;s v0.17.0 is the only version Moonshot/vLLM state as verified for K2.5 [DOC]; v0.31.0 with K2.5 is [EXP] until your smoke test passes. If it fails, <code>v0.17.0</code> is the documented fallback.</p>
+<h3 id="21-freeze-the-kernel-and-driver-vm">2.1 Freeze the kernel and driver — <code>[VM]</code></h3>
+<p>An unattended kernel upgrade can leave the DKMS driver unbuilt, and the GPUs vanish after the next start.</p>
+<pre><code class="language-bash">dpkg -l | grep -E &#39;nvidia|fabricmanager|linux-image|linux-azure&#39; | awk &#39;{print $2, $3}&#39;
+sudo apt-mark hold $(dpkg -l | awk &#39;/^ii/ &amp;&amp; ($2 ~ /^(nvidia-|libnvidia-|cuda-drivers)/ || $2 ~ /fabricmanager/ || $2 ~ /^linux-(image|headers|modules|azure)/) {print $2}&#39;)
+apt-mark showhold
+sudo systemctl disable --now unattended-upgrades</code></pre>
+<p><strong>Success:</strong> <code>showhold</code> lists the driver, Fabric Manager and kernel packages. Apply security updates deliberately: unhold, upgrade, reboot, rerun 2.2, re-hold.</p>
+<h3 id="22-gpus-fabric-manager-and-nvlink-vm">2.2 GPUs, Fabric Manager and NVLink — <code>[VM]</code></h3>
+<pre><code class="language-bash">nvidia-smi --query-gpu=index,name,memory.total,driver_version,persistence_mode --format=csv
+systemctl is-active nvidia-fabricmanager
+nvidia-smi -q | grep -A2 -i &#39;Fabric&#39;
+nvidia-smi topo -m
+nvidia-smi nvlink --status -i 0 | head -20
+sudo nvidia-smi -pm 1</code></pre>
+<p><em>Illustrative expected output:</em> 8 rows of <code>NVIDIA H200</code>, <code>memory.total</code> around <code>143771 MiB</code> [EXP: the exact value replaces the 131.3 GiB conservative figure in the memory plan], driver <code>580.178.04</code>. Fabric Manager <code>active</code>, fabric state <code>Completed</code> / status <code>Success</code>. In <code>topo -m</code>, every GPU pair shows <code>NV18</code>, and NVLink shows 18 links at about 26 GB/s each.</p>
+<div class="tw"><table><thead><tr><th>Symptom</th><th>Cause</th><th>Recovery</th></tr></thead><tbody><tr><td><code>No devices were found</code></td><td>Driver module not loaded, often after a kernel change</td><td><code>sudo dkms status</code>; if unbuilt, boot the held kernel via GRUB or rebuild with <code>sudo dkms autoinstall</code>; reboot</td></tr><tr><td><code>Failed to initialize NVML: Driver/library version mismatch</code></td><td>User-space and kernel module differ after a partial upgrade</td><td>Reboot. If it persists, reinstall the exact image driver version or redeploy the VM from the image</td></tr><tr><td>CUDA error 802 <code>system not yet initialized</code>, or fabric state not <code>Completed</code></td><td>Fabric Manager not running or version-mismatched</td><td><code>sudo systemctl restart nvidia-fabricmanager</code>; check <code>journalctl -u nvidia-fabricmanager</code>; versions must equal the driver</td></tr><tr><td>Fewer than 8 GPUs, or <code>PHB</code>/<code>SYS</code> instead of <code>NV18</code></td><td>Host fault</td><td>Deallocate and start (moves to a new host). If repeated, open a support case</td></tr><tr><td>ECC errors</td><td>GPU fault</td><td>Per <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/linux/n-series-driver-setup" target="_blank" rel="noopener">Azure guidance</a>: reboot; <code>nvidia-smi -r</code> does not work on Azure</td></tr></tbody></table></div>
+<h3 id="23-docker-vm">2.3 Docker — <code>[VM]</code></h3>
+<pre><code class="language-bash">docker version --format &#39;client={{.Client.Version}} server={{.Server.Version}}&#39;
+dpkg -l | grep -E &#39;^ii\s+(moby-engine|docker-ce)\s&#39; | awk &#39;{print $2, $3}&#39;</code></pre>
+<p><strong>Use the image&#39;s Moby</strong> (from Microsoft&#39;s package repository) if it is present. Installing <code>docker-ce</code> on top of <code>moby-engine</code> conflicts. <strong>Only if neither is installed</strong>, use Docker&#39;s official repository:</p>
+<pre><code class="language-bash"># [VM] fallback only
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+echo &quot;deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release &amp;&amp; echo $VERSION_CODENAME) stable&quot; | sudo tee /etc/apt/sources.list.d/docker.list
+sudo apt-get update &amp;&amp; apt-cache madison docker-ce | head -3      # choose and pin an exact version string
+sudo apt-get install -y docker-ce=&lt;VERSION&gt; docker-ce-cli=&lt;VERSION&gt; containerd.io docker-buildx-plugin</code></pre>
+<h3 id="24-nvidia-container-toolkit-vm">2.4 NVIDIA Container Toolkit — <code>[VM]</code></h3>
+<pre><code class="language-bash">nvidia-ctk --version 2&gt;/dev/null || echo &quot;not installed&quot;
+
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
+  | sed &#39;s#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g&#39; \
+  | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+sudo apt-get update
+apt-cache madison nvidia-container-toolkit | head -3
+export NVIDIA_CONTAINER_TOOLKIT_VERSION=1.20.1-1
+sudo apt-get install -y nvidia-container-toolkit=${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
+  nvidia-container-toolkit-base=${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
+  libnvidia-container-tools=${NVIDIA_CONTAINER_TOOLKIT_VERSION} libnvidia-container1=${NVIDIA_CONTAINER_TOOLKIT_VERSION}
+sudo apt-mark hold nvidia-container-toolkit nvidia-container-toolkit-base libnvidia-container-tools libnvidia-container1
+
+sudo nvidia-ctk runtime configure --runtime=docker
+# Add log rotation without clobbering the runtime entry nvidia-ctk just wrote
+sudo apt-get install -y jq
+sudo jq &#39;. + {&quot;log-driver&quot;:&quot;json-file&quot;,&quot;log-opts&quot;:{&quot;max-size&quot;:&quot;50m&quot;,&quot;max-file&quot;:&quot;5&quot;}}&#39; /etc/docker/daemon.json | sudo tee /etc/docker/daemon.json.new &gt;/dev/null
+sudo mv /etc/docker/daemon.json.new /etc/docker/daemon.json &amp;&amp; sudo systemctl restart docker
+cat /etc/docker/daemon.json</code></pre>
+<p><strong>If the image already ships a toolkit,</strong> keep its version unless it is older than 1.17, and record the version. <strong>Success:</strong> <code>daemon.json</code> contains both <code>runtimes.nvidia</code> and <code>log-opts</code>. <strong>Failure:</strong> <code>docker: Error response from daemon: could not select device driver &quot;&quot; with capabilities: [[gpu]]</code> means <code>nvidia-ctk runtime configure</code> did not run or Docker was not restarted.</p>
+<h3 id="25-container-gpu-access-and-cuda-compatibility-vm">2.5 Container GPU access and CUDA compatibility — <code>[VM]</code></h3>
+<pre><code class="language-bash">export VLLM_IMAGE_TAG=v0.31.0-x86_64
+docker pull vllm/vllm-openai:${VLLM_IMAGE_TAG}
+docker run --rm --gpus all --entrypoint bash vllm/vllm-openai:${VLLM_IMAGE_TAG} -c \
+  &#39;nvidia-smi -L; echo CUDA_VERSION=$CUDA_VERSION; python3 -c &quot;import torch,vllm;print(\&quot;torch\&quot;,torch.__version__,\&quot;cuda\&quot;,torch.version.cuda,\&quot;gpus\&quot;,torch.cuda.device_count(),\&quot;vllm\&quot;,vllm.__version__); print(\&quot;p2p0-7\&quot;,torch.cuda.can_device_access_peer(0,7))&quot;&#39;</code></pre>
+<p><strong>Success:</strong> 8 GPUs listed; <code>CUDA_VERSION</code> is 13.0.x or lower; <code>torch.version.cuda</code> is 13.0 or lower; <code>gpus 8</code>; <code>vllm 0.31.0</code>; <code>p2p0-7 True</code>. <strong>Failure:</strong> <code>CUDA driver version is insufficient for CUDA runtime version</code> means the container CUDA is newer than the driver supports. Use <code>v0.31.0-x86_64-cu129</code> and rerun.</p>
+<h3 id="26-capacity-and-memory-checks-vm">2.6 Capacity and memory checks — <code>[VM]</code></h3>
+<pre><code class="language-bash">df -h / /mnt/kimi
+free -g | head -2                                  # expect ~1,850 GiB host RAM
+docker system df</code></pre>
+<p><strong>Success:</strong> <code>/</code> has at least 150 GiB free after the vLLM image (about 20–25 GB [EXP]), and <code>/mnt/kimi</code> has at least 700 GiB free.</p>
+<h2 id="3-reproducible-vllm-deployment">3. Reproducible vLLM deployment</h2>
+<p>vLLM serves <code>moonshotai/Kimi-K2.5</code> at a pinned commit from local NVMe. It runs in a digest-pinned container, listens only on <code>127.0.0.1:8000</code>, and is managed by systemd. Every flag below comes from the <a href="https://docs.vllm.ai/projects/recipes/en/latest/moonshotai/Kimi-K2.5.html" target="_blank" rel="noopener">vLLM K2.5 recipe</a> or from the memory plan.</p>
+<h3 id="31-pin-and-record-the-model-revision-and-container-digest-vm">3.1 Pin and record the model revision and container digest — <code>[VM]</code></h3>
+<pre><code class="language-bash">mkdir -p ~/kimi &amp;&amp; cd ~/kimi
+export MODEL_REPO=moonshotai/Kimi-K2.5
+export MODEL_REV=$(curl -fsS &quot;https://huggingface.co/api/models/${MODEL_REPO}/revision/main&quot; | jq -r .sha)
+echo &quot;$MODEL_REV&quot;          # observed 2026-10-20: 4d01dfe0332d63057c186e0b262165819efb6611
+
+export VLLM_IMAGE_TAG=v0.31.0-x86_64
+docker pull vllm/vllm-openai:${VLLM_IMAGE_TAG}
+export VLLM_DIGEST=$(docker inspect --format &#39;{{index .RepoDigests 0}}&#39; vllm/vllm-openai:${VLLM_IMAGE_TAG} | cut -d@ -f2)
+docker buildx imagetools inspect vllm/vllm-openai:${VLLM_IMAGE_TAG} | head -5   # cross-check against the registry
+echo &quot;$VLLM_DIGEST&quot;        # observed on Docker Hub 2026-10-20: sha256:a4a4c0437bf7240089da5f08aa370c4aee17ae5290f7a3b468825ee26c4c3a6b
+
+cat &gt; ~/kimi/PINS.env &lt;&lt;EOF
+MODEL_REPO=${MODEL_REPO}
+MODEL_REV=${MODEL_REV}
+VLLM_IMAGE=vllm/vllm-openai@${VLLM_DIGEST}
+VLLM_IMAGE_TAG=${VLLM_IMAGE_TAG}
+SERVED_ALIAS=kimi-work
+RECORDED_AT=$(date -u +%FT%TZ)
+EOF
+sudo install -m 0644 ~/kimi/PINS.env /etc/kimi-pins.env</code></pre>
+<p><strong>Success:</strong> <code>MODEL_REV</code> is 40 hex characters, and <code>VLLM_DIGEST</code> starts with <code>sha256:</code> and matches <code>imagetools</code>. The &quot;observed&quot; values come from the public APIs on 2026-10-20. They are not proof of what you will pull. <strong>Your</strong> recorded values are the pins. If <code>main</code> has moved since, decide deliberately whether to adopt the new commit, and record why.</p>
+<h3 id="32-download-the-weights-once-vm">3.2 Download the weights once — <code>[VM]</code></h3>
+<p>The repository is not gated (<code>gated: false</code>, <a href="https://huggingface.co/api/models/moonshotai/Kimi-K2.5" target="_blank" rel="noopener">HF API</a>), so no HF token is needed.</p>
+<pre><code class="language-bash">set -a; . /etc/kimi-pins.env; set +a
+DEST=/mnt/kimi/models/Kimi-K2.5
+mkdir -p &quot;$DEST&quot;
+docker run --rm -v /mnt/kimi:/mnt/kimi --entrypoint hf &quot;$VLLM_IMAGE&quot; \
+  download &quot;$MODEL_REPO&quot; --revision &quot;$MODEL_REV&quot; --local-dir &quot;$DEST&quot;
+echo &quot;$MODEL_REV&quot; &gt; &quot;$DEST/.revision&quot;</code></pre>
+<p><strong>Verify against the hub&#39;s own sizes and LFS SHA-256s:</strong></p>
+<pre><code class="language-bash">curl -fsS &quot;https://huggingface.co/api/models/${MODEL_REPO}/tree/${MODEL_REV}?recursive=1&quot; &gt; ~/kimi/tree.json
+jq -r &#39;.[] | select(.type==&quot;file&quot;) | &quot;\(.path)\t\(.size)\t\(.lfs.oid // &quot;-&quot;)&quot;&#39; ~/kimi/tree.json &gt; ~/kimi/manifest.tsv
+wc -l ~/kimi/manifest.tsv; ls &quot;$DEST&quot;/*.safetensors | wc -l          # expect 64 shards
+fail=0; while IFS=$&#39;\t&#39; read -r p s oid; do
+  a=$(stat -c %s &quot;$DEST/$p&quot; 2&gt;/dev/null || echo MISSING); [ &quot;$a&quot; = &quot;$s&quot; ] || { echo &quot;SIZE $p $a != $s&quot;; fail=1; }
+done &lt; ~/kimi/manifest.tsv; echo &quot;size check fail=$fail&quot;
+# SHA-256 of LFS files (several minutes; parallel)
+awk -F&#39;\t&#39; &#39;$3!=&quot;-&quot;{print $3&quot;  &quot;$1}&#39; ~/kimi/manifest.tsv &gt; ~/kimi/lfs.sha256
+(cd &quot;$DEST&quot; &amp;&amp; sha256sum --quiet -c ~/kimi/lfs.sha256) &amp;&amp; echo &quot;SHA OK&quot;</code></pre>
+<p><strong>Success:</strong> <code>size check fail=0</code>, 64 shards, <code>SHA OK</code>. Total is about 595 GB. <strong>Failure:</strong> a mismatched file gets deleted and re-downloaded with the same <code>hf download</code> command, which resumes. If the tree API rate-limits you, wait and retry. Do not skip verification.</p>
+<h3 id="33-seed-the-durable-blob-copy-then-drop-write-access">3.3 Seed the durable Blob copy, then drop write access</h3>
+<pre><code class="language-bash"># [VM]
+azcopy --version || { wget -q https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb &amp;&amp; sudo dpkg -i packages-microsoft-prod.deb &amp;&amp; sudo apt-get update &amp;&amp; sudo apt-get install -y azcopy; }
+export AZCOPY_AUTO_LOGIN_TYPE=MSI
+azcopy copy &quot;/mnt/kimi/models/Kimi-K2.5/*&quot; &quot;https://${SA}.blob.core.windows.net/models/Kimi-K2.5/${MODEL_REV}/&quot; --recursive
+azcopy list &quot;https://${SA}.blob.core.windows.net/models/Kimi-K2.5/${MODEL_REV}/&quot; --machine-readable | wc -l</code></pre>
+<p><code>SA</code> is the storage account name from 1.6. Copy it onto the VM: <code>echo SA=&lt;name&gt; | sudo tee -a /etc/kimi-pins.env</code>.</p>
+<pre><code class="language-bash"># [CS] downgrade the VM identity to read-only on the container
+az role assignment create --assignee-object-id &quot;$PID&quot; --assignee-principal-type ServicePrincipal --role &quot;Storage Blob Data Reader&quot; --scope &quot;$C_SCOPE&quot;
+az role assignment delete --assignee &quot;$PID&quot; --role &quot;Storage Blob Data Contributor&quot; --scope &quot;$C_SCOPE&quot;</code></pre>
+<p><strong>Success:</strong> the object count roughly matches <code>manifest.tsv</code> plus <code>.revision</code>. A later <code>azcopy copy</code> <em>to</em> the container fails with <code>AuthorizationPermissionMismatch</code>; that is the intended outcome.</p>
+<h3 id="34-secrets-at-service-start-never-on-disk-vm">3.4 Secrets at service start, never on disk — <code>[VM]</code></h3>
+<pre><code class="language-bash">sudo tee /usr/local/sbin/kimi-secrets.sh &gt;/dev/null &lt;&lt;&#39;EOF&#39;
+#!/usr/bin/env bash
+# Fetches the vLLM API key from Key Vault with the VM&#39;s managed identity into tmpfs.
+set -euo pipefail
+. /etc/kimi-pins.env
+TOKEN=$(curl -fsS -H Metadata:true &quot;http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&amp;resource=https%3A%2F%2Fvault.azure.net&quot; | jq -r .access_token)
+KEY=$(curl -fsS -H &quot;Authorization: Bearer $TOKEN&quot; &quot;https://${KV}.vault.azure.net/secrets/vllm-api-key?api-version=7.4&quot; | jq -r .value)
+install -d -m 0700 /run/kimi
+printf &#39;VLLM_API_KEY=%s\n&#39; &quot;$KEY&quot; &gt; /run/kimi/vllm.env
+chmod 0600 /run/kimi/vllm.env
+EOF
+sudo chmod 0750 /usr/local/sbin/kimi-secrets.sh
+echo &quot;KV=&lt;your-vault-name&gt;&quot; | sudo tee -a /etc/kimi-pins.env
+sudo /usr/local/sbin/kimi-secrets.sh &amp;&amp; sudo stat -c &#39;%a %U %n&#39; /run/kimi/vllm.env</code></pre>
+<p><strong>Success:</strong> <code>600 root /run/kimi/vllm.env</code>. <code>/run</code> is tmpfs, so the key disappears at every deallocation and is re-fetched at the next start. <strong>Rotation:</strong> <code>az keyvault secret set --vault-name $KV -n vllm-api-key --value &quot;$(openssl rand -hex 32)&quot;</code> [CS], then <code>sudo systemctl restart kimi-vllm</code> [VM], then update the one client that holds it.</p>
+<h3 id="35-the-service-vm">3.5 The service — <code>[VM]</code></h3>
+<pre><code class="language-bash">sudo tee /etc/systemd/system/kimi-vllm.service &gt;/dev/null &lt;&lt;&#39;EOF&#39;
+[Unit]
+Description=vLLM serving Kimi-K2.5 (alias kimi-work) on 127.0.0.1:8000
+Requires=docker.service kimi-restore.service
+After=docker.service kimi-restore.service nvidia-fabricmanager.service network-online.target
+StartLimitIntervalSec=3600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/kimi-pins.env
+ExecStartPre=/usr/local/sbin/kimi-secrets.sh
+ExecStartPre=-/usr/bin/docker rm -f kimi-vllm
+ExecStartPre=-/usr/bin/docker network create --internal=false kimi-net
+ExecStart=/usr/bin/docker run --name kimi-vllm --rm \
+  --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 \
+  --network kimi-net -p 127.0.0.1:8000:8000 \
+  --env-file /run/kimi/vllm.env \
+  -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 \
+  -v /mnt/kimi/models/Kimi-K2.5:/models/Kimi-K2.5:ro \
+  -v /var/lib/kimi/vllm-cache:/root/.cache/vllm \
+  --health-cmd &quot;python3 -c \&quot;import urllib.request;urllib.request.urlopen(&#39;http://127.0.0.1:8000/health&#39;,timeout=5)\&quot;&quot; \
+  --health-interval 30s --health-start-period 3600s --health-retries 3 \
+  ${VLLM_IMAGE} \
+  --model /models/Kimi-K2.5 \
+  --served-model-name ${SERVED_ALIAS} \
+  --host 0.0.0.0 --port 8000 \
+  --tensor-parallel-size 8 \
+  --max-model-len 32768 \
+  --max-num-seqs 4 \
+  --gpu-memory-utilization 0.90 \
+  --kv-cache-dtype auto \
+  --mm-encoder-tp-mode data \
+  --tool-call-parser kimi_k2 --enable-auto-tool-choice \
+  --reasoning-parser kimi_k2 \
+  --trust-remote-code
+ExecStop=/usr/bin/docker stop -t 120 kimi-vllm
+Restart=on-failure
+RestartSec=60
+TimeoutStartSec=infinity
+TimeoutStopSec=180
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo mkdir -p /var/lib/kimi/vllm-cache
+sudo sed -i &#39;s/^#\?SystemMaxUse=.*/SystemMaxUse=2G/&#39; /etc/systemd/journald.conf &amp;&amp; sudo systemctl restart systemd-journald
+sudo systemctl daemon-reload</code></pre>
+<p><code>kimi-restore.service</code> is defined in Section 6.2. Until it exists, comment out its two references and start manually. Flag rationale:</p>
+<div class="tw"><table><thead><tr><th>Setting</th><th>Value</th><th>Why</th></tr></thead><tbody><tr><td><code>-p 127.0.0.1:8000:8000</code></td><td>host loopback only</td><td>vLLM listens on 0.0.0.0 <em>inside</em> the container namespace. Docker publishes it on the host&#39;s loopback only, so the NSG never even sees port 8000</td></tr><tr><td><code>--served-model-name kimi-work</code></td><td>stable alias</td><td>Clients always ask for <code>kimi-work</code>. <code>/etc/kimi-pins.env</code> maps it to <code>MODEL_REPO@MODEL_REV</code>. Swapping to K2.6 later changes the pins, not every phone setting</td></tr><tr><td><code>--tensor-parallel-size 8</code></td><td>8</td><td>Recipe value for 8× H200 [DOC]</td></tr><tr><td><code>--max-model-len 32768</code>, <code>--max-num-seqs 4</code></td><td>from the memory plan</td><td>4 concurrent full-length sequences use about 8.6 GiB of roughly 40 GiB KV per GPU [CALC]</td></tr><tr><td><code>--gpu-memory-utilization 0.90</code></td><td>0.90</td><td>Leaves about 13 GiB per GPU for the replicated vision encoder&#39;s peaks, which the recipe warns about [DOC]</td></tr><tr><td><code>--kv-cache-dtype auto</code></td><td>BF16</td><td>Memory allows it; avoids FP8-KV accuracy questions</td></tr><tr><td><code>--mm-encoder-tp-mode data</code></td><td>data</td><td>Recipe: TP on the 400M encoder &quot;brings little gain but incurs significant communication overhead&quot; [DOC]</td></tr><tr><td><code>--tool-call-parser kimi_k2 --enable-auto-tool-choice --reasoning-parser kimi_k2</code></td><td>kimi_k2</td><td>Recipe and NVIDIA card for K2.5 [DOC]. <strong>K3 would need <code>kimi_k3</code></strong>; do not mix them</td></tr><tr><td><code>HF_HUB_OFFLINE=1</code></td><td>offline</td><td>Remote code and tokenizer load only from the pinned, verified directory; nothing is fetched at runtime</td></tr><tr><td><code>/var/lib/kimi/vllm-cache</code></td><td>OS disk</td><td>Persists torch.compile and CUDA-graph caches across deallocation, which should shorten warm starts [EXP]</td></tr></tbody></table></div>
+<p><strong><code>--trust-remote-code</code> justification.</strong> The checkpoint declares custom classes (<code>auto_map</code> → <code>modeling_kimi_k25</code>, <code>tokenization_kimi.py</code>, <code>kimi_k25_processor.py</code>), and both the recipe and the NVIDIA card pass this flag. The risk is that repository Python executes on your VM. It is contained by (a) the pinned commit, (b) offline mode, (c) a read-only mount, and (d) your review before first start: <code>ls /mnt/kimi/models/Kimi-K2.5/*.py</code> should list exactly 9 files totalling about 205 KB, matching the hub tree. Skim them for network or subprocess calls: <code>grep -nE &#39;subprocess|socket|requests|urllib|os\.system&#39; /mnt/kimi/models/Kimi-K2.5/*.py</code>.</p>
+<p><strong>Licence.</strong> The weights and code are under a Modified MIT licence (<a href="https://huggingface.co/moonshotai/Kimi-K2.5/raw/main/LICENSE" target="_blank" rel="noopener">LICENSE</a>). It is MIT, plus a requirement to &quot;prominently display &#39;Kimi K2.5&#39;&quot; in the UI of commercial products with more than 100 million MAU or more than USD 20 million monthly revenue. Personal daily work does not trigger that clause, but keep the copyright notice with any copy. If you choose the NVFP4 checkpoint, the NVIDIA Open Model License applies as well. Neither licence requires accepting a gate on Hugging Face for K2.5.</p>
+<h3 id="36-start-and-observe-vm">3.6 Start and observe — <code>[VM]</code></h3>
+<pre><code class="language-bash">date -u +%T; sudo systemctl start kimi-vllm
+journalctl -u kimi-vllm -f -o cat | grep -E --line-buffered &#39;Loading|weights|KV cache|CUDA graph|Started server|ERROR|Traceback&#39;
+# in a second shell:
+until curl -fsS http://127.0.0.1:8000/health &gt;/dev/null; do sleep 10; done; date -u +%T</code></pre>
+<p><em>Illustrative expected output (not from a real run):</em> weight-loading progress across 8 workers; a line reporting available KV-cache memory and maximum concurrency for 32,768 tokens; CUDA-graph capture; then <code>Application startup complete</code>.</p>
+<div class="tw"><table><thead><tr><th>Signal</th><th>Pass</th><th>Fail and recovery</th></tr></thead><tbody><tr><td>KV-cache line</td><td>Reported concurrency at 32,768 tokens ≥ 4</td><td><code>ValueError ... larger than the maximum number of tokens that can be stored in KV cache</code>: lower <code>--max-model-len</code> or raise utilisation by 0.02, never above 0.95</td></tr><tr><td>OOM during load or capture</td><td>none</td><td><code>torch.OutOfMemoryError</code>: drop to 0.88, or add <code>--max-num-batched-tokens 8192</code> to shrink prefill workspace [EXP]</td></tr><tr><td><code>Unknown quantization</code> / kernel errors</td><td>none</td><td>Image is too old or new for this checkpoint; fall back to the recipe&#39;s <code>v0.17.0</code> image and re-pin the digest</td></tr><tr><td>NCCL timeout or hang at init</td><td>none</td><td>Check 2.2 (Fabric Manager); try <code>NCCL_DEBUG=INFO</code> in the unit</td></tr><tr><td><code>/health</code> 200</td><td>yes</td><td>Fails to arrive within 60 min: inspect the journal; <code>docker inspect kimi-vllm --format &#39;{{.State.Health}}&#39;</code></td></tr></tbody></table></div>
+<p>After the first successful start: <code>sudo systemctl enable kimi-vllm</code>.</p>
+<h3 id="37-smoke-tests-vm">3.7 Smoke tests — <code>[VM]</code></h3>
+<pre><code class="language-bash">set -a; . /run/kimi/vllm.env; set +a
+B=http://127.0.0.1:8000
+curl -s -o /dev/null -w &#39;%{http_code}\n&#39; $B/v1/models                                   # expect 401
+curl -s -H &quot;Authorization: Bearer wrong&quot; -o /dev/null -w &#39;%{http_code}\n&#39; $B/v1/models   # expect 401
+curl -fsS -H &quot;Authorization: Bearer $VLLM_API_KEY&quot; $B/v1/models | jq -r &#39;.data[].id&#39;     # expect kimi-work
+curl -fsS -H &quot;Authorization: Bearer $VLLM_API_KEY&quot; -H &#39;Content-Type: application/json&#39; $B/v1/chat/completions -d &#39;{
+  &quot;model&quot;:&quot;kimi-work&quot;,&quot;max_tokens&quot;:64,&quot;temperature&quot;:0.6,
+  &quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;Reply with the single word: ready&quot;}],
+  &quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false}}&#39; | jq &#39;{content:.choices[0].message.content, usage}&#39;
+ss -ltnp | grep 8000                                                                    # expect 127.0.0.1:8000 only</code></pre>
+<p><strong>Success:</strong> 401, 401, <code>kimi-work</code>, content containing &quot;ready&quot;, and the listener on <code>127.0.0.1:8000</code> only. Instant mode uses <code>chat_template_kwargs: {thinking: false}</code> and temperature 0.6. Thinking mode uses temperature 1.0 and top_p 0.95, per the <a href="https://huggingface.co/moonshotai/Kimi-K2.5" target="_blank" rel="noopener">model card</a>.</p>
+<h3 id="38-workload-benchmark-vm">3.8 Workload benchmark — <code>[VM]</code></h3>
+<p><strong>No official published H200 throughput or latency figures for K2.5 were found.</strong> Every number in this table must come from your own run. Leave the cells empty until then.</p>
+<pre><code class="language-bash"># Terminal 1: sample VRAM every second during the benchmark
+nvidia-smi --query-gpu=timestamp,index,memory.used,utilization.gpu --format=csv,noheader -lms 1000 &gt; ~/kimi/vram.csv &amp;
+# Terminal 2: chat-shaped load, concurrency 1 then 2
+for c in 1 2; do
+ docker exec kimi-vllm vllm bench serve --backend openai-chat --endpoint /v1/chat/completions \
+   --base-url http://127.0.0.1:8000 --model kimi-work --tokenizer /models/Kimi-K2.5 --trust-remote-code \
+   --dataset-name random --random-input-len 4096 --random-output-len 512 \
+   --num-prompts 20 --max-concurrency $c --header &quot;Authorization=Bearer $VLLM_API_KEY&quot; \
+   --save-result --result-dir /root/.cache/vllm/bench --result-filename c${c}.json
+done
+kill %1; awk -F&#39;, &#39; &#39;{gsub(/ MiB/,&quot;&quot;,$3); if($3&gt;m[$2])m[$2]=$3} END{for(g in m)print &quot;GPU&quot;,g,&quot;peak MiB&quot;,m[g]}&#39; ~/kimi/vram.csv</code></pre>
+<p>If your vLLM build rejects <code>--header</code>, pass the key through <code>OPENAI_API_KEY=$VLLM_API_KEY</code> in the <code>docker exec -e</code> instead [EXP].</p>
+<div class="tw"><table><thead><tr><th>Metric</th><th>How measured</th><th>Pass threshold (your choice)</th><th>Measured</th></tr></thead><tbody><tr><td>Cold start (deallocated → <code>/health</code> 200)</td><td>Section 6 boot log timestamps</td><td>≤ 45 min</td><td></td></tr><tr><td>Warm restart (<code>systemctl restart</code> → 200)</td><td>3.6 timestamps</td><td>≤ 20 min</td><td></td></tr><tr><td>Peak VRAM per GPU</td><td><code>vram.csv</code></td><td>≤ 0.90 × total</td><td></td></tr><tr><td>Median TTFT, 4K-token prompt, c=1</td><td><code>median_ttft_ms</code></td><td>≤ 10,000 ms</td><td></td></tr><tr><td>Median TPOT, c=1</td><td><code>median_tpot_ms</code> → tok/s = 1000 ÷ TPOT</td><td>≥ 20 tok/s</td><td></td></tr><tr><td>Output tok/s, c=2</td><td><code>output_throughput</code></td><td>—</td><td></td></tr><tr><td>Errors</td><td><code>failed</code> count</td><td>0</td><td></td></tr></tbody></table></div>
+<h2 id="4-secure-remote-access">4. Secure remote access</h2>
+<p>Pick <strong>one</strong> option. <strong>A</strong> puts nginx with a Let&#39;s Encrypt certificate on the VM and opens only TCP 443 (and 80 for ACME). <strong>B</strong> opens no inbound port and reaches the VM through a named Cloudflare Tunnel guarded by Cloudflare Access. In both, port 8000 is bound to loopback and never appears in the NSG, only two API routes are reachable, and <code>/health</code>, <code>/metrics</code>, <code>/invocations</code>, <code>/tokenize</code>, <code>/pause</code> and the other routes vLLM leaves unauthenticated (<a href="https://docs.vllm.ai/en/latest/usage/security.html" target="_blank" rel="noopener">vLLM security doc</a>) return 404.</p>
+<p><strong>Recommendation:</strong> Option B if you will use the browser front end (Open WebUI) on your phone. Option A if you want a native OpenAI-compatible app, because few apps can send Cloudflare&#39;s extra headers (Section 5).</p>
+<h3 id="credentials-and-where-they-live">Credentials and where they live</h3>
+<div class="tw"><table><thead><tr><th>Credential</th><th>Held by</th><th>Stored at</th><th>Rotation</th></tr></thead><tbody><tr><td><code>vllm-api-key</code></td><td>VM only (A); VM and the one native API client (B)</td><td>Key Vault → <code>/run/kimi</code> tmpfs</td><td><code>az keyvault secret set</code> → restart <code>kimi-vllm</code> → update client</td></tr><tr><td><code>gateway-api-key</code> (A only)</td><td>Phone app</td><td>Key Vault → <code>/run/kimi/nginx-keys.conf</code>; app&#39;s secure storage on the phone</td><td>New secret → <code>systemctl reload nginx</code> → update app</td></tr><tr><td>Cloudflare tunnel credentials JSON (B)</td><td>VM</td><td><code>/etc/cloudflared/&lt;UUID&gt;.json</code>, root 0600; backup copy in Key Vault</td><td><code>cloudflared tunnel token --cred-file</code> / recreate tunnel</td></tr><tr><td>Cloudflare <code>cert.pem</code> (B)</td><td>Nobody, after setup</td><td>Delete from the VM after creating the tunnel</td><td>Re-run <code>cloudflared tunnel login</code> when needed</td></tr><tr><td>Access service token (B)</td><td>Phone API app</td><td>Phone app; never on the VM</td><td>Dashboard → Service Tokens → Rotate (old secret valid during grace period)</td></tr><tr><td>Open WebUI admin password</td><td>You</td><td>Password manager</td><td>Change in Open WebUI</td></tr></tbody></table></div>
+<h3 id="option-a-https-reverse-proxy-on-the-vm">Option A — HTTPS reverse proxy on the VM</h3>
+<p><strong>A.1 NSG and DNS — <code>[CS]</code> and your DNS host</strong></p>
+<pre><code class="language-bash">az network nsg rule create -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -n allow-https --priority 200 --direction Inbound \
+  --access Allow --protocol Tcp --source-address-prefixes Internet --destination-port-ranges 443
+az network nsg rule create -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -n allow-acme-http --priority 210 --direction Inbound \
+  --access Allow --protocol Tcp --source-address-prefixes Internet --destination-port-ranges 80
+az network public-ip show -g &quot;$RG&quot; -n pip-kimi --query ipAddress -o tsv     # create A records api.&lt;domain&gt; and chat.&lt;domain&gt;</code></pre>
+<p>If the domain is on Cloudflare DNS, set both records to <strong>DNS only</strong> (grey cloud). Otherwise Cloudflare would terminate TLS, which is Option B&#39;s trust model without its controls.</p>
+<p><strong>A.2 Install nginx and certbot — <code>[VM]</code></strong></p>
+<pre><code class="language-bash">sudo apt-get install -y nginx
+sudo snap install --classic certbot &amp;&amp; sudo ln -sf /snap/bin/certbot /usr/bin/certbot
+sudo mkdir -p /var/www/certbot
+az keyvault secret set --vault-name &quot;$KV&quot; -n gateway-api-key --value &quot;$(openssl rand -hex 32)&quot; -o none   # [CS]</code></pre>
+<p><strong>A.3 Key material generated at boot — <code>[VM]</code></strong></p>
+<pre><code class="language-bash">sudo tee /usr/local/sbin/kimi-nginx-keys.sh &gt;/dev/null &lt;&lt;&#39;EOF&#39;
+#!/usr/bin/env bash
+set -euo pipefail
+. /etc/kimi-pins.env
+tok(){ curl -fsS -H Metadata:true &quot;http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&amp;resource=https%3A%2F%2Fvault.azure.net&quot; | jq -r .access_token; }
+get(){ curl -fsS -H &quot;Authorization: Bearer $(tok)&quot; &quot;https://${KV}.vault.azure.net/secrets/$1?api-version=7.4&quot; | jq -r .value; }
+GW=$(get gateway-api-key); UP=$(get vllm-api-key)
+install -d -m 0750 -g www-data /run/kimi
+umask 027
+cat &gt; /run/kimi/nginx-keys.conf &lt;&lt;CONF
+map \$http_authorization \$kimi_authorized { default 0; &quot;Bearer ${GW}&quot; 1; }
+map \$host \$vllm_upstream_auth { default &quot;Bearer ${UP}&quot;; }
+CONF
+chgrp www-data /run/kimi/nginx-keys.conf
+EOF
+sudo chmod 0750 /usr/local/sbin/kimi-nginx-keys.sh
+sudo mkdir -p /etc/systemd/system/nginx.service.d
+printf &#39;[Service]\nExecStartPre=/usr/local/sbin/kimi-nginx-keys.sh\nExecReload=\nExecReload=/usr/local/sbin/kimi-nginx-keys.sh\nExecReload=/usr/sbin/nginx -s reload\n&#39; | sudo tee /etc/systemd/system/nginx.service.d/kimi.conf
+sudo systemctl daemon-reload</code></pre>
+<p>The phone holds only the gateway key. nginx swaps it for the vLLM key on the way upstream, so the vLLM key never leaves the VM.</p>
+<p><strong>A.4 Certificate — <code>[VM]</code></strong></p>
+<pre><code class="language-bash">export API_HOST=api.&lt;domain&gt;; export CHAT_HOST=chat.&lt;domain&gt;
+sudo tee /etc/nginx/conf.d/00-acme.conf &gt;/dev/null &lt;&lt;EOF
+server { listen 80; server_name ${API_HOST} ${CHAT_HOST};
+  location /.well-known/acme-challenge/ { root /var/www/certbot; }
+  location / { return 301 https://\$host\$request_uri; } }
+EOF
+sudo rm -f /etc/nginx/sites-enabled/default &amp;&amp; sudo systemctl restart nginx
+sudo certbot certonly --webroot -w /var/www/certbot -d &quot;$API_HOST&quot; -d &quot;$CHAT_HOST&quot; \
+  --agree-tos -m &lt;YOUR_EMAIL&gt; --no-eff-email --deploy-hook &quot;systemctl reload nginx&quot;
+sudo certbot renew --dry-run</code></pre>
+<p><strong>Success:</strong> certificate files under <code>/etc/letsencrypt/live/$API_HOST/</code>, and the dry run reports success. The VM is usually off, but snap&#39;s certbot timer renews within its 30-day window whenever the VM runs. If a certificate does expire, the next boot renews it before clients notice anything beyond one failed request.</p>
+<p><strong>A.5 Route allowlist, auth, limits and streaming — <code>[VM]</code></strong></p>
+<pre><code class="language-bash">sudo tee /etc/nginx/conf.d/10-kimi.conf &gt;/dev/null &lt;&lt;EOF
+include /run/kimi/nginx-keys.conf;
+limit_req_zone \$binary_remote_addr zone=kimi_rl:10m rate=30r/m;
+limit_req_zone \$binary_remote_addr zone=login_rl:10m rate=10r/m;
+limit_conn_zone \$binary_remote_addr zone=kimi_conn:10m;
+limit_req_status 429; limit_conn_status 429;
+log_format kimi_meta &#39;\$time_iso8601 \$remote_addr &quot;\$request_method \$uri&quot; \$status \$body_bytes_sent \$request_time&#39;;
+upstream vllm { server 127.0.0.1:8000; keepalive 8; }
+
+server {
+  listen 443 ssl; http2 on; server_name ${API_HOST};
+  ssl_certificate /etc/letsencrypt/live/${API_HOST}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${API_HOST}/privkey.pem;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  add_header Strict-Transport-Security &quot;max-age=31536000&quot; always;
+  access_log /var/log/nginx/kimi_api.log kimi_meta;      # metadata only, never bodies
+  client_max_body_size 20m;                               # room for base64 images
+  proxy_http_version 1.1; proxy_set_header Connection &quot;&quot;;
+  proxy_set_header Authorization \$vllm_upstream_auth;
+
+  location = /v1/models {
+    limit_except GET { deny all; }
+    if (\$kimi_authorized = 0) { return 401; }
+    proxy_pass http://vllm;
+  }
+  location = /v1/chat/completions {
+    limit_except POST { deny all; }
+    if (\$kimi_authorized = 0) { return 401; }
+    limit_req zone=kimi_rl burst=10 nodelay; limit_conn kimi_conn 4;
+    proxy_buffering off; proxy_cache off; gzip off;      # SSE must not be buffered
+    proxy_read_timeout 900s; proxy_send_timeout 900s;
+    proxy_pass http://vllm;
+  }
+  location / { return 404; }
+}
+
+server {
+  listen 443 ssl; http2 on; server_name ${CHAT_HOST};
+  ssl_certificate /etc/letsencrypt/live/${API_HOST}/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/${API_HOST}/privkey.pem;
+  ssl_protocols TLSv1.2 TLSv1.3;
+  add_header Strict-Transport-Security &quot;max-age=31536000&quot; always;
+  access_log /var/log/nginx/kimi_chat.log kimi_meta;
+  client_max_body_size 50m;
+  location /api/v1/auths/signin { limit_req zone=login_rl burst=5 nodelay; proxy_pass http://127.0.0.1:3000; }
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection &quot;upgrade&quot;;
+    proxy_set_header Host \$host; proxy_set_header X-Forwarded-Proto https;
+    proxy_buffering off; proxy_read_timeout 900s;
+  }
+}
+EOF
+sudo nginx -t &amp;&amp; sudo systemctl restart nginx</code></pre>
+<p><strong>A.6 Tests — <code>[WS]</code></strong> (any machine off the VM; the phone tests are in Section 5)</p>
+<pre><code class="language-bash">export API=https://api.&lt;domain&gt;; export GW=&lt;gateway-api-key&gt;
+curl -s -o /dev/null -w &#39;noauth %{http_code}\n&#39; $API/v1/models                                    # 401
+curl -s -o /dev/null -w &#39;badauth %{http_code}\n&#39; -H &#39;Authorization: Bearer nope&#39; $API/v1/models    # 401
+curl -s -H &quot;Authorization: Bearer $GW&quot; $API/v1/models | jq -r &#39;.data[].id&#39;                         # kimi-work
+for p in /health /metrics /invocations /tokenize /pause /v1/completions /docs /openapi.json; do
+  printf &#39;%-18s %s\n&#39; $p &quot;$(curl -s -o /dev/null -w &#39;%{http_code}&#39; -H &quot;Authorization: Bearer $GW&quot; $API$p)&quot;; done   # all 404
+curl -s -o /dev/null -w &#39;GET-on-POST %{http_code}\n&#39; -H &quot;Authorization: Bearer $GW&quot; $API/v1/chat/completions  # 403
+IP=$(dig +short api.&lt;domain&gt;); timeout 5 bash -c &quot;&lt;/dev/tcp/$IP/8000&quot; &amp;&amp; echo OPEN-FAIL || echo &quot;8000 closed: PASS&quot;
+# Streaming: lines must arrive spread over time, not all at once at the end
+curl -sN $API/v1/chat/completions -H &quot;Authorization: Bearer $GW&quot; -H &#39;Content-Type: application/json&#39; \
+  -d &#39;{&quot;model&quot;:&quot;kimi-work&quot;,&quot;stream&quot;:true,&quot;max_tokens&quot;:200,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;Count to 40 slowly.&quot;}],&quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false}}&#39; \
+  | while IFS= read -r l; do printf &#39;%s %s\n&#39; &quot;$(date +%T.%3N)&quot; &quot;${l:0:60}&quot;; done | head -8
+# Rate limit: expect some 429 after the burst
+for i in $(seq 1 25); do curl -s -o /dev/null -w &#39;%{http_code} &#39; -X POST -H &quot;Authorization: Bearer $GW&quot; $API/v1/chat/completions -d &#39;{}&#39;; done; echo</code></pre>
+<p><strong>Pass:</strong> 401, 401, <code>kimi-work</code>, eight 404s, 403, <code>8000 closed: PASS</code>, streaming timestamps spread across at least 1 second and ending in <code>data: [DONE]</code>, and at least one 429. The streaming read timeout is 900 s at nginx. vLLM has no proxy-imposed limit beyond that.</p>
+<p><strong>Who can read plaintext in A:</strong> only the VM (nginx and vLLM). TLS runs from the phone to nginx.</p>
+<h3 id="option-b-named-cloudflare-tunnel-with-access">Option B — named Cloudflare Tunnel with Access</h3>
+<p><strong>Tunnel is transport; Access is authorisation.</strong> <code>cloudflared</code> makes outbound-only connections from the VM to Cloudflare, so no inbound port is needed. That alone authenticates nobody. Cloudflare <strong>Access</strong> policies decide who may reach each hostname, and <code>cloudflared</code> checks Access&#39;s signed JWT (<code>Cf-Access-Jwt-Assertion</code>) before forwarding, through <code>originRequest.access</code> (<a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/cloudflared-parameters/origin-parameters/" target="_blank" rel="noopener">origin parameters</a>). vLLM&#39;s own bearer key is a third, independent layer.</p>
+<p><strong>Prerequisites:</strong> a Cloudflare account; a domain whose DNS zone is <strong>active on Cloudflare</strong> (nameservers moved) so <code>cloudflared tunnel route dns</code> can create the hostnames; and a Zero Trust organisation, which gives you the <code>&lt;TEAM&gt;</code> name in <code>&lt;TEAM&gt;.cloudflareaccess.com</code>.</p>
+<p><strong>B.1 NSG — <code>[CS]</code>:</strong> no change. No 80 or 443. Confirm with <code>az network nsg rule list -g &quot;$RG&quot; --nsg-name &quot;$NSG&quot; -o table</code>.</p>
+<p><strong>B.2 Install cloudflared from Cloudflare&#39;s repository — <code>[VM]</code></strong> (<a href="https://pkg.cloudflare.com/index.html" target="_blank" rel="noopener">pkg.cloudflare.com</a>)</p>
+<pre><code class="language-bash">sudo mkdir -p --mode=0755 /usr/share/keyrings
+curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg &gt;/dev/null
+echo &#39;deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared noble main&#39; | sudo tee /etc/apt/sources.list.d/cloudflared.list
+sudo apt-get update &amp;&amp; apt-cache madison cloudflared | head -3
+sudo apt-get install -y cloudflared=&lt;PINNED_VERSION&gt; &amp;&amp; sudo apt-mark hold cloudflared
+cloudflared --version</code></pre>
+<p><strong>B.3 Create the named tunnel and hostnames — <code>[VM]</code></strong></p>
+<pre><code class="language-bash">cloudflared tunnel login                      # prints a URL: open it on your workstation, pick the zone
+cloudflared tunnel create kimi                # prints the tunnel UUID and writes ~/.cloudflared/&lt;UUID&gt;.json
+export TUNNEL_ID=&lt;UUID&gt;
+cloudflared tunnel route dns kimi api.&lt;domain&gt;
+cloudflared tunnel route dns kimi chat.&lt;domain&gt;
+sudo install -d -m 0755 /etc/cloudflared
+sudo install -m 0600 ~/.cloudflared/${TUNNEL_ID}.json /etc/cloudflared/
+shred -u ~/.cloudflared/cert.pem              # account-level cert: not needed to run the tunnel</code></pre>
+<p>Back up the credentials JSON to Key Vault from your workstation with <code>az keyvault secret set --vault-name $KV -n cf-tunnel-cred --file &lt;UUID&gt;.json</code>.</p>
+<p><strong>B.4 Access applications — Cloudflare dashboard (workstation)</strong></p>
+<p>In Zero Trust → Access → Applications → Add → Self-hosted:</p>
+<div class="tw"><table><thead><tr><th>App</th><th>Hostname</th><th>Policy</th><th>Login</th><th>Session</th></tr></thead><tbody><tr><td><code>kimi-chat</code></td><td><code>chat.&lt;domain&gt;</code></td><td><strong>Allow</strong>: Include → Emails → <code>&lt;your email&gt;</code></td><td>One-time PIN, or your IdP</td><td>24 h</td></tr><tr><td><code>kimi-api</code></td><td><code>api.&lt;domain&gt;</code></td><td><strong>Service Auth</strong>: Include → Service Token → <code>kimi-phone</code></td><td>none (headers only)</td><td>—</td></tr></tbody></table></div>
+<p>Create the service token under Access → Service credentials → Service Tokens with a 1-year duration. Copy the Client ID and Secret once; the secret is not shown again. Without the <strong>Service Auth</strong> action, Access would show a login page to the API client instead (<a href="https://developers.cloudflare.com/cloudflare-one/identity/service-tokens/" target="_blank" rel="noopener">service tokens doc</a>). Copy each app&#39;s <strong>Application Audience (AUD) tag</strong> for the config below.</p>
+<p><strong>B.5 Ingress with route allowlist and origin JWT check — <code>[VM]</code></strong></p>
+<pre><code class="language-bash">sudo tee /etc/cloudflared/config.yml &gt;/dev/null &lt;&lt;EOF
+tunnel: ${TUNNEL_ID}
+credentials-file: /etc/cloudflared/${TUNNEL_ID}.json
+originRequest:
+  connectTimeout: 10s
+ingress:
+  - hostname: api.&lt;domain&gt;
+    path: ^/v1/(models|chat/completions)$
+    service: http://127.0.0.1:8000
+    originRequest:
+      access: { required: true, teamName: &lt;TEAM&gt;, audTag: [ &lt;AUD_API&gt; ] }
+  - hostname: chat.&lt;domain&gt;
+    service: http://127.0.0.1:3000
+    originRequest:
+      access: { required: true, teamName: &lt;TEAM&gt;, audTag: [ &lt;AUD_CHAT&gt; ] }
+  - service: http_status:404
+EOF
+cloudflared tunnel --config /etc/cloudflared/config.yml ingress validate
+cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://api.&lt;domain&gt;/v1/models    # matches rule 0
+cloudflared tunnel --config /etc/cloudflared/config.yml ingress rule https://api.&lt;domain&gt;/metrics      # matches catch-all 404
+sudo cloudflared --config /etc/cloudflared/config.yml service install
+sudo systemctl enable --now cloudflared &amp;&amp; systemctl is-active cloudflared
+cloudflared tunnel info kimi                  # shows active connections to Cloudflare edge</code></pre>
+<p>The <code>path</code> value is a Go regular expression (<a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/local-management/configuration-file/" target="_blank" rel="noopener">config file doc</a>). The tunnel cannot restrict methods; vLLM rejects a GET on <code>/chat/completions</code> with 405.</p>
+<p><strong>B.6 Two separate authentication headers.</strong> An API client must send both:</p>
+<ul><li><p><code>CF-Access-Client-Id</code> and <code>CF-Access-Client-Secret</code>, checked by Cloudflare Access.</p></li><li><p><code>Authorization: Bearer &lt;vllm-api-key&gt;</code>, checked by vLLM.</p></li></ul>
+<p>That Access forwards <code>Authorization</code> untouched is [EXP]; the test below proves it. Do <strong>not</strong> use Access&#39;s single-header mode (<code>read_service_tokens_from_header</code>): it uses the <code>Authorization</code> header and would collide with the bearer key.</p>
+<p><strong>B.7 Tests — <code>[WS]</code></strong></p>
+<pre><code class="language-bash">export API=https://api.&lt;domain&gt;; export CID=&lt;client-id&gt;; export CSEC=&lt;client-secret&gt;; export K=&lt;vllm-api-key&gt;
+curl -s -o /dev/null -w &#39;no-cf %{http_code} -&gt; %{redirect_url}\n&#39; $API/v1/models                         # 302 to &lt;TEAM&gt;.cloudflareaccess.com, or 403
+curl -s -o /dev/null -w &#39;bad-cf %{http_code}\n&#39; -H &quot;CF-Access-Client-Id: $CID&quot; -H &#39;CF-Access-Client-Secret: wrong&#39; $API/v1/models   # non-2xx
+curl -s -o /dev/null -w &#39;cf-no-bearer %{http_code}\n&#39; -H &quot;CF-Access-Client-Id: $CID&quot; -H &quot;CF-Access-Client-Secret: $CSEC&quot; $API/v1/models   # 401 from vLLM
+curl -s -H &quot;CF-Access-Client-Id: $CID&quot; -H &quot;CF-Access-Client-Secret: $CSEC&quot; -H &quot;Authorization: Bearer $K&quot; $API/v1/models | jq -r &#39;.data[].id&#39;   # kimi-work
+for p in /health /metrics /invocations /tokenize /pause /v1/completions; do
+  printf &#39;%-16s %s\n&#39; $p &quot;$(curl -s -o /dev/null -w &#39;%{http_code}&#39; -H &quot;CF-Access-Client-Id: $CID&quot; -H &quot;CF-Access-Client-Secret: $CSEC&quot; -H &quot;Authorization: Bearer $K&quot; $API$p)&quot;; done   # all 404
+curl -sN $API/v1/chat/completions -H &quot;CF-Access-Client-Id: $CID&quot; -H &quot;CF-Access-Client-Secret: $CSEC&quot; -H &quot;Authorization: Bearer $K&quot; \
+  -H &#39;Content-Type: application/json&#39; -d &#39;{&quot;model&quot;:&quot;kimi-work&quot;,&quot;stream&quot;:true,&quot;max_tokens&quot;:200,&quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;Count to 40 slowly.&quot;}],&quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false}}&#39; \
+  | while IFS= read -r l; do printf &#39;%s %s\n&#39; &quot;$(date +%T.%3N)&quot; &quot;${l:0:60}&quot;; done | head -8
+# Port 8000 and 443 on the VM&#39;s public IP must both be closed
+IP=$(az network public-ip show -g &quot;$RG&quot; -n pip-kimi --query ipAddress -o tsv)
+for port in 8000 443 80; do timeout 5 bash -c &quot;&lt;/dev/tcp/$IP/$port&quot; &amp;&amp; echo &quot;$port OPEN-FAIL&quot; || echo &quot;$port closed: PASS&quot;; done
+# Origin JWT check: the VM&#39;s own journal must show the rejected attempts never reached vLLM</code></pre>
+<p><strong>Pass:</strong> the first two are non-2xx and absent from <code>journalctl -u kimi-vllm</code>; the third is 401; the fourth returns <code>kimi-work</code>; six 404s; streaming timestamps spread out; ports 8000, 443 and 80 closed.</p>
+<p><strong>Timeouts.</strong> Cloudflare returns HTTP 524 if the origin sends nothing for the <strong>Proxy Read Timeout, 125 s by default</strong>; only Enterprise plans can raise it (<a href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/" target="_blank" rel="noopener">524 doc</a>). Always use <code>&quot;stream&quot;: true</code>, so tokens, including reasoning tokens, keep bytes flowing. Whether a 32K-token prefill stays under 125 s before the first byte is [EXP]; the 3.8 TTFT measurement answers it.</p>
+<p><strong>Who can read plaintext in B:</strong> Cloudflare&#39;s edge terminates TLS, so Cloudflare can process prompts and responses in plaintext before re-encrypting them to <code>cloudflared</code>. Then <code>cloudflared</code> and vLLM on the VM see them. Choose A if that is unacceptable for your material.</p>
+<h3 id="private-network-alternative-any-client-no-public-hostname">Private-network alternative (any client, no public hostname)</h3>
+<p>If your chosen phone client cannot send the Access headers and you do not want Option A&#39;s open port 443, install <strong>Tailscale</strong> on the VM and the phone (<a href="https://tailscale.com/download" target="_blank" rel="noopener">downloads</a>). Keep the NSG unchanged and publish the Option A nginx <code>api</code> server block, re-pointed to listen on <code>127.0.0.1:8081</code> without TLS, through <code>tailscale serve</code>, which provisions a <code>*.ts.net</code> HTTPS certificate. Check the exact syntax with <code>tailscale serve --help</code> [EXP]. Only devices in your tailnet can connect, and the gateway key still applies.</p>
+<h2 id="5-mobile-setup-and-daily-work">5. Mobile setup and daily work</h2>
+<p><strong>Recommended client: Open WebUI, run on the VM and used from the phone&#39;s browser as an installed web app (iOS Safari or Android Chrome).</strong> It works with both access options, and with Option B&#39;s interactive Access login. It also supplies what vLLM does not: stored chat history, file upload and retrieval, image attachments and tool execution (<a href="https://docs.openwebui.com/features/" target="_blank" rel="noopener">Open WebUI features</a>). A native OpenAI-compatible app is the secondary path. It needs Option A, or Option B with custom-header support.</p>
+<p><strong>Client support honesty.</strong> I verified Open WebUI&#39;s features and its v0.12.3 release (16 Oct 2026, <a href="https://github.com/open-webui/open-webui/releases" target="_blank" rel="noopener">releases</a>) from its own pages. I did <strong>not</strong> find official documentation for any native iOS or Android chat app that both accepts a custom base URL <strong>and</strong> sends arbitrary headers. Chatbox&#39;s custom-provider fields are described only by third-party guides (<a href="https://docs.apiyi.com/en/scenarios/chat/chatbox" target="_blank" rel="noopener">example</a>). Treat any native app as [EXP] until it passes the tests below.</p>
+<h3 id="51-run-open-webui-on-the-vm-vm">5.1 Run Open WebUI on the VM — <code>[VM]</code></h3>
+<pre><code class="language-bash">export OWUI_TAG=v0.12.3                     # or the newest release that is at least 14 days old
+docker pull ghcr.io/open-webui/open-webui:${OWUI_TAG}
+export OWUI_DIGEST=$(docker inspect --format &#39;{{index .RepoDigests 0}}&#39; ghcr.io/open-webui/open-webui:${OWUI_TAG} | cut -d@ -f2)
+echo &quot;OWUI_IMAGE=ghcr.io/open-webui/open-webui@${OWUI_DIGEST}&quot; | sudo tee -a /etc/kimi-pins.env
+az keyvault secret set --vault-name &quot;$KV&quot; -n owui-secret-key --value &quot;$(openssl rand -hex 32)&quot; -o none   # [CS]
+
+sudo tee /etc/systemd/system/kimi-webui.service &gt;/dev/null &lt;&lt;&#39;EOF&#39;
+[Unit]
+Description=Open WebUI on 127.0.0.1:3000
+Requires=docker.service
+After=docker.service kimi-vllm.service
+[Service]
+EnvironmentFile=/etc/kimi-pins.env
+ExecStartPre=-/usr/bin/docker rm -f open-webui
+ExecStartPre=-/usr/bin/docker network create kimi-net
+ExecStartPre=/bin/sh -c &#39;. /etc/kimi-pins.env; T=$(curl -fsS -H Metadata:true &quot;http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&amp;resource=https%%3A%%2F%%2Fvault.azure.net&quot; | jq -r .access_token); install -d -m 0700 /run/kimi; printf &quot;WEBUI_SECRET_KEY=%%s\\n&quot; &quot;$(curl -fsS -H &quot;Authorization: Bearer $T&quot; &quot;https://$KV.vault.azure.net/secrets/owui-secret-key?api-version=7.4&quot; | jq -r .value)&quot; &gt; /run/kimi/owui.env; chmod 600 /run/kimi/owui.env&#39;
+ExecStart=/usr/bin/docker run --name open-webui --rm --network kimi-net -p 127.0.0.1:3000:8080 \
+  --env-file /run/kimi/owui.env -e WEBUI_URL=https://chat.&lt;domain&gt; \
+  -v /var/lib/kimi/open-webui:/app/backend/data ${OWUI_IMAGE}
+ExecStop=/usr/bin/docker stop -t 30 open-webui
+Restart=on-failure
+RestartSec=15
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload &amp;&amp; sudo systemctl enable --now kimi-webui
+curl -s -o /dev/null -w &#39;%{http_code}\n&#39; http://127.0.0.1:3000/       # 200</code></pre>
+<p>Then in Open WebUI, from the phone or workstation:</p>
+<ol><li><p>Open <code>https://chat.&lt;domain&gt;</code>. Option B passes the Access email PIN first. Create the <strong>first account, which becomes admin</strong>, with a strong password from your password manager.</p></li><li><p>Admin Panel → Settings → General: <strong>disable new sign-ups</strong>.</p></li><li><p>Admin Panel → Settings → Connections → OpenAI API → <strong>+</strong>: URL <code>http://kimi-vllm:8000/v1</code>, key = <code>vllm-api-key</code>. This runs server-side on the VM, so the vLLM key never reaches the phone. Disable the Ollama connection.</p></li><li><p><strong>Verify:</strong> the model picker lists <code>kimi-work</code>.</p></li><li><p>Model settings for <code>kimi-work</code>: temperature 0.6 with <code>chat_template_kwargs</code> <code>{&quot;thinking&quot;: false}</code> for quick work, or 1.0 with thinking on for hard problems (<a href="https://huggingface.co/moonshotai/Kimi-K2.5" target="_blank" rel="noopener">model card</a>). Turn on <strong>native function calling</strong> if you will use tools.</p></li></ol>
+<p><strong>Install on the phone:</strong> iOS Safari → Share → <em>Add to Home Screen</em>; Android Chrome → ⋮ → <em>Install app</em> / <em>Add to Home screen</em>.</p>
+<h3 id="52-native-api-client-fields-option-a-or-b-with-header-support-ph">5.2 Native API client fields (Option A, or B with header support) — <code>[PH]</code></h3>
+<div class="tw"><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Provider type</td><td>&quot;OpenAI compatible&quot; / &quot;Custom OpenAI&quot;</td></tr><tr><td>Base URL / API host</td><td><code>https://api.&lt;domain&gt;/v1</code></td></tr><tr><td>API path, if the app has one</td><td><code>/chat/completions</code></td></tr><tr><td>API key</td><td>Option A: <code>gateway-api-key</code>. Option B: <code>vllm-api-key</code></td></tr><tr><td>Extra headers (Option B only)</td><td><code>CF-Access-Client-Id: &lt;id&gt;</code> and <code>CF-Access-Client-Secret: &lt;secret&gt;</code></td></tr><tr><td>Model</td><td><code>kimi-work</code>, picked from Fetch/Refresh models or typed</td></tr><tr><td>Streaming</td><td>On</td></tr></tbody></table></div>
+<p><strong>Does the app append <code>/v1</code>?</strong> Apps differ, and guides for the same app disagree. Settle it empirically: tap <em>Fetch models</em>, then on the VM run <code>sudo tail -n 5 /var/log/nginx/kimi_api.log</code> (Option A). The logged path must be exactly <code>/v1/models</code>. If you see <code>/v1/v1/models</code>, drop <code>/v1</code> from the base URL. If you see <code>/models</code>, add it.</p>
+<h3 id="53-mobile-compatible-test-requests-ph">5.3 Mobile-compatible test requests — <code>[PH]</code></h3>
+<p>Run them from any phone HTTP tool: iOS Shortcuts <em>Get Contents of URL</em>, Termux <code>curl</code> on Android, or a REST client app. Set the method to POST, add headers <code>Content-Type: application/json</code> plus your option&#39;s auth headers, and paste the body. <code>URL</code> means <code>https://api.&lt;domain&gt;/v1</code>.</p>
+<p><strong>1. Model discovery:</strong> <code>GET URL/models</code>. Pass: JSON containing <code>&quot;id&quot;: &quot;kimi-work&quot;</code>.</p>
+<p><strong>2. Ordinary chat</strong> — <code>POST URL/chat/completions</code></p>
+<pre><code class="language-json">{&quot;model&quot;:&quot;kimi-work&quot;,&quot;max_tokens&quot;:128,&quot;temperature&quot;:0.6,
+ &quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false},
+ &quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;In one sentence, what is a mixture-of-experts model?&quot;}]}</code></pre>
+<p>Pass: <code>choices[0].message.content</code> is one sentence, and <code>finish_reason</code> is <code>stop</code>.</p>
+<p><strong>3. Streaming:</strong> the same body plus <code>&quot;stream&quot;: true</code>. Pass: the app shows text arriving progressively; with curl, <code>data:</code> lines arrive spread out and end in <code>data: [DONE]</code>. With thinking on, reasoning arrives in a separate <code>reasoning_content</code> field (from <code>--reasoning-parser kimi_k2</code>). Apps that ignore that field show nothing until the answer starts.</p>
+<p><strong>4. System message and history</strong> — vLLM is stateless; history works only because the client resends it.</p>
+<pre><code class="language-json">{&quot;model&quot;:&quot;kimi-work&quot;,&quot;max_tokens&quot;:64,&quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false},
+ &quot;messages&quot;:[
+  {&quot;role&quot;:&quot;system&quot;,&quot;content&quot;:&quot;You are terse. Answer in at most five words.&quot;},
+  {&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;My project codename is BLUEGUM.&quot;},
+  {&quot;role&quot;:&quot;assistant&quot;,&quot;content&quot;:&quot;Noted: BLUEGUM.&quot;},
+  {&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;What is my project codename?&quot;}]}</code></pre>
+<p>Pass: the answer contains <code>BLUEGUM</code> in five words or fewer.</p>
+<p><strong>5a. Tool-call generation</strong></p>
+<pre><code class="language-json">{&quot;model&quot;:&quot;kimi-work&quot;,&quot;max_tokens&quot;:256,&quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false},
+ &quot;tools&quot;:[{&quot;type&quot;:&quot;function&quot;,&quot;function&quot;:{&quot;name&quot;:&quot;get_exchange_rate&quot;,
+   &quot;description&quot;:&quot;Get the AUD exchange rate for a currency code&quot;,
+   &quot;parameters&quot;:{&quot;type&quot;:&quot;object&quot;,&quot;properties&quot;:{&quot;code&quot;:{&quot;type&quot;:&quot;string&quot;}},&quot;required&quot;:[&quot;code&quot;]}}}],
+ &quot;tool_choice&quot;:&quot;auto&quot;,
+ &quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;What is the AUD rate for USD right now?&quot;}]}</code></pre>
+<p>Pass: <code>finish_reason</code> is <code>tool_calls</code>, and <code>message.tool_calls[0].function.name</code> is <code>get_exchange_rate</code>, with <code>arguments</code> parsing as JSON containing <code>&quot;code&quot;:&quot;USD&quot;</code>. Copy the returned <code>tool_calls[0].id</code>.</p>
+<p><strong>5b. Return a tool result</strong> — resend history plus your result:</p>
+<pre><code class="language-json">{&quot;model&quot;:&quot;kimi-work&quot;,&quot;max_tokens&quot;:128,&quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false},
+ &quot;tools&quot;:[ &quot;…same tools array as 5a…&quot; ],
+ &quot;messages&quot;:[
+  {&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:&quot;What is the AUD rate for USD right now?&quot;},
+  {&quot;role&quot;:&quot;assistant&quot;,&quot;content&quot;:&quot;&quot;,&quot;tool_calls&quot;:[ &quot;…the tool_calls array returned in 5a, verbatim…&quot; ]},
+  {&quot;role&quot;:&quot;tool&quot;,&quot;tool_call_id&quot;:&quot;&lt;id from 5a&gt;&quot;,&quot;content&quot;:&quot;{\&quot;code\&quot;:\&quot;USD\&quot;,\&quot;aud_per_unit\&quot;:1.52,\&quot;source\&quot;:\&quot;TEST FIXTURE\&quot;}&quot;}]}</code></pre>
+<p>Pass: the answer states 1.52 and does not invent a source. (1.52 is a test value, not a real rate.)</p>
+<p><strong>6. Image input</strong> — K2.5 accepts images through MoonViT:</p>
+<pre><code class="language-json">{&quot;model&quot;:&quot;kimi-work&quot;,&quot;max_tokens&quot;:128,&quot;chat_template_kwargs&quot;:{&quot;thinking&quot;:false},
+ &quot;messages&quot;:[{&quot;role&quot;:&quot;user&quot;,&quot;content&quot;:[
+   {&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;What object is in this photo? One word.&quot;},
+   {&quot;type&quot;:&quot;image_url&quot;,&quot;image_url&quot;:{&quot;url&quot;:&quot;data:image/jpeg;base64,&lt;BASE64_OF_A_SMALL_PHOTO&gt;&quot;}}]}]}</code></pre>
+<p>Pass: a plausible one-word answer. A body over 20 MB is rejected by nginx (413) in Option A; shrink the image. In Open WebUI, just attach the photo.</p>
+<p><strong>Documents.</strong> vLLM&#39;s chat API takes text and images, not PDF files. In Open WebUI, attach the PDF or DOCX: Open WebUI extracts the text, chunks and embeds it, and retrieves relevant passages into the prompt. The embedding runs inside the Open WebUI container, on CPU by default [EXP: confirm under Admin → Documents]. Pass: ask about a fact on page 3 of a test PDF, and the answer cites it.</p>
+<h3 id="54-who-does-what">5.4 Who does what</h3>
+<div class="tw"><table><thead><tr><th>Capability</th><th>Provided by</th><th>Not provided by</th></tr></thead><tbody><tr><td>Generating text, reasoning, tool-call JSON</td><td>Kimi K2.5 via vLLM</td><td>—</td></tr><tr><td><strong>Executing</strong> a tool (HTTP call, code, search)</td><td>Open WebUI Tools/Functions, an MCP server Open WebUI connects to, or your own agent loop</td><td>vLLM: it only returns <code>tool_calls</code>; nothing runs</td></tr><tr><td>Chat history</td><td>Open WebUI database at <code>/var/lib/kimi/open-webui</code> (OS disk)</td><td>vLLM (stateless)</td></tr><tr><td>File ingestion and retrieval</td><td>Open WebUI documents and knowledge bases</td><td>vLLM</td></tr><tr><td>Image understanding</td><td>K2.5&#39;s vision encoder</td><td>—</td></tr></tbody></table></div>
+<p>Tools run with the Open WebUI container&#39;s network access on your VM. Install only tools you have read, because a tool is code execution triggered by model output.</p>
+<h3 id="55-start-and-deallocate-the-vm-from-the-phone-without-subscription-wide-credentials">5.5 Start and deallocate the VM from the phone, without subscription-wide credentials</h3>
+<p>Create a dedicated operator identity that can only start, deallocate and read <strong>this one VM</strong>. Use it in the official Azure mobile app, never in a chat app. <strong><code>[CS]</code>:</strong></p>
+<pre><code class="language-bash">cat &gt; vm-operator.json &lt;&lt;EOF
+{&quot;Name&quot;:&quot;VM Operator (kimi)&quot;,&quot;Description&quot;:&quot;Start, deallocate and read one VM&quot;,
+ &quot;Actions&quot;:[&quot;Microsoft.Compute/virtualMachines/read&quot;,&quot;Microsoft.Compute/virtualMachines/instanceView/read&quot;,
+            &quot;Microsoft.Compute/virtualMachines/start/action&quot;,&quot;Microsoft.Compute/virtualMachines/deallocate/action&quot;],
+ &quot;AssignableScopes&quot;:[&quot;/subscriptions/$SUB_ID/resourceGroups/$RG&quot;]}
+EOF
+az role definition create --role-definition @vm-operator.json
+# Create a separate Entra user (or use your own account if you accept its wider rights on the phone)
+az ad user create --display-name &quot;Kimi Operator&quot; --user-principal-name kimi-operator@&lt;your-tenant-domain&gt; \
+  --password &quot;&lt;strong-temporary-password&gt;&quot; --force-change-password-next-sign-in true
+az role assignment create --assignee kimi-operator@&lt;your-tenant-domain&gt; --role &quot;VM Operator (kimi)&quot; \
+  --scope &quot;$(az vm show -g $RG -n $VM_NAME --query id -o tsv)&quot;</code></pre>
+<p>Then enable MFA for that user under Entra → Users → Authentication methods, or through Security defaults.</p>
+<p><strong><code>[PH]</code>:</strong> install the <strong>Azure</strong> app from Microsoft and sign in as <code>kimi-operator</code>. Open Virtual machines → <code>vm-kimi-01</code> → Start. Stop from the app with <em>Stop</em>, then confirm the status reads <strong>Stopped (deallocated)</strong>; plain <em>Stopped</em> still bills compute. If the app ever shows only <em>Stopped</em>, run <code>az vm deallocate</code> from Cloud Shell, which the Azure app also opens. Stops through this role are always deallocations, because the role grants no <code>powerOff</code> action.</p>
+<p><strong>Pass:</strong> as <code>kimi-operator</code>, the app can start and deallocate <code>vm-kimi-01</code>, and it shows <strong>no</strong> other resources, and no delete or resize option succeeds.</p>
+<h2 id="6-cost-control-shutdown-and-recovery">6. Cost control, shutdown and recovery</h2>
+<p><strong>About 45 billed GPU-hours, or roughly 30–37 hours of actual use, after setup, a 10% reserve and three months of fixed costs</strong> [CALC]. All figures are Azure retail Linux pay-as-you-go list prices in <strong>USD</strong> for <strong>eastus2</strong>, from the <a href="https://prices.azure.com/api/retail/prices" target="_blank" rel="noopener">Retail Prices API</a> on <strong>2026-10-20</strong>. They are not your negotiated or credit-offer prices.</p>
+<h3 id="61-prices-and-assumptions">6.1 Prices and assumptions</h3>
+<div class="tw"><table><thead><tr><th>Item</th><th>Rate (USD)</th><th>Billed when</th><th>Monthly if idle</th></tr></thead><tbody><tr><td><code>Standard_ND96isr_H200_v5</code> compute</td><td>$84.80 / h</td><td>VM state <em>running</em> or <em>stopped (not deallocated)</em></td><td>$0 when deallocated</td></tr><tr><td>OS disk P15 Premium SSD 256 GiB</td><td>$34.56 / month</td><td>always, until deleted</td><td>$34.56</td></tr><tr><td>Standard static public IPv4</td><td>$0.005 / h</td><td>always, until deleted</td><td>$3.65</td></tr><tr><td>Blob Hot LRS, about 595 GB</td><td>$0.0184 / GB-month</td><td>always</td><td>$10.95</td></tr><tr><td>Internet egress</td><td>first 100 GB/month $0, then $0.087/GB</td><td>when data leaves Azure</td><td>≈ $0 for chat text</td></tr><tr><td>Inbound data (the HF download)</td><td>$0</td><td>—</td><td>—</td></tr><tr><td>Automation runbook</td><td>500 free min/month, then $0.002/min</td><td>hourly job, about 1 min each</td><td>≤ $0.50 [CALC]</td></tr><tr><td>Key Vault operations</td><td>cents per 10k ops</td><td>each boot</td><td>≈ $0</td></tr><tr><td>Cloudflare Tunnel and Access (free plan, ≤ 50 users)</td><td>$0</td><td>—</td><td>—</td></tr></tbody></table></div>
+<p><strong>Fixed cost ≈ $49.66/month</strong> whether you use the model or not.</p>
+<p><strong>Credit checks [SUB]:</strong></p>
+<ol><li><p>Portal → Cost Management → Credits (or the sponsorship portal for sponsored offers): balance, <strong>currency</strong> and expiry.</p></li><li><p>The offer&#39;s terms: whether GPU VMs and Marketplace images are eligible. Ubuntu-HPC has no plan charge (<code>plan: null</code>, step 1.4), so no Marketplace fee applies.</p></li><li><p>If your billing currency is not USD, re-query in it, for example: <code>curl -s &quot;https://prices.azure.com/api/retail/prices?currencyCode=&#39;AUD&#39;&amp;\$filter=armSkuName eq &#39;Standard_ND96isr_H200_v5&#39; and armRegionName eq &#39;$LOCATION&#39; and priceType eq &#39;Consumption&#39;&quot; | jq &#39;.Items[] | select(.skuName|test(&quot;Spot|Low&quot;)|not) | {retailPrice,currencyCode}&#39;</code></p></li></ol>
+<h3 id="62-usable-hours-calc">6.2 Usable hours [CALC]</h3>
+<p>Assumptions: USD 5,000 credit, 3 months to expiry, 10% reserve, a one-time setup of 6 VM-hours (download, verify, seed Blob, tests and benchmarks), and per-session overhead of 0.5 h cold start [EXP] plus a 20-minute idle tail before auto-deallocation.</p>
+<div class="tw"><table><thead><tr><th>Step</th><th>USD</th></tr></thead><tbody><tr><td>Credit</td><td>5,000.00</td></tr><tr><td>− Reserve (10%)</td><td>−500.00</td></tr><tr><td>− Fixed costs, 3 months</td><td>−148.98</td></tr><tr><td>− Setup, 6 h × $84.80</td><td>−508.80</td></tr><tr><td><strong>= Available for sessions</strong></td><td><strong>3,842.22 → 45.3 billed hours</strong></td></tr></tbody></table></div>
+<div class="tw"><table><thead><tr><th>Session pattern</th><th>Billed h per session</th><th>Sessions</th><th>Hours of actual use</th></tr></thead><tbody><tr><td>2 h of work</td><td>2.83</td><td>16</td><td><strong>≈ 32 h</strong></td></tr><tr><td>4 h of work</td><td>4.83</td><td>9</td><td><strong>≈ 37 h</strong></td></tr></tbody></table></div>
+<p>The same budget on <code>Standard_ND96isr_MI300X_v5</code> at $48.00/h gives about 85 billed hours. Re-run the table once you have measured the real cold start (acceptance criterion 6).</p>
+<h3 id="63-deallocate-and-verify-cs-or-ph">6.3 Deallocate and verify — <code>[CS]</code> or <code>[PH]</code></h3>
+<pre><code class="language-bash">az vm deallocate -g &quot;$RG&quot; -n &quot;$VM_NAME&quot;
+az vm get-instance-view -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; \
+  --query &quot;instanceView.statuses[?starts_with(code,&#39;PowerState&#39;)].code&quot; -o tsv</code></pre>
+<p><strong>Pass:</strong> <code>PowerState/deallocated</code>. <strong>Fail:</strong> <code>PowerState/stopped</code> means the OS was shut down (for example <code>sudo poweroff</code> inside the VM). Compute is <strong>still billed</strong> in that state; run the deallocate command.</p>
+<p><strong>After deallocation the following continue to bill:</strong> the OS disk, the static public IP, the Blob copy, Key Vault and Automation. The local NVMe and temp disk are <strong>erased</strong>. Compute stops.</p>
+<h3 id="64-budget-alerts-cs">6.4 Budget alerts — <code>[CS]</code></h3>
+<p>Budgets notify you; they do not stop anything. Cost data can lag by hours, which is why 6.5 and 6.6 exist.</p>
+<pre><code class="language-bash">az rest --method put \
+  --url &quot;https://management.azure.com/subscriptions/$SUB_ID/providers/Microsoft.Consumption/budgets/kimi-credit?api-version=2023-05-01&quot; \
+  --body @- &lt;&lt;EOF
+{&quot;properties&quot;:{&quot;category&quot;:&quot;Cost&quot;,&quot;amount&quot;:4500,&quot;timeGrain&quot;:&quot;Annually&quot;,
+  &quot;timePeriod&quot;:{&quot;startDate&quot;:&quot;$(date -u +%Y-%m-01)T00:00:00Z&quot;,&quot;endDate&quot;:&quot;&lt;CREDIT_EXPIRY_DATE&gt;T00:00:00Z&quot;},
+  &quot;notifications&quot;:{
+   &quot;a25&quot;:{&quot;enabled&quot;:true,&quot;operator&quot;:&quot;GreaterThan&quot;,&quot;threshold&quot;:25,&quot;contactEmails&quot;:[&quot;&lt;YOUR_EMAIL&gt;&quot;],&quot;thresholdType&quot;:&quot;Actual&quot;},
+   &quot;a50&quot;:{&quot;enabled&quot;:true,&quot;operator&quot;:&quot;GreaterThan&quot;,&quot;threshold&quot;:50,&quot;contactEmails&quot;:[&quot;&lt;YOUR_EMAIL&gt;&quot;],&quot;thresholdType&quot;:&quot;Actual&quot;},
+   &quot;a80&quot;:{&quot;enabled&quot;:true,&quot;operator&quot;:&quot;GreaterThan&quot;,&quot;threshold&quot;:80,&quot;contactEmails&quot;:[&quot;&lt;YOUR_EMAIL&gt;&quot;],&quot;thresholdType&quot;:&quot;Actual&quot;},
+   &quot;f100&quot;:{&quot;enabled&quot;:true,&quot;operator&quot;:&quot;GreaterThan&quot;,&quot;threshold&quot;:100,&quot;contactEmails&quot;:[&quot;&lt;YOUR_EMAIL&gt;&quot;],&quot;thresholdType&quot;:&quot;Forecasted&quot;}}}}
+EOF
+az rest --method get --url &quot;https://management.azure.com/subscriptions/$SUB_ID/providers/Microsoft.Consumption/budgets/kimi-credit?api-version=2023-05-01&quot; --query properties.amount</code></pre>
+<p>Some credit-based offers do not support Consumption budgets. If the PUT returns an offer-type error, track spend in Cost Management → Credits instead [SUB].</p>
+<h3 id="65-independent-maximum-runtime-cap-off-the-vm">6.5 Independent maximum-runtime cap (off the VM)</h3>
+<p>Two mechanisms that do not depend on the VM&#39;s own software.</p>
+<p><strong>(a) Daily auto-shutdown, which deallocates — <code>[CS]</code>:</strong></p>
+<pre><code class="language-bash">az vm auto-shutdown -g &quot;$RG&quot; -n &quot;$VM_NAME&quot; --time 1200 --email &quot;&lt;YOUR_EMAIL&gt;&quot;   # 12:00 UTC = 23:00 AEDT / 22:00 AEST</code></pre>
+<p><strong>(b) Hourly runbook cap of <code>MAX_RUNTIME_HOURS=4</code>.</strong> Create an Automation account with a system-assigned identity and give that identity the <code>VM Operator (kimi)</code> role (5.5) on the VM:</p>
+<pre><code class="language-bash">az extension add -n automation
+az automation account create -g &quot;$RG&quot; -n aa-kimi -l &quot;$LOCATION&quot; --sku Basic
+az resource update -g &quot;$RG&quot; -n aa-kimi --resource-type Microsoft.Automation/automationAccounts --set identity.type=SystemAssigned
+AA_PID=$(az resource show -g &quot;$RG&quot; -n aa-kimi --resource-type Microsoft.Automation/automationAccounts --query identity.principalId -o tsv)
+az role assignment create --assignee-object-id &quot;$AA_PID&quot; --assignee-principal-type ServicePrincipal \
+  --role &quot;VM Operator (kimi)&quot; --scope &quot;$(az vm show -g $RG -n $VM_NAME --query id -o tsv)&quot;</code></pre>
+<p>In the portal, under Automation account <code>aa-kimi</code>:</p>
+<ol><li><p>Variables: create a string variable <code>KimiFirstSeenRunning</code> with an empty value.</p></li><li><p>Runbooks: create a PowerShell 7.2 runbook with the code below, then publish it.</p></li><li><p>Schedules: create an hourly recurrence (Automation&#39;s minimum interval), then link it to the runbook.</p></li></ol>
+<pre><code class="language-powershell">param([string]$Rg = &#39;rg-kimi-inference&#39;, [string]$Name = &#39;vm-kimi-01&#39;, [double]$MaxHours = 4)
+Connect-AzAccount -Identity | Out-Null
+$s = (Get-AzVM -ResourceGroupName $Rg -Name $Name -Status).Statuses | Where-Object Code -like &#39;PowerState/*&#39;
+$first = Get-AutomationVariable -Name &#39;KimiFirstSeenRunning&#39;
+$now = (Get-Date).ToUniversalTime()
+if ($s.Code -in &#39;PowerState/running&#39;,&#39;PowerState/starting&#39;,&#39;PowerState/stopped&#39;) {
+  if ([string]::IsNullOrEmpty($first)) { Set-AutomationVariable -Name &#39;KimiFirstSeenRunning&#39; -Value $now.ToString(&#39;o&#39;); return }
+  $age = $now - [datetime]::Parse($first).ToUniversalTime()
+  if ($age.TotalHours -ge $MaxHours) {
+    Write-Output &quot;Deallocating after $([math]::Round($age.TotalHours,2)) h&quot;
+    Stop-AzVM -ResourceGroupName $Rg -Name $Name -Force | Out-Null     # Stop-AzVM deallocates by default
+    Set-AutomationVariable -Name &#39;KimiFirstSeenRunning&#39; -Value &#39;&#39;
+  }
+} elseif (-not [string]::IsNullOrEmpty($first)) { Set-AutomationVariable -Name &#39;KimiFirstSeenRunning&#39; -Value &#39;&#39; }</code></pre>
+<p>Because the check runs hourly, the worst-case overrun is about 1 h beyond the cap (about $85). <code>PowerState/stopped</code> counts as running here, because it still bills. <strong>Test:</strong> set <code>MaxHours</code> to 0.01, start the VM, and wait for two runs. Pass: the job output shows &quot;Deallocating&quot;, and 6.3 reads <code>PowerState/deallocated</code>.</p>
+<h3 id="66-on-vm-idle-shutdown-with-draining-vm">6.6 On-VM idle shutdown with draining — <code>[VM]</code></h3>
+<p>GPU utilisation is not a valid idle signal: it is about 0% between a user&#39;s messages, and non-zero during CUDA-graph capture at startup. The watcher uses vLLM&#39;s own request counters instead.</p>
+<pre><code class="language-bash">sudo tee /usr/local/sbin/kimi-idle.sh &gt;/dev/null &lt;&lt;&#39;EOF&#39;
+#!/usr/bin/env bash
+# Deallocates this VM after IDLE_MIN of no inference activity, with grace and draining.
+set -uo pipefail
+IDLE_MIN=20; BOOT_GRACE_MIN=60; STATE=/var/lib/kimi/idle.state
+m(){ curl -fsS --max-time 5 http://127.0.0.1:8000/metrics 2&gt;/dev/null | awk -v k=&quot;$1&quot; &#39;$1 ~ &quot;^&quot;k&quot;({|$)&quot; {s+=$2} END{printf &quot;%d&quot;, s+0}&#39;; }
+up_min=$(( $(cut -d. -f1 /proc/uptime) / 60 ))
+[ &quot;$up_min&quot; -lt &quot;$BOOT_GRACE_MIN&quot; ] &amp;&amp; exit 0                                  # boot, restore and load grace
+[ &quot;$(systemctl show -p ActiveState --value kimi-restore)&quot; = activating ] &amp;&amp; exit 0  # weights still restoring
+[ -n &quot;$(who)&quot; ] &amp;&amp; exit 0                                                       # an admin is logged in
+[ -f /var/lib/kimi/keep-awake ] &amp;&amp; exit 0                                       # manual override
+run=$(m vllm:num_requests_running); wait=$(m vllm:num_requests_waiting); tok=$(m vllm:prompt_tokens_total)
+now=$(date +%s); read -r last_tok last_t &lt; &quot;$STATE&quot; 2&gt;/dev/null || { last_tok=-1; last_t=$now; }
+if [ &quot;$run&quot; -gt 0 ] || [ &quot;$wait&quot; -gt 0 ] || [ &quot;$tok&quot; != &quot;$last_tok&quot; ]; then echo &quot;$tok $now&quot; &gt; &quot;$STATE&quot;; exit 0; fi
+[ $(( (now - last_t) / 60 )) -lt &quot;$IDLE_MIN&quot; ] &amp;&amp; exit 0
+logger -t kimi-idle &quot;idle ${IDLE_MIN}m: draining&quot;
+systemctl stop nginx cloudflared 2&gt;/dev/null                                   # stop new requests at the edge
+for i in $(seq 1 24); do [ &quot;$(m vllm:num_requests_running)&quot; -eq 0 ] &amp;&amp; [ &quot;$(m vllm:num_requests_waiting)&quot; -eq 0 ] &amp;&amp; break; sleep 5; done
+systemctl stop kimi-webui kimi-vllm
+RID=$(curl -fsS -H Metadata:true &quot;http://169.254.169.254/metadata/instance/compute/resourceId?api-version=2021-02-01&amp;format=text&quot;)
+TOK=$(curl -fsS -H Metadata:true &quot;http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&amp;resource=https%3A%2F%2Fmanagement.azure.com%2F&quot; | jq -r .access_token)
+logger -t kimi-idle &quot;deallocating $RID&quot;
+curl -fsS -X POST -H &quot;Authorization: Bearer $TOK&quot; -H &#39;Content-Length: 0&#39; &quot;https://management.azure.com${RID}/deallocate?api-version=2024-07-01&quot;
+EOF
+sudo chmod 0750 /usr/local/sbin/kimi-idle.sh
+printf &#39;[Unit]\nDescription=Kimi idle check\n[Service]\nType=oneshot\nExecStart=/usr/local/sbin/kimi-idle.sh\n&#39; | sudo tee /etc/systemd/system/kimi-idle.service
+printf &#39;[Unit]\nDescription=Kimi idle check every 5 min\n[Timer]\nOnBootSec=10min\nOnUnitActiveSec=5min\n[Install]\nWantedBy=timers.target\n&#39; | sudo tee /etc/systemd/system/kimi-idle.timer
+sudo systemctl daemon-reload &amp;&amp; sudo systemctl enable --now kimi-idle.timer
+curl -s http://127.0.0.1:8000/metrics | grep -E &#39;^vllm:(num_requests_running|num_requests_waiting|prompt_tokens_total)&#39; | head</code></pre>
+<p>The last command verifies the metric names exist in your vLLM build [EXP]. If they differ, fix them in the script, or the watcher will treat a busy server as idle. <strong>Test:</strong> set <code>IDLE_MIN=1</code> and <code>BOOT_GRACE_MIN=0</code>, leave the VM idle, and watch <code>journalctl -t kimi-idle</code>. Pass: &quot;draining&quot; then &quot;deallocating&quot;, and 6.3 then reads <code>PowerState/deallocated</code>. Repeat while streaming a long answer; pass if no deallocation occurs until the answer completes and 20 minutes pass.</p>
+<h3 id="67-restart-and-cache-restoration-vm">6.7 Restart and cache restoration — <code>[VM]</code></h3>
+<p>After every deallocation, the NVMe RAID and the weights are gone. This unit rebuilds them before <code>kimi-vllm</code> starts.</p>
+<pre><code class="language-bash">sudo cp ~/kimi/manifest.tsv /etc/kimi-manifest.tsv
+sudo tee /usr/local/sbin/kimi-restore.sh &gt;/dev/null &lt;&lt;&#39;EOF&#39;
+#!/usr/bin/env bash
+set -euo pipefail
+. /etc/kimi-pins.env
+log(){ logger -t kimi-restore &quot;$*&quot;; echo &quot;$(date -u +%T) $*&quot;; }
+log start
+if ! findmnt /mnt/kimi &gt;/dev/null; then
+  mdadm --assemble --scan || true
+  if [ -e /dev/md/kimi ]; then mount -o noatime /dev/md/kimi /mnt/kimi
+  else
+    CAND=$(lsblk -dn -o NAME,TYPE,MODEL | awk &#39;$2==&quot;disk&quot; &amp;&amp; /NVMe Direct/ {print &quot;/dev/&quot;$1}&#39;)
+    for d in $CAND; do [ &quot;$(lsblk -n &quot;$d&quot; | wc -l)&quot; -eq 1 ] &amp;&amp; [ -z &quot;$(wipefs -n &quot;$d&quot;)&quot; ] || { log &quot;refusing: $d not blank&quot;; exit 1; }; done
+    mdadm --create /dev/md/kimi --level=0 --raid-devices=$(echo $CAND | wc -w) $CAND --force --run
+    mkfs.xfs -f -L kimi-nvme /dev/md/kimi; mkdir -p /mnt/kimi; mount -o noatime /dev/md/kimi /mnt/kimi
+  fi
+fi
+D=/mnt/kimi/models/Kimi-K2.5
+if [ &quot;$(cat $D/.revision 2&gt;/dev/null)&quot; != &quot;$MODEL_REV&quot; ]; then
+  log &quot;azcopy restore $MODEL_REV&quot;; mkdir -p &quot;$D&quot;
+  AZCOPY_AUTO_LOGIN_TYPE=MSI azcopy copy &quot;https://${SA}.blob.core.windows.net/models/Kimi-K2.5/${MODEL_REV}/*&quot; &quot;$D/&quot; --recursive --log-level ERROR
+fi
+bad=0; while IFS=$&#39;\t&#39; read -r p s _; do [ &quot;$(stat -c %s &quot;$D/$p&quot; 2&gt;/dev/null)&quot; = &quot;$s&quot; ] || { log &quot;size mismatch $p&quot;; bad=1; }; done &lt; /etc/kimi-manifest.tsv
+[ $bad -eq 0 ] || exit 1
+log done
+EOF
+sudo chmod 0750 /usr/local/sbin/kimi-restore.sh
+printf &#39;[Unit]\nDescription=Restore NVMe RAID and Kimi weights\nAfter=network-online.target\nWants=network-online.target\n[Service]\nType=oneshot\nRemainAfterExit=yes\nTimeoutStartSec=3h\nExecStart=/usr/local/sbin/kimi-restore.sh\n[Install]\nWantedBy=multi-user.target\n&#39; | sudo tee /etc/systemd/system/kimi-restore.service
+sudo systemctl daemon-reload &amp;&amp; sudo systemctl enable kimi-restore kimi-vllm kimi-webui</code></pre>
+<p>Now re-enable the <code>kimi-restore</code> references in <code>kimi-vllm.service</code>, if you commented them out in 3.5.</p>
+<p><strong>Cold-start test (acceptance criterion 6):</strong> <code>[PH]</code> or <code>[CS]</code> start the VM and note the time. Then <code>[VM]</code> run <code>journalctl -t kimi-restore -o short-iso</code> and <code>journalctl -u kimi-vllm -o short-iso | grep -m1 &#39;startup complete&#39;</code>. Pass: <code>/health</code> returns 200 and Section 5.3 test 2 passes from the phone, with no manual steps.</p>
+<div class="tw"><table><thead><tr><th>Restart failure</th><th>Recovery</th></tr></thead><tbody><tr><td><code>AllocationFailed</code> on start</td><td>No capacity right now. Retry after 15–60 min. Capacity is not reserved while deallocated</td></tr><tr><td><code>refusing: ... not blank</code></td><td>The NVMe devices hold something unexpected. Inspect with <code>lsblk -f</code> before acting; never force-format</td></tr><tr><td>azcopy 403</td><td>The identity&#39;s Reader role on the container is missing; re-run 3.3&#39;s role assignment</td></tr><tr><td>Size mismatch</td><td>Delete the file, rerun <code>sudo systemctl restart kimi-restore</code></td></tr><tr><td>Blob copy lost</td><td>Re-download from HF at the pinned <code>MODEL_REV</code> (3.2), then re-seed (3.3)</td></tr></tbody></table></div>
+<h3 id="68-credential-recovery">6.8 Credential recovery</h3>
+<div class="tw"><table><thead><tr><th>Lost</th><th>Recovery</th></tr></thead><tbody><tr><td>vLLM or gateway key</td><td>Generate a new secret in Key Vault, restart the services, update the client</td></tr><tr><td>Key Vault secret deleted</td><td>Soft-deleted for 7 days: <code>az keyvault secret recover --vault-name $KV -n &lt;name&gt;</code></td></tr><tr><td>SSH key</td><td><code>az vm user update -g $RG -n $VM_NAME -u $ADMIN_USER --ssh-key-value &lt;new.pub&gt;</code></td></tr><tr><td>Tunnel credentials JSON</td><td>Restore from Key Vault <code>cf-tunnel-cred</code>; or <code>cloudflared tunnel delete kimi</code> and redo B.3</td></tr><tr><td>Access service token</td><td>Dashboard → Service Tokens → Rotate or recreate; update the phone</td></tr><tr><td>Open WebUI admin password</td><td>Reset per Open WebUI&#39;s admin documentation; the database is on the OS disk</td></tr><tr><td>Operator account</td><td>A tenant admin resets the password and MFA in Entra</td></tr></tbody></table></div>
+<h3 id="69-complete-cleanup-cs-and-cloudflare-dashboard">6.9 Complete cleanup — <code>[CS]</code> and Cloudflare dashboard</h3>
+<pre><code class="language-bash">az group delete -n &quot;$RG&quot; --yes                        # VM, disks, IP, VNet, NSG, storage, Key Vault, Automation
+az keyvault list-deleted --query &quot;[?name==&#39;$KV&#39;].name&quot; -o tsv &amp;&amp; az keyvault purge -n &quot;$KV&quot;
+az role definition delete --name &quot;VM Self Deallocate (kimi)&quot;
+az role definition delete --name &quot;VM Operator (kimi)&quot;
+az ad user delete --id kimi-operator@&lt;your-tenant-domain&gt;
+az rest --method delete --url &quot;https://management.azure.com/subscriptions/$SUB_ID/providers/Microsoft.Consumption/budgets/kimi-credit?api-version=2023-05-01&quot;
+az group exists -n &quot;$RG&quot;                               # expect: false
+az resource list --query &quot;[?contains(id,&#39;kimi&#39;)].id&quot; -o tsv  # expect: empty</code></pre>
+<p>In Cloudflare, delete the tunnel <code>kimi</code>, the <code>api.</code> and <code>chat.</code> DNS records, the two Access applications and the service token. <strong>Pass:</strong> Cost Management shows no new <code>rg-kimi-inference</code> charges 48 hours later.</p>
+<h2 id="acceptance-criteria">Acceptance criteria</h2>
+<p>The deployment is successful only when every box below is ticked <strong>with saved evidence</strong>: command output, a screenshot or a log excerpt with timestamps. Nothing in this document counts as evidence; it is all plan or illustration.</p>
+<p><strong>Pins and configuration</strong></p>
+<ul><li data-checked="false"><p><input type="checkbox" aria-label="done"> <code>/etc/kimi-pins.env</code> holds a 40-character <code>MODEL_REV</code>, a <code>sha256:</code> vLLM digest and an Open WebUI digest, each with a recording date (3.1, 5.1)</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> All 64 shards pass the size and SHA-256 checks against the hub manifest (3.2)</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> <code>az role assignment list --assignee &lt;VM identity&gt;</code> shows only container Reader, Key Vault Secrets User and VM Self Deallocate, scoped as designed (1.9, 3.3)</p></li></ul>
+<p><strong>1. Working mobile inference</strong></p>
+<ul><li data-checked="false"><p><input type="checkbox" aria-label="done"> From the phone on mobile data (Wi-Fi off), tests 1–4 of 5.3 pass in the chosen client</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Test 5a returns <code>finish_reason: tool_calls</code> with valid JSON arguments; 5b produces an answer using the returned value</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Test 6 (image) passes; a PDF question answered through Open WebUI cites the right page</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Streaming visibly renders token by token on the phone</p></li></ul>
+<p><strong>2. Rejected unauthorised access</strong></p>
+<ul><li data-checked="false"><p><input type="checkbox" aria-label="done"> No credentials: 401 (A) or an Access redirect/403 (B), and the request is absent from <code>journalctl -u kimi-vllm</code> in case B</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Wrong key: 401. Wrong Access secret: non-2xx</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> <code>/health</code>, <code>/metrics</code>, <code>/invocations</code>, <code>/tokenize</code>, <code>/pause</code>, <code>/v1/completions</code> all return 404 externally even with valid credentials</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Rate limit returns 429 under burst (A)</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Open WebUI sign-up is disabled: a fresh browser cannot create an account</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> <code>kimi-operator</code> can start and deallocate the VM and nothing else</p></li></ul>
+<p><strong>3. Closed public inference port</strong></p>
+<ul><li data-checked="false"><p><input type="checkbox" aria-label="done"> <code>ss -ltnp</code> on the VM shows 8000 bound to <code>127.0.0.1</code> only</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> An external TCP connect to <code>&lt;public IP&gt;:8000</code> fails; in B, 80 and 443 fail too</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> <code>az network nsg rule list</code> shows no rule mentioning 8000 and SSH set to Deny</p></li></ul>
+<p><strong>4. Measured memory and performance</strong> (3.8 table filled from your run)</p>
+<ul><li data-checked="false"><p><input type="checkbox" aria-label="done"> Peak VRAM per GPU recorded and ≤ 90% of <code>memory.total</code></p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> vLLM&#39;s reported KV capacity gives at least 4 concurrent 32,768-token sequences</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Median TTFT (4K prompt, c=1), median TPOT and output tok/s at c=1 and c=2 recorded, with 0 failed requests</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Warm restart time and cold start time recorded</p></li></ul>
+<p><strong>5. Successful restart</strong></p>
+<ul><li data-checked="false"><p><input type="checkbox" aria-label="done"> After a full deallocate and start, <code>kimi-restore</code> rebuilds the NVMe RAID, restores the weights, and <code>kimi-vllm</code> reaches <code>/health</code> 200 with no manual steps</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> The same phone client works afterwards without reconfiguration, and Open WebUI chat history is still present</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> A deliberate <code>docker kill kimi-vllm</code> is followed by automatic restart (<code>Restart=on-failure</code>)</p></li></ul>
+<p><strong>6. Verified deallocation</strong></p>
+<ul><li data-checked="false"><p><input type="checkbox" aria-label="done"> Manual deallocate from the phone ends in <code>PowerState/deallocated</code> (6.3)</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> The on-VM idle watcher deallocates after the idle window, and does <strong>not</strong> during a long streaming answer (6.6)</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> The runbook cap deallocates when its test threshold is exceeded (6.5b), and daily auto-shutdown is configured (6.5a)</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> A budget exists with actual and forecast alerts, or the reason it cannot exist is recorded (6.4)</p></li><li data-checked="false"><p><input type="checkbox" aria-label="done"> Section 6.2 recomputed with your measured cold-start time and your real credit currency and expiry</p></li></ul>
+<h2 id="sources">Sources</h2>
+<p>All sources were opened and verified on <strong>2026-10-20</strong>. Prices came from the live Retail Prices API on the same day.</p>
+<p><strong>Moonshot / Hugging Face</strong></p>
+<ul><li><p><a href="https://huggingface.co/moonshotai" target="_blank" rel="noopener">moonshotai organisation</a>: model list (Kimi-K3 newest)</p></li><li><p><a href="https://huggingface.co/moonshotai/Kimi-K3" target="_blank" rel="noopener">Kimi-K3 model card</a></p></li><li><p><a href="https://huggingface.co/moonshotai/Kimi-K2.6" target="_blank" rel="noopener">Kimi-K2.6 model card</a></p></li><li><p><a href="https://huggingface.co/moonshotai/Kimi-K2.5" target="_blank" rel="noopener">Kimi-K2.5 model card</a>, <a href="https://huggingface.co/moonshotai/Kimi-K2.5/raw/main/config.json" target="_blank" rel="noopener">config.json</a>, <a href="https://huggingface.co/moonshotai/Kimi-K2.5/raw/main/LICENSE" target="_blank" rel="noopener">LICENSE</a>, <a href="https://huggingface.co/api/models/moonshotai/Kimi-K2.5" target="_blank" rel="noopener">API metadata (sha, gated)</a>, <a href="https://huggingface.co/api/models/moonshotai/Kimi-K2.5/tree/main" target="_blank" rel="noopener">file tree</a></p></li><li><p>Repository sizes: <a href="https://huggingface.co/api/models/moonshotai/Kimi-K2.5/treesize/main" target="_blank" rel="noopener">K2.5</a>, <a href="https://huggingface.co/api/models/moonshotai/Kimi-K2.6/treesize/main" target="_blank" rel="noopener">K2.6</a>, <a href="https://huggingface.co/api/models/moonshotai/Kimi-K3/treesize/main" target="_blank" rel="noopener">K3</a>, <a href="https://huggingface.co/api/models/nvidia/Kimi-K2.5-NVFP4/treesize/main" target="_blank" rel="noopener">K2.5-NVFP4</a></p></li></ul>
+<p><strong>NVIDIA</strong></p>
+<ul><li><p><a href="https://huggingface.co/nvidia/Kimi-K2.5-NVFP4" target="_blank" rel="noopener">nvidia/Kimi-K2.5-NVFP4 model card</a></p></li><li><p><a href="https://docs.nvidia.com/dynamo/recipes/kimi-k3" target="_blank" rel="noopener">Dynamo Kimi-K3 recipe</a></p></li><li><p><a href="https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html" target="_blank" rel="noopener">CUDA Toolkit release notes (driver table)</a></p></li><li><p><a href="https://docs.nvidia.com/deploy/cuda-compatibility/" target="_blank" rel="noopener">CUDA compatibility</a></p></li><li><p><a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html" target="_blank" rel="noopener">Container Toolkit install guide</a></p></li></ul>
+<p><strong>vLLM</strong></p>
+<ul><li><p><a href="https://docs.vllm.ai/projects/recipes/en/latest/moonshotai/Kimi-K2.5.html" target="_blank" rel="noopener">Kimi-K2.5 recipe</a></p></li><li><p><a href="https://recipes.vllm.ai/moonshotai/Kimi-K2.6" target="_blank" rel="noopener">Kimi-K2.6 recipe</a></p></li><li><p><a href="https://recipes.vllm.ai/moonshotai" target="_blank" rel="noopener">Moonshot recipe index</a></p></li><li><p><a href="https://docs.vllm.ai/en/latest/usage/security.html" target="_blank" rel="noopener">Security: what <code>--api-key</code> protects</a></p></li><li><p><a href="https://github.com/vllm-project/vllm/releases" target="_blank" rel="noopener">GitHub releases</a></p></li><li><p><a href="https://hub.docker.com/r/vllm/vllm-openai/tags" target="_blank" rel="noopener">Docker Hub tags and digests</a></p></li></ul>
+<p><strong>Microsoft Azure</strong></p>
+<ul><li><p>VM sizes: <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/nd-h200-v5-series" target="_blank" rel="noopener">ND H200 v5</a>, <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/ndh100v5-series" target="_blank" rel="noopener">ND H100 v5</a>, <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/ndma100v4-series" target="_blank" rel="noopener">NDm A100 v4</a>, <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/gpu-accelerated/ndmi300xv5-series" target="_blank" rel="noopener">ND MI300X v5</a></p></li><li><p><a href="https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/high-performance-compute/configure" target="_blank" rel="noopener">HPC/ND VM images and drivers</a>, <a href="https://github.com/Azure/azhpc-images/releases" target="_blank" rel="noopener">azhpc-images releases</a></p></li><li><p><a href="https://learn.microsoft.com/en-us/azure/virtual-machines/linux/n-series-driver-setup" target="_blank" rel="noopener">N-series Linux driver setup</a>, <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/extensions/hpccompute-gpu-linux" target="_blank" rel="noopener">NVIDIA GPU Driver Extension</a></p></li><li><p><a href="https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/default-outbound-access" target="_blank" rel="noopener">Default outbound access</a></p></li><li><p><a href="https://prices.azure.com/api/retail/prices" target="_blank" rel="noopener">Retail Prices API</a></p></li><li><p><a href="https://ai.azure.com/catalog/models/Kimi-K2.5" target="_blank" rel="noopener">Foundry catalog: Kimi-K2.5</a></p></li></ul>
+<p><strong>Cloudflare</strong></p>
+<ul><li><p><a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/local-management/configuration-file/" target="_blank" rel="noopener">Tunnel configuration file</a></p></li><li><p><a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/cloudflared-parameters/origin-parameters/" target="_blank" rel="noopener">Origin parameters (<code>access</code>)</a></p></li><li><p><a href="https://developers.cloudflare.com/cloudflare-one/identity/service-tokens/" target="_blank" rel="noopener">Service tokens</a></p></li><li><p><a href="https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-errors/error-524/" target="_blank" rel="noopener">Error 524 / Proxy Read Timeout</a></p></li><li><p><a href="https://pkg.cloudflare.com/index.html" target="_blank" rel="noopener">Package repository</a></p></li></ul>
+<p><strong>Clients</strong></p>
+<ul><li><p><a href="https://docs.openwebui.com/features/" target="_blank" rel="noopener">Open WebUI features</a>, <a href="https://docs.openwebui.com/getting-started/quick-start/" target="_blank" rel="noopener">quick start</a>, <a href="https://github.com/open-webui/open-webui/releases" target="_blank" rel="noopener">releases</a></p></li><li><p><a href="https://docs.apiyi.com/en/scenarios/chat/chatbox" target="_blank" rel="noopener">Chatbox setup (third-party guide)</a></p></li><li><p><a href="https://tailscale.com/download" target="_blank" rel="noopener">Tailscale downloads</a></p></li></ul>
+<p><strong>Conflicting or outdated documentation noted in this review</strong></p>
+<ul><li><p>The vLLM recipe index lists K2.6 &quot;INT4 714G&quot;, while the K2.6 recipe says &quot;equivalent aggregate VRAM (~640 GB)&quot;. This review treats 640 GB GPUs as unsupported.</p></li><li><p>The K2.5 recipe was verified on vLLM v0.17.0. This plan pins v0.31.0 and keeps v0.17.0 as the documented fallback.</p></li><li><p>The NVIDIA NVFP4 card says to use <code>vllm/vllm-openai:latest</code>. This review does not use unpinned tags.</p></li><li><p>The NDm A100 v4 page&#39;s accelerator table shows &quot;80&quot; GB for 8 GPUs, while its host table says 8× 80 GB. The per-GPU reading is used.</p></li><li><p>The H200 Spot price rows equal the on-demand prices. They were treated as unreliable and excluded.</p></li><li><p>Cloudflare&#39;s 524 timeout is 125 s on the current page, not the 100 s often quoted elsewhere.</p></li></ul>
+
+<div class="cta"><h3>Want help running your own model?</h3><p>We can review your GPU quota and costs, deploy the stack above, and lock down access for your team. Based in Glen Waverley, Melbourne.</p><a href="/#contact">Talk to Yogesh</a></div>
+<div class="author"><div class="av">Y</div><div><b style="color:var(--ink)">Yogesh</b> runs Global SOC, a security-first app and IT studio in Glen Waverley, Melbourne, helping small businesses build software and keep it secure.</div></div>
+</article></main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" title="Verify on the Australian Business Register (ABN Lookup)" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
