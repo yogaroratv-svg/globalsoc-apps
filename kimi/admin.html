@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Kimi Test Admin | Global SOC</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--bad:#c8372d;--good:#1f8a5b}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--bad:#ff6b5e;--good:#3ccf8e;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.5;padding:16px}
+.wrap{max-width:720px;margin:0 auto}
+h1{font-size:22px;letter-spacing:-.02em;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+input{width:100%;font:inherit;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 14px;background:var(--brand);color:#fff;cursor:pointer}
+button.bad{background:var(--bad)} button.sm{padding:5px 9px;font-size:12.5px}
+.big{font-size:28px;font-weight:800}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--brand)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.muted{color:var(--muted);font-size:13px}
+.hidden{display:none}
+.err{color:var(--bad)}
+</style>
+</head>
+<body><div class="wrap">
+<h1>Kimi Test Lab · admin</h1>
+<div class="card" id="login"><p class="muted" style="margin-bottom:8px">Enter the admin code (kept for this browser tab only).</p>
+  <form id="lf"><input id="ac" type="password" autocomplete="off" placeholder="ADMIN-…"><button style="margin-top:8px;width:100%">Open</button></form>
+  <p class="err hidden" id="lerr" style="margin-top:8px"></p></div>
+<div id="panel" class="hidden">
+  <div class="card"><div class="row"><div><div class="muted">Spent of hard cap</div><div class="big" id="spent"></div></div>
+    <div style="text-align:right"><div class="muted" id="state"></div><button id="toggle" style="margin-top:6px"></button></div></div>
+    <div class="bar"><i id="fill"></i></div><div class="muted" id="sub"></div></div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><b>Testers today (UTC day)</b><button class="sm" id="refresh">Refresh</button></div>
+    <table><thead><tr><th>Tester</th><th>Msgs</th><th>Spent</th><th>Status</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+</div>
+<script>
+const API = 'https://kimi-proxy-gsoc.azurewebsites.net/api/ops';
+const $ = id => document.getElementById(id);
+let admin = null; try { admin = sessionStorage.getItem('kimi.admin'); } catch {}
+async function call(action, extra){
+  const r = await fetch(API, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({admin, action, ...extra})});
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || r.status); return j;
+}
+async function load(){
+  const s = await call('status');
+  $('login').classList.add('hidden'); $('panel').classList.remove('hidden');
+  $('spent').textContent = `US$${s.globalCost.toFixed(2)} / ${s.globalCap.toFixed(2)}`;
+  $('fill').style.width = Math.min(100, 100 * s.globalCost / s.globalCap) + '%';
+  $('sub').textContent = `${s.messages} messages in total · per-tester limit US$${s.testerDailyCap.toFixed(2)}/day`;
+  $('state').textContent = s.killed ? '⛔ Paused for everyone' : '✅ Running';
+  $('toggle').textContent = s.killed ? 'Resume' : 'Pause everyone'; $('toggle').className = s.killed ? '' : 'bad';
+  $('toggle').onclick = async () => { await call(s.killed ? 'resume' : 'kill'); load(); };
+  $('rows').innerHTML = '';
+  for (const t of s.testers) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${t.label}</td><td>${t.todayMsgs}</td><td>US$${t.todayCost.toFixed(3)}</td><td>${t.active ? 'active' : 'revoked'}</td><td></td>`;
+    const b = document.createElement('button'); b.className = 'sm' + (t.active ? ' bad' : ''); b.textContent = t.active ? 'Revoke' : 'Restore';
+    b.onclick = async () => { await call(t.active ? 'revoke' : 'restore', {label: t.label}); load(); };
+    tr.lastChild.appendChild(b); $('rows').appendChild(tr);
+  }
+}
+$('lf').onsubmit = async e => { e.preventDefault(); admin = $('ac').value.trim();
+  try { await load(); try { sessionStorage.setItem('kimi.admin', admin); } catch {} }
+  catch (err) { $('lerr').textContent = 'Not authorised.'; $('lerr').classList.remove('hidden'); } };
+$('refresh').onclick = load;
+if (admin) load().catch(() => {});
+</script>
+</body></html>
