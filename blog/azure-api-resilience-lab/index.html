@@ -1,4 +1,77 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Azure API resilience lab: 503, rate limits and CAPTCHA | Global SOC</title><meta name="description" content="A complete classroom lab with Azure Container Apps, bounded load tests, 429 throttling, fingerprinting, CAPTCHA and Log Analytics."><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}header a{color:#a6e3ff}main{max-width:1000px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(36px,5vw,58px);line-height:1.12;letter-spacing:-.035em}h2{margin-top:56px;line-height:1.3;font-size:29px}h3{margin-top:38px}p{max-width:80ch}pre{background:#10283a;color:#e3f2fc;padding:24px;border-radius:10px;overflow:auto;font:14px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}a{color:#076383}figure{margin:28px 0}img{max-width:100%;height:auto;border:1px solid #ccd8e2;border-radius:8px}figcaption{color:#496274;font-size:14px}nav{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px}.meta{color:#47687c}table{width:100%;border-collapse:collapse;background:white;font-size:15px}td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}td code{overflow-wrap:anywhere}@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}</style><header><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></header><main><p class="meta">HANDS-ON AZURE SECURITY · Yogesh · 21 October 2026</p><h1>From HTTP 503 to rate limits and CAPTCHA</h1><p>A practical Azure API resilience lab, with complete code, test commands, inputs, outputs, screenshots and cleanup.</p><nav>Python REST API → Azure Container Apps → bounded traffic → 503 → 429 → browser fingerprint → CAPTCHA → Log Analytics → cleanup</nav><h2>What you will build</h2><p>Build a temporary Azure REST API, send a fixed budget of classroom requests, observe HTTP 503, then add HTTP 429 throttling and a browser fingerprint that triggers a CAPTCHA. Export the evidence from Log Analytics and delete the whole lab resource group.</p><p>The 503 is a deliberate application capacity limit: four concurrent work slots, each held for 250 ms. It demonstrates overload handling without exhausting Azure or disrupting globalsoc.com.au. A 503 here does not prove an Azure platform outage. The API runs on its own Azure hostname; the blog remains on globalsoc.com.au.</p><p>This is a single-process teaching server with one replica. It is not a production web stack. Its in-memory counters reset on restart. Production deployments need a supported web server, edge protection, distributed counters, trusted proxy handling, and an authenticated account quota.</p><h2>1. Prerequisites and a clean folder</h2><p>Use PowerShell 7, Python 3.12+, Azure CLI, and an Azure subscription with permission to create resource groups, Log Analytics, Container Apps, and Container Registry. No local Docker daemon is required for the Azure source build. These resources can incur charges; deleting the group at the end stops the lab resources, but does not reverse costs already incurred.</p><p>Save the complete files printed below into one empty folder. Keep generated secrets out of version control, screenshots, and transcripts. Do not run a load exercise against another site or a production route.</p><p><a href="student-lab.zip" download>Download the complete student lab ZIP</a> · <a href="queries.kql" download>Download the KQL queries</a>. Extract the ZIP and open PowerShell in that folder before running the commands.</p><pre><code class="language-powershell">az login
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<title>Azure API Resilience Lab: Rate Limits &amp; CAPTCHA | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/azure-api-resilience-lab/">
+<meta name="description" content="A complete classroom lab with Azure Container Apps, bounded load tests, 429 throttling, fingerprinting, CAPTCHA and Log Analytics.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/azure-api-resilience-lab/">
+<meta property="og:title" content="Azure API Resilience Lab: Rate Limits &amp; CAPTCHA | Global SOC">
+<meta property="og:description" content="A complete classroom lab with Azure Container Apps, bounded load tests, 429 throttling, fingerprinting, CAPTCHA and Log Analytics.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Azure API Resilience Lab: Rate Limits &amp; CAPTCHA | Global SOC">
+<meta name="twitter:description" content="A complete classroom lab with Azure Container Apps, bounded load tests, 429 throttling, fingerprinting, CAPTCHA and Log Analytics.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/azure-api-resilience-lab/#article",
+      "url": "https://globalsoc.com.au/blog/azure-api-resilience-lab/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/azure-api-resilience-lab/"
+      },
+      "headline": "From HTTP 503 to rate limits and CAPTCHA",
+      "description": "A complete classroom lab with Azure Container Apps, bounded load tests, 429 throttling, fingerprinting, CAPTCHA and Log Analytics.",
+      "datePublished": "2026-10-21",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "From HTTP 503 to rate limits and CAPTCHA",
+          "item": "https://globalsoc.com.au/blog/azure-api-resilience-lab/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-10-21">
+<meta name="author" content="Yogesh">
+<meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}header a{color:#a6e3ff}main{max-width:1000px;margin:auto;padding:40px 24px 80px}h1{font-size:clamp(36px,5vw,58px);line-height:1.12;letter-spacing:-.035em}h2{margin-top:56px;line-height:1.3;font-size:29px}h3{margin-top:38px}p{max-width:80ch}pre{background:#10283a;color:#e3f2fc;padding:24px;border-radius:10px;overflow:auto;font:14px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}a{color:#076383}figure{margin:28px 0}img{max-width:100%;height:auto;border:1px solid #ccd8e2;border-radius:8px}figcaption{color:#496274;font-size:14px}nav{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px}.meta{color:#47687c}table{width:100%;border-collapse:collapse;background:white;font-size:15px}td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}td code{overflow-wrap:anywhere}@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}</style></head><body><header><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></header><main><p class="meta">HANDS-ON AZURE SECURITY · Yogesh · 21 October 2026</p><h1>From HTTP 503 to rate limits and CAPTCHA</h1><p>A practical Azure API resilience lab, with complete code, test commands, inputs, outputs, screenshots and cleanup.</p><nav>Python REST API → Azure Container Apps → bounded traffic → 503 → 429 → browser fingerprint → CAPTCHA → Log Analytics → cleanup</nav><h2>What you will build</h2><p>Build a temporary Azure REST API, send a fixed budget of classroom requests, observe HTTP 503, then add HTTP 429 throttling and a browser fingerprint that triggers a CAPTCHA. Export the evidence from Log Analytics and delete the whole lab resource group.</p><p>The 503 is a deliberate application capacity limit: four concurrent work slots, each held for 250 ms. It demonstrates overload handling without exhausting Azure or disrupting globalsoc.com.au. A 503 here does not prove an Azure platform outage. The API runs on its own Azure hostname; the blog remains on globalsoc.com.au.</p><p>This is a single-process teaching server with one replica. It is not a production web stack. Its in-memory counters reset on restart. Production deployments need a supported web server, edge protection, distributed counters, trusted proxy handling, and an authenticated account quota.</p><h2>1. Prerequisites and a clean folder</h2><p>Use PowerShell 7, Python 3.12+, Azure CLI, and an Azure subscription with permission to create resource groups, Log Analytics, Container Apps, and Container Registry. No local Docker daemon is required for the Azure source build. These resources can incur charges; deleting the group at the end stops the lab resources, but does not reverse costs already incurred.</p><p>Save the complete files printed below into one empty folder. Keep generated secrets out of version control, screenshots, and transcripts. Do not run a load exercise against another site or a production route.</p><p><a href="student-lab.zip" download>Download the complete student lab ZIP</a> · <a href="queries.kql" download>Download the KQL queries</a>. Extract the ZIP and open PowerShell in that folder before running the commands.</p><pre><code class="language-powershell">az login
 az account list --query &quot;[].{Name:name,Id:id}&quot; -o table
 az extension add --name containerapp --upgrade --yes
 $env:LAB_KEY = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
@@ -479,4 +552,4 @@ if __name__ == &#x27;__main__&#x27;:
       &quot;message&quot;: &quot;work_complete&quot;
     }
   }
-}</p><p>Cleanup status at review publication: Azure resource-group deletion was requested and is still in progress. API, registry and workspace were removed; final group-deletion verification is pending. All evidence is preserved outside Azure.</p><p>Full-page screenshots of the recorded command inputs/outputs and exported Azure results are included. They are labelled evidence-reader views, not Azure Portal screenshots. Portal sign-in timed out in this session.</p><h2>Official references</h2><ul><li><a href="https://learn.microsoft.com/en-us/azure/container-apps/containerapp-up">Deploy Azure Container Apps from source</a></li><li><a href="https://learn.microsoft.com/en-us/azure/container-apps/log-monitoring">Container Apps and Log Analytics</a></li><li><a href="https://developers.cloudflare.com/turnstile/get-started/server-side-validation/">Turnstile server-side verification</a></li><li><a href="https://developers.cloudflare.com/turnstile/troubleshooting/testing/">Turnstile test keys</a></li></ul></main></html>
+}</p><p>Cleanup status at review publication: Azure resource-group deletion was requested and is still in progress. API, registry and workspace were removed; final group-deletion verification is pending. All evidence is preserved outside Azure.</p><p>Full-page screenshots of the recorded command inputs/outputs and exported Azure results are included. They are labelled evidence-reader views, not Azure Portal screenshots. Portal sign-in timed out in this session.</p><h2>Official references</h2><ul><li><a href="https://learn.microsoft.com/en-us/azure/container-apps/containerapp-up">Deploy Azure Container Apps from source</a></li><li><a href="https://learn.microsoft.com/en-us/azure/container-apps/log-monitoring">Container Apps and Log Analytics</a></li><li><a href="https://developers.cloudflare.com/turnstile/get-started/server-side-validation/">Turnstile server-side verification</a></li><li><a href="https://developers.cloudflare.com/turnstile/troubleshooting/testing/">Turnstile test keys</a></li></ul><aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main></body></html>

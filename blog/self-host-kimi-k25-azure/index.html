@@ -2,14 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Self-Hosting Kimi K2.5 on Azure: Feasibility & Playbook | Global SOC</title>
+<title>Self-Hosting Kimi K2.5 on Azure: GPU &amp; Cost Guide | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/self-host-kimi-k25-azure/">
 <meta name="description" content="A feasibility review and reproducible playbook for running Moonshot&#x27;s Kimi K2.5 on Azure H200 GPUs with vLLM, secure phone access via nginx or Cloudflare Tunnel, and hard cost controls.">
-<meta name="author" content="Yogesh">
-<meta property="og:title" content="Can you self-host Kimi K2.5 on $5,000 of Azure credit?">
-<meta property="og:description" content="A feasibility review and reproducible playbook for running Moonshot&#x27;s Kimi K2.5 on Azure H200 GPUs with vLLM, secure phone access via nginx or Cloudflare Tunnel, and hard cost controls.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/self-host-kimi-k25-azure/">
+<meta property="og:title" content="Self-Hosting Kimi K2.5 on Azure: GPU &amp; Cost Guide | Global SOC">
+<meta property="og:description" content="A feasibility review and reproducible playbook for running Moonshot&#x27;s Kimi K2.5 on Azure H200 GPUs with vLLM, secure phone access via nginx or Cloudflare Tunnel, and hard cost controls.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Self-Hosting Kimi K2.5 on Azure: GPU &amp; Cost Guide | Global SOC">
+<meta name="twitter:description" content="A feasibility review and reproducible playbook for running Moonshot&#x27;s Kimi K2.5 on Azure H200 GPUs with vLLM, secure phone access via nginx or Cloudflare Tunnel, and hard cost controls.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/self-host-kimi-k25-azure/#article",
+      "url": "https://globalsoc.com.au/blog/self-host-kimi-k25-azure/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/self-host-kimi-k25-azure/"
+      },
+      "headline": "Can you self-host Kimi K2.5 on $5,000 of Azure credit?",
+      "description": "A feasibility review and reproducible playbook for running Moonshot's Kimi K2.5 on Azure H200 GPUs with vLLM, secure phone access via nginx or Cloudflare Tunnel, and hard cost controls.",
+      "datePublished": "2026-10-20",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Can you self-host Kimi K2.5 on $5,000 of Azure credit?",
+          "item": "https://globalsoc.com.au/blog/self-host-kimi-k25-azure/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-10-20">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+
+<meta name="author" content="Yogesh">
+
+
+
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}

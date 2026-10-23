@@ -2,14 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reverse Shells and ssh -R Explained | Global SOC</title>
-<meta name="description" content="What a reverse shell, ssh -R tunnel and reverse RDP are, how fake CAPTCHA (ClickFix) websites trick people into running them, and the small-business checklist and Defender queries that stop them.">
-<meta name="author" content="Yogesh">
-<meta property="og:title" content="Reverse shells and reverse tunnels: how one click becomes remote access">
-<meta property="og:description" content="Why firewalls don't stop reverse shells, ssh -R and reverse RDP, and the settings that do.">
+<title>Reverse Shells, SSH Tunnels &amp; ClickFix Defence | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/reverse-shells-explained/">
+<meta name="description" content="Understand reverse shells, SSH reverse tunnels and ClickFix fake CAPTCHA attacks, with practical defensive checks and Microsoft Defender detection queries.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/reverse-shells-explained/">
+<meta property="og:title" content="Reverse Shells, SSH Tunnels &amp; ClickFix Defence | Global SOC">
+<meta property="og:description" content="Understand reverse shells, SSH reverse tunnels and ClickFix fake CAPTCHA attacks, with practical defensive checks and Microsoft Defender detection queries.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Reverse Shells, SSH Tunnels &amp; ClickFix Defence | Global SOC">
+<meta name="twitter:description" content="Understand reverse shells, SSH reverse tunnels and ClickFix fake CAPTCHA attacks, with practical defensive checks and Microsoft Defender detection queries.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/reverse-shells-explained/#article",
+      "url": "https://globalsoc.com.au/blog/reverse-shells-explained/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/reverse-shells-explained/"
+      },
+      "headline": "Reverse shells and reverse tunnels: how one click becomes remote access",
+      "description": "Understand reverse shells, SSH reverse tunnels and ClickFix fake CAPTCHA attacks, with practical defensive checks and Microsoft Defender detection queries.",
+      "datePublished": "2026-05-06",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Reverse shells and reverse tunnels: how one click becomes remote access",
+          "item": "https://globalsoc.com.au/blog/reverse-shells-explained/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-05-06">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+
+<meta name="author" content="Yogesh">
+
+
+
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
