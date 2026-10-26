@@ -2,14 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Your DNS and Your SaaS Tools | Global SOC</title>
-<meta name="description" content="Your DNS records quietly list the software your business uses: email platforms, marketing tools, CRMs and more. How to read them, why it matters, and how to clean them up.">
-<meta name="author" content="Yogesh">
-<meta property="og:title" content="What your DNS reveals about the software you use">
-<meta property="og:description" content="Your DNS records list the SaaS tools connected to your domain. Here is how to read them and tidy them up.">
+<title>DNS Records &amp; Your SaaS Footprint | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/dns-saas-footprint/">
+<meta name="description" content="Learn how SPF, DKIM and verification records reveal your SaaS tools. Review third-party access, remove stale DNS records and reduce your domain attack surface.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/dns-saas-footprint/">
+<meta property="og:title" content="DNS Records &amp; Your SaaS Footprint | Global SOC">
+<meta property="og:description" content="Learn how SPF, DKIM and verification records reveal your SaaS tools. Review third-party access, remove stale DNS records and reduce your domain attack surface.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="DNS Records &amp; Your SaaS Footprint | Global SOC">
+<meta name="twitter:description" content="Learn how SPF, DKIM and verification records reveal your SaaS tools. Review third-party access, remove stale DNS records and reduce your domain attack surface.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/dns-saas-footprint/#article",
+      "url": "https://globalsoc.com.au/blog/dns-saas-footprint/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/dns-saas-footprint/"
+      },
+      "headline": "What your DNS reveals about the software you use",
+      "description": "Learn how SPF, DKIM and verification records reveal your SaaS tools. Review third-party access, remove stale DNS records and reduce your domain attack surface.",
+      "datePublished": "2026-07-10",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "What your DNS reveals about the software you use",
+          "item": "https://globalsoc.com.au/blog/dns-saas-footprint/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-07-10">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+
+<meta name="author" content="Yogesh">
+
+
+
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
