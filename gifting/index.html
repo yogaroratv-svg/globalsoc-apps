@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ribbonhill | Corporate gifting for Australian teams (demo)</title>
+<meta name="description" content="A corporate gifting prototype: curated gift boxes, your logo on the box, ship to every employee or client from one spreadsheet, or send a gift link so recipients choose. Demo by Global SOC.">
+<link rel="canonical" href="https://globalsoc.com.au/gifting/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_AU">
+<meta property="og:title" content="Ribbonhill corporate gifting (prototype)">
+<meta property="og:description" content="Build a branded gift box, upload recipients, see the full price with GST, and track every delivery. A Global SOC prototype.">
+<meta property="og:url" content="https://globalsoc.com.au/gifting/">
+<meta name="theme-color" content="#1D3B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a stationery-shop feel. Cream paper, forest green ink, a gold ribbon accent; one 1160px column with a working box builder and campaign tracker as the centrepiece. */
+:root{
+  --paper:#FAF6EF; --card:#FFFFFF; --ink:#1B2A26; --muted:#5F6E69; --line:#E6DFD2; --tint:#F2ECE1;
+  --brand:#1D3B33; --brand2:#2E5D50; --on-brand:#FFFFFF; --gold:#C98A1B; --gold-soft:#FBEFD8; --coral:#D9583B;
+  --ok:#2E7D57; --ok-soft:#E1F1E8; --warn:#A8620C; --warn-soft:#FDF0DC; --bad:#B23A2A; --bad-soft:#FBE4E0;
+  --shadow:0 1px 2px rgba(27,42,38,.05),0 10px 30px rgba(27,42,38,.07);
+  --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; --r:16px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#101614; --card:#18201D; --ink:#EEF2EF; --muted:#9BA9A4; --line:#2A3531; --tint:#1F2925;
+  --brand:#7FC8AE; --brand2:#A5DCC8; --on-brand:#0D1F19; --gold:#E7B04B; --gold-soft:#3A2E17; --coral:#F08566;
+  --ok:#6FCF9D; --ok-soft:#173326; --warn:#F0B35A; --warn-soft:#3A2A12; --bad:#F08A7A; --bad-soft:#3A1C17;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#101614; --card:#18201D; --ink:#EEF2EF; --muted:#9BA9A4; --line:#2A3531; --tint:#1F2925;
+  --brand:#7FC8AE; --brand2:#A5DCC8; --on-brand:#0D1F19; --gold:#E7B04B; --gold-soft:#3A2E17; --coral:#F08566;
+  --ok:#6FCF9D; --ok-soft:#173326; --warn:#F0B35A; --warn-soft:#3A2A12; --bad:#F08A7A; --bad-soft:#3A1C17;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.015em;line-height:1.15;margin:0}
+p{margin:0}
+a{color:var(--brand)}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1160px;margin:0 auto;padding:0 16px}
+@media (min-width:700px){.wrap{padding:0 28px}}
+.demo{background:var(--gold-soft);color:var(--ink);font-size:13px;text-align:center;padding:8px 16px;line-height:1.45}
+.demo a{color:inherit;font-weight:600}
+header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;font:700 21px/1 var(--serif);color:var(--ink);text-decoration:none}
+.logo i{width:30px;height:30px;border-radius:8px;background:var(--brand);position:relative;flex:none}
+.logo i:before,.logo i:after{content:"";position:absolute;background:var(--gold)}
+.logo i:before{left:13px;top:0;bottom:0;width:4px}.logo i:after{top:13px;left:0;right:0;height:4px}
+nav.links{display:flex;gap:20px;font-size:14px;font-weight:600}
+nav.links a{color:var(--muted);text-decoration:none}nav.links a:hover{color:var(--ink)}
+@media (max-width:860px){nav.links{display:none}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:15px;padding:12px 20px;border-radius:999px;border:1.5px solid var(--brand);background:var(--brand);color:var(--on-brand);text-decoration:none;cursor:pointer;transition:transform .15s,opacity .15s;white-space:nowrap}
+.btn:hover{transform:translateY(-1px)}.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.ghost{background:transparent;color:var(--brand)}
+.btn.sm{padding:8px 14px;font-size:13.5px}
+section{padding:64px 0}
+.sh{max-width:680px;margin-bottom:30px}
+.eyebrow{font-size:12.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.sh h2{font-size:clamp(28px,4vw,40px);margin-top:6px}
+.sh p{color:var(--muted);margin-top:10px;font-size:17px}
+
+/* hero */
+.hero{padding:56px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}}
+.hero h1{font-size:clamp(38px,6vw,62px)}
+.hero h1 em{font-style:italic;color:var(--brand2)}
+.hero p.lead{font-size:18.5px;color:var(--muted);margin-top:18px;max-width:560px}
+.hero .cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.proof{display:flex;gap:22px;flex-wrap:wrap;margin-top:28px;font-size:14px;color:var(--muted)}
+.proof b{display:block;font:700 24px/1.1 var(--serif);color:var(--ink)}
+.giftart{position:relative;aspect-ratio:1/1;max-width:440px;width:100%;justify-self:center}
+.giftart svg{width:100%;height:100%;display:block}
+
+/* occasions */
+.occ{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.filters{display:flex;gap:14px 24px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+.budget{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--muted)}
+.budget input{accent-color:var(--brand);width:160px}
+.boxes{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.box .art{height:150px;display:grid;place-items:center;font-size:58px;position:relative}
+.box .art .tag{position:absolute;left:12px;top:12px;background:var(--card);color:var(--ink);font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 9px}
+.box .bd{padding:16px 18px 18px;display:flex;flex-direction:column;flex:1}
+.box h3{font-size:19px}
+.box ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:14px;flex:1}
+.box .pr{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.box .pr b{font:700 22px var(--serif)}.box .pr small{color:var(--muted);font-size:12px;display:block;font-family:var(--sans);font-weight:500}
+.empty{color:var(--muted);padding:30px;text-align:center;border:1.5px dashed var(--line);border-radius:var(--r)}
+
+/* builder */
+#builder{background:var(--tint)}
+.bgrid{display:grid;grid-template-columns:1fr 370px;gap:24px;align-items:start}
+@media (max-width:960px){.bgrid{grid-template-columns:1fr}}
+.bgrid>*,.contact>*,.hero .wrap>*{min-width:0}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+.panel+.panel{margin-top:18px}
+.panel h3{font-size:20px;display:flex;align-items:center;gap:10px}
+.panel h3 .n{font:800 12px/1 var(--sans);background:var(--brand);color:var(--on-brand);border-radius:999px;width:24px;height:24px;display:grid;place-items:center;flex:none}
+.panel .hint{color:var(--muted);font-size:14px;margin-top:4px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+@media (max-width:620px){.seg{grid-template-columns:1fr}}
+.opt{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;background:var(--card);text-align:left}
+.opt b{display:block;font-size:14.5px}.opt span{display:block;font-size:13px;color:var(--muted);margin-top:2px;line-height:1.4}
+.opt[aria-pressed="true"]{border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand) inset;background:color-mix(in srgb,var(--brand) 6%,var(--card))}
+label.f{display:block;font-size:13.5px;font-weight:600;margin-top:14px}
+label.f input,label.f select,label.f textarea,.inp{display:block;width:100%;margin-top:6px;border:1.5px solid var(--line);background:var(--paper);border-radius:10px;padding:10px 12px;font-size:15px;font-weight:400}
+textarea{resize:vertical;min-height:90px;font-family:ui-monospace,Consolas,monospace!important;font-size:13px!important}
+label.f input:focus,label.f select:focus,label.f textarea:focus{outline:2px solid var(--brand);outline-offset:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.row2{grid-template-columns:1fr}}
+.addons{display:grid;gap:8px;margin-top:12px}
+.addon{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
+.addon input{accent-color:var(--brand);width:18px;height:18px;flex:none}
+.addon span{flex:1;font-size:14.5px}.addon small{color:var(--muted);display:block;font-size:12.5px}
+.addon em{font-style:normal;font-weight:700;font-size:14px}
+.preview{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:center;margin-top:16px}
+@media (max-width:520px){.preview{grid-template-columns:1fr}}
+.mini{aspect-ratio:1/1;width:100%;max-width:150px;border-radius:14px;position:relative;display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 -18px 0 rgba(0,0,0,.08)}
+.mini:before,.mini:after{content:"";position:absolute;background:var(--rib,#C98A1B)}
+.mini:before{left:calc(50% - 6px);top:0;bottom:0;width:12px}.mini:after{top:calc(50% - 6px);left:0;right:0;height:12px}
+.mini .lg{position:relative;z-index:2;background:#fff;color:#1B2A26;border-radius:10px;padding:6px 10px;font:800 13px/1.1 var(--sans);max-width:80%;text-align:center;word-break:break-word;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.mini .lg img{max-width:90px;max-height:46px;display:block}
+.card-note{border:1.5px solid var(--line);border-radius:12px;padding:14px;font:500 15px/1.5 var(--serif);background:var(--paper);white-space:pre-wrap;word-break:break-word;min-height:84px}
+.swatches{display:flex;gap:8px;margin-top:6px}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--card);box-shadow:0 0 0 1.5px var(--line);cursor:pointer}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2.5px var(--ink)}
+.msg{font-size:13.5px;border-radius:10px;padding:10px 12px;margin-top:12px;line-height:1.45}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}.msg.warn{background:var(--warn-soft);color:var(--warn)}.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg ul{margin:4px 0 0;padding-left:18px}
+.tablewrap{overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--tint);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.summary{position:sticky;top:76px}
+@media (max-width:960px){.summary{position:static}}
+.summary .line{display:flex;justify-content:space-between;gap:12px;font-size:14.5px;padding:6px 0}
+.summary .line span:first-child{color:var(--muted)}
+.summary .line.sub{border-top:1px solid var(--line);margin-top:6px;padding-top:12px}
+.summary .line.tot{font:700 22px var(--serif);border-top:2px solid var(--ink);margin-top:8px;padding-top:12px}
+.summary .line.tot span:first-child{color:var(--ink)}
+.summary .save{color:var(--ok);font-weight:600}
+.tiers{display:flex;gap:4px;margin-top:12px}
+.tiers span{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:6px 2px;border-radius:8px;background:var(--tint);color:var(--muted);line-height:1.25}
+.tiers span.on{background:var(--brand);color:var(--on-brand)}
+.pay{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.small{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:12px}
+
+/* how */
+.how{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;counter-reset:s}
+@media (max-width:900px){.how{grid-template-columns:1fr 1fr}}@media (max-width:520px){.how{grid-template-columns:1fr}}
+.step{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px}
+.step:before{counter-increment:s;content:counter(s,decimal-leading-zero);font-weight:800;color:var(--gold);font-size:14px}
+.step h3{font-size:19px;margin-top:6px}.step p{color:var(--muted);font-size:14.5px;margin-top:6px}
+
+/* tracker */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+@media (max-width:820px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.kpi b{display:block;font:700 28px/1.1 var(--serif)}.kpi span{font-size:13px;color:var(--muted);font-weight:600}
+.bar{height:10px;border-radius:999px;background:var(--tint);overflow:hidden;display:flex;margin:6px 0 18px}
+.bar i{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:6px;vertical-align:-1px}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px}
+.camps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.trkhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+
+/* faq + contact */
+.faq{max-width:820px}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-bottom:10px}
+summary{font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"+";font-size:20px;line-height:1;color:var(--gold)}details[open] summary:after{content:"–"}
+details p{color:var(--muted);margin-top:10px;font-size:15px}
+.contact{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start}
+@media (max-width:860px){.contact{grid-template-columns:1fr}}
+footer{border-top:1px solid var(--line);padding:28px 0 40px;font-size:14px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a{color:inherit}
+
+/* modal + toast */
+.modal{position:fixed;inset:0;z-index:100;background:rgba(10,18,15,.55);display:none;align-items:center;justify-content:center;padding:16px}
+.modal.on{display:flex}
+.modal .panel{max-width:520px;width:100%;max-height:90vh;overflow:auto}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;z-index:120;transition:transform .3s;max-width:calc(100vw - 32px)}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media print{body>*:not(.modal){display:none!important}.modal{position:static;display:block;background:none;padding:0}.modal .panel{box-shadow:none;border:0;max-height:none}.modal .pay,.modal .small{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="demo"><b>Demo prototype by <a href="/">Global SOC</a>.</b> Ribbonhill is a made-up brand. Products, prices and orders are fictional, no payment is taken and nothing is shipped.</div>
+<header class="top"><div class="wrap">
+  <a class="logo" href="#top"><i aria-hidden="true"></i>Ribbonhill</a>
+  <nav class="links" aria-label="Main"><a href="#boxes">Gift boxes</a><a href="#builder">Build an order</a><a href="#how">How it works</a><a href="#tracker">Tracker</a><a href="#faq">FAQ</a></nav>
+  <a class="btn sm" href="#builder">Start an order</a>
+</div></header>
+
+<main id="top">
+<section class="hero"><div class="wrap">
+  <div>
+    <span class="eyebrow">Corporate gifting, done for you</span>
+    <h1>Gifts your team and clients <em>actually keep</em></h1>
+    <p class="lead">Curated Australian gift boxes with your logo on the lid. Upload one spreadsheet and we pack and ship to every home address, or send a gift link and let each person choose. One invoice, full GST breakdown, live tracking.</p>
+    <div class="cta"><a class="btn" href="#builder">Build a gift order</a><a class="btn ghost" href="#boxes">Browse boxes</a></div>
+    <div class="proof"><div><b>10–2,000</b>gifts per order</div><div><b>3–5 days</b>packed and dispatched</div><div><b>From $49</b>per box, ex GST</div></div>
+  </div>
+  <div class="giftart" aria-hidden="true">
+    <svg viewBox="0 0 400 400">
+      <ellipse cx="200" cy="355" rx="150" ry="18" fill="currentColor" opacity=".08"/>
+      <rect x="70" y="160" width="260" height="190" rx="14" fill="var(--brand)"/>
+      <rect x="55" y="120" width="290" height="60" rx="12" fill="var(--brand2)"/>
+      <rect x="186" y="120" width="28" height="230" fill="var(--gold)"/>
+      <path d="M200 120c-30-60-95-55-80-15 8 22 50 20 80 15zM200 120c30-60 95-55 80-15-8 22-50 20-80 15z" fill="var(--gold)"/>
+      <circle cx="200" cy="118" r="14" fill="var(--gold)"/>
+      <rect x="110" y="225" width="64" height="40" rx="8" fill="#fff" opacity=".95"/>
+      <text x="142" y="251" text-anchor="middle" font-family="Inter,sans-serif" font-weight="800" font-size="14" fill="#1B2A26">LOGO</text>
+      <g transform="translate(250 205) rotate(8)"><rect width="110" height="72" rx="6" fill="#fff"/><rect x="12" y="16" width="70" height="6" rx="3" fill="#C9C2B4"/><rect x="12" y="30" width="86" height="6" rx="3" fill="#C9C2B4"/><rect x="12" y="44" width="54" height="6" rx="3" fill="#C9C2B4"/></g>
+    </svg>
+  </div>
+</div></section>
+
+<section id="boxes"><div class="wrap">
+  <div class="sh"><span class="eyebrow">Gift boxes</span><h2>Pick a box for the occasion</h2><p>Every box comes with a handwritten-style card, tissue wrap and recyclable packaging. Prices are per box, before volume discounts and GST.</p></div>
+  <div class="filters">
+    <div class="occ" id="occ" role="group" aria-label="Filter by occasion"></div>
+    <label class="budget">Max budget <input type="range" id="budget" min="40" max="200" step="5" value="200" aria-describedby="budgetv"><span id="budgetv">$200</span></label>
+  </div>
+  <div class="boxes" id="boxlist"></div>
+</div></section>
+
+<section id="builder"><div class="wrap">
+  <div class="sh"><span class="eyebrow">Build an order</span><h2>Brand it, add recipients, see the real price</h2><p>Four steps. The price on the right updates as you go and includes volume discounts, branding, delivery and GST.</p></div>
+  <div class="bgrid">
+    <div>
+      <div class="panel">
+        <h3><span class="n">1</span>Gift box</h3>
+        <label class="f">Box<select id="selBox"></select></label>
+        <div class="addons" id="addons"></div>
+      </div>
+
+      <div class="panel">
+        <h3><span class="n">2</span>Branding and card</h3>
+        <div class="seg" id="brandSeg" role="group" aria-label="Branding level"></div>
+        <div class="preview">
+          <div class="mini" id="mini"><div class="lg" id="miniLogo">Your logo</div></div>
+          <div>
+            <div class="row2">
+              <label class="f">Company name<input id="coName" maxlength="40" placeholder="Acme Pty Ltd" autocomplete="organization"></label>
+              <label class="f">Logo (PNG, JPG or SVG)<input id="logo" type="file" accept="image/png,image/jpeg,image/svg+xml"></label>
+            </div>
+            <div class="f" style="margin-top:14px;font-size:13.5px;font-weight:600">Ribbon colour<div class="swatches" id="ribbons" role="group" aria-label="Ribbon colour"></div></div>
+          </div>
+        </div>
+        <label class="f">Card message <span style="color:var(--muted);font-weight:500">({first} becomes each recipient's first name)</span><textarea id="cardMsg" maxlength="300" style="font-family:var(--serif)!important;font-size:15px!important">Hi {first},
+Thank you for an amazing year. Enjoy a little something from all of us.</textarea></label>
+        <p class="hint" style="margin-top:8px">Preview for the first recipient:</p>
+        <div class="card-note" id="cardPrev"></div>
+      </div>
+
+      <div class="panel">
+        <h3><span class="n">3</span>Recipients and delivery</h3>
+        <div class="seg" id="modeSeg" role="group" aria-label="Delivery method"></div>
+        <div id="modeBody"></div>
+      </div>
+
+      <div class="panel">
+        <h3><span class="n">4</span>Timing</h3>
+        <div class="row2">
+          <label class="f">Deliver by<input type="date" id="when"></label>
+          <label class="f">Campaign name<input id="campName" maxlength="50" value="End of year thank-you"></label>
+        </div>
+        <div id="whenMsg"></div>
+      </div>
+    </div>
+
+    <aside class="panel summary" aria-labelledby="sumh">
+      <h3 id="sumh">Your quote</h3>
+      <div id="sumBody"></div>
+      <div class="tiers" id="tiers" aria-label="Volume discount tiers"></div>
+      <div class="pay">
+        <button class="btn" id="placeBtn">Place order</button>
+        <button class="btn ghost" id="quoteBtn">Email me a quote</button>
+      </div>
+      <p class="small">Prices are in AUD. Pay by invoice (14-day terms, PO number supported) or card. In this demo, placing an order only creates a sample campaign in the tracker below.</p>
+    </aside>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <div class="sh"><span class="eyebrow">How it works</span><h2>From spreadsheet to doorstep</h2></div>
+  <div class="how">
+    <div class="step"><h3>Choose and brand</h3><p>Pick a box, add your logo and write one card message. We send a digital proof within one business day.</p></div>
+    <div class="step"><h3>Add recipients</h3><p>Paste a spreadsheet of names and addresses, or send gift links by email so people choose and enter their own address.</p></div>
+    <div class="step"><h3>We pack and ship</h3><p>Boxes are packed in Melbourne and shipped with tracked delivery to every state. Signature on delivery is optional.</p></div>
+    <div class="step"><h3>Track every gift</h3><p>See who has received, opened and chosen their gift. Unredeemed gift-link budget is credited back to your account.</p></div>
+  </div>
+</div></section>
+
+<section id="tracker" style="background:var(--tint)"><div class="wrap">
+  <div class="sh"><span class="eyebrow">Campaign tracker</span><h2>Know where every gift is</h2><p>A sample campaign is loaded so you can look around. Orders you place above appear here too. Press "Advance a day" to simulate deliveries.</p></div>
+  <div class="camps" id="camps"></div>
+  <div id="trk"></div>
+</div></section>
+
+<section id="faq"><div class="wrap faq">
+  <div class="sh"><span class="eyebrow">FAQ</span><h2>Common questions</h2></div>
+  <details><summary>Is there a minimum order?</summary><p>Ten boxes. Volume discounts start at 25 boxes (5%) and go up to 20% at 500 boxes.</p></details>
+  <details><summary>How do gift links work?</summary><p>Each recipient gets an email with a private link. They choose one box from the set you approve and enter their own delivery address, so you never handle home addresses. You pay up front for every link; any links not redeemed within 60 days are credited back.</p></details>
+  <details><summary>Is our employees' data safe?</summary><p>Recipient lists are used only to fulfil your order and are deleted 90 days after the last delivery. In this demo, everything you type stays in your own browser and is never uploaded.</p></details>
+  <details><summary>Are the prices with or without GST?</summary><p>Box prices are shown excluding GST, the way most businesses budget. The quote shows GST separately and the total includes it. You get a tax invoice for every order.</p></details>
+  <details><summary>Can we include our own merchandise?</summary><p>Yes. Send us branded items (drink bottles, notebooks, apparel) and we'll pack one in each box for $3 per box.</p></details>
+  <details><summary>What about dietary needs and alcohol?</summary><p>Every food box has a vegan and gluten-free version. Boxes with wine are only delivered to adults aged 18+ with a signature, and are not sent to recipients who opt out.</p></details>
+</div></section>
+
+<section id="contact"><div class="wrap contact">
+  <div class="sh" style="margin:0"><span class="eyebrow">Want a gifting app like this?</span><h2>This is a Global SOC prototype</h2><p>We design and build ordering, quoting and fulfilment apps for real businesses: product catalogues, bulk uploads, invoicing, payments and live tracking. If you run a gifting or merchandise business, tell us about it.</p>
+  <p style="margin-top:20px"><a class="btn" href="/#contact">Talk to Global SOC</a> <a class="btn ghost" href="/#work">See other prototypes</a></p></div>
+  <div class="panel">
+    <h3>What this prototype shows</h3>
+    <ul style="color:var(--muted);font-size:15px;margin:12px 0 0;padding-left:20px">
+      <li>A filterable catalogue with live budget filtering</li>
+      <li>Logo upload and branded box preview, done entirely in the browser</li>
+      <li>CSV recipient import with validation and per-state delivery pricing</li>
+      <li>Volume discount tiers, GST and an itemised quote</li>
+      <li>Gift links where recipients choose, with unredeemed credit</li>
+      <li>A campaign tracker with delivery status for every recipient</li>
+    </ul>
+  </div>
+</div></section>
+</main>
+
+<footer><div class="wrap"><span>Ribbonhill is a fictional brand in a <a href="/">Global SOC</a> prototype · © 2026 Global SOC Pty Ltd</span><span><a href="/privacy.html">Privacy</a> · <a href="#top">Back to top ↑</a></span></div></footer>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mh"><div class="panel" id="modalBody"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '$' + n.toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2});
+const store = {
+  get(k, d){ try { const v = localStorage.getItem('rh_' + k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem('rh_' + k, JSON.stringify(v)); } catch(e){} }
+};
+function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2600); }
+
+/* ---------- Catalogue: fictional products ---------- */
+const OCC = ['All','Onboarding','Client thank-you','End of year','Milestones','Wellbeing'];
+const BOXES = [
+  {id:'pantry', name:'Melbourne Pantry', emoji:'🧺', price:79, occ:['Client thank-you','End of year'], bg:'linear-gradient(135deg,#F4E3C3,#E7C58A)', tag:'Best seller',
+   items:['Single-origin coffee beans','Dark chocolate bar trio','Wattleseed shortbread','Native lemon myrtle tea']},
+  {id:'welcome', name:'First Day Welcome', emoji:'👋', price:59, occ:['Onboarding'], bg:'linear-gradient(135deg,#D6EADF,#A9D3BD)', tag:'Onboarding',
+   items:['Insulated drink bottle','Recycled-paper notebook','Desk plant in a tin','Snack pack']},
+  {id:'calm', name:'Unwind & Recharge', emoji:'🕯️', price:69, occ:['Wellbeing','End of year'], bg:'linear-gradient(135deg,#E6DDF0,#C7B6DE)',
+   items:['Soy candle, eucalyptus','Bath salts','Herbal tea selection','Eye mask']},
+  {id:'vino', name:'Cellar Door', emoji:'🍷', price:119, occ:['Client thank-you','End of year','Milestones'], bg:'linear-gradient(135deg,#EBC9C6,#C98880)', tag:'18+',
+   items:['Yarra Valley-style red (750 ml)','Aged cheddar and crackers','Marinated olives','Dark chocolate']},
+  {id:'mile', name:'Milestone Keepsake', emoji:'🏅', price:149, occ:['Milestones'], bg:'linear-gradient(135deg,#F2E2B8,#D8B25C)',
+   items:['Engraved timber desk block','Premium pen','Leather card holder','Personal note from leadership']},
+  {id:'mini', name:'Little Thanks', emoji:'🍪', price:49, occ:['Onboarding','Wellbeing','Client thank-you'], bg:'linear-gradient(135deg,#F7DCCB,#EDB28E)',
+   items:['Hand-baked cookie tin','Single-serve coffee bags','Thank-you card']},
+  {id:'brekkie', name:'Weekend Brekkie', emoji:'🥐', price:89, occ:['Wellbeing','End of year'], bg:'linear-gradient(135deg,#FBE9C0,#F2C76A)',
+   items:['Granola and honey','Breakfast tea and coffee','Jam pair','Linen tea towel']},
+  {id:'deluxe', name:'Executive Hamper', emoji:'🎁', price:189, occ:['Client thank-you','Milestones'], bg:'linear-gradient(135deg,#CFE0DA,#7FA898)', tag:'Premium',
+   items:['Sparkling wine (750 ml)','Gourmet cheese board kit','Truffle chocolates','Macadamia selection','Timber serving board']}
+];
+const ADDONS = [
+  {id:'merch', name:'Pack your merchandise', sub:'You send us branded items, we pack one per box', price:3},
+  {id:'vegan', name:'Dietary-friendly version', sub:'Vegan and gluten-free swap where available', price:0},
+  {id:'sig', name:'Signature on delivery', sub:'Required for boxes with alcohol', price:2.5},
+  {id:'eco', name:'Carbon-neutral shipping', sub:'Offset for every parcel', price:1}
+];
+const BRAND = [
+  {id:'none', name:'Card only', sub:'Your company name on the card', price:0},
+  {id:'sticker', name:'Logo sticker', sub:'Full-colour logo seal on the lid. Free from 25 boxes', price:2},
+  {id:'sleeve', name:'Printed sleeve', sub:'Custom printed wrap with your logo and colours', price:5.5}
+];
+const MODES = [
+  {id:'each', name:'Ship to each person', sub:'Paste a recipient list with addresses'},
+  {id:'link', name:'Gift link, they choose', sub:'Email links, recipients pick and add their address'},
+  {id:'bulk', name:'Bulk to one office', sub:'One pallet or carton drop, you hand them out'}
+];
+const RIBBONS = ['#C98A1B','#D9583B','#2E5D50','#3A5BA0','#1B2A26'];
+const TIERS = [[10,0],[25,5],[100,10],[250,15],[500,20]];
+// Delivery per parcel, ex GST. Metro postcode ranges are approximate capital-city ranges.
+const SHIP = {metro:12, regional:18, remote:26};
+const METRO = {NSW:[[2000,2234]],ACT:[[2600,2620],[2900,2920]],VIC:[[3000,3207]],QLD:[[4000,4207]],SA:[[5000,5199]],WA:[[6000,6199]],TAS:[[7000,7099]],NT:[[800,832]]};
+const STATES = Object.keys(METRO);
+const STATE_PC = {NSW:[[2000,2599],[2619,2899],[2921,2999]],ACT:[[2600,2618],[2900,2920]],VIC:[[3000,3999]],QLD:[[4000,4999]],SA:[[5000,5799]],WA:[[6000,6797]],TAS:[[7000,7799]],NT:[[800,899]]};
+const inR = (n, rs) => rs.some(([a,b]) => n >= a && n <= b);
+function zone(state, pc){
+  if (state === 'NT' && !inR(pc, METRO.NT)) return 'remote';
+  if (state === 'WA' && pc >= 6700) return 'remote';
+  return inR(pc, METRO[state]) ? 'metro' : 'regional';
+}
+
+/* ---------- State ---------- */
+const S = Object.assign({
+  occ:'All', budget:200, box:'pantry', addons:[], brand:'sticker', co:'', ribbon:RIBBONS[0],
+  msg:'Hi {first},\nThank you for an amazing year. Enjoy a little something from all of us.',
+  mode:'each', csv:'', linkCount:40, linkChoice:['pantry','calm','mini'], bulkQty:50, bulkState:'VIC', bulkPc:'3150',
+  when:'', camp:'End of year thank-you'
+}, store.get('state', {}));
+let logoURL = null;
+const save = () => store.set('state', S);
+
+const SAMPLE_CSV = `name,email,address,suburb,state,postcode
+Priya Raman,priya@example.com,12 Kingsway,Glen Waverley,VIC,3150
+Tom O'Brien,tom@example.com,4/88 Smith St,Fitzroy,VIC,3065
+Mei Chen,mei@example.com,21 Ocean Pde,Coffs Harbour,NSW,2450
+Jack Wilson,jack@example.com,7 Adelaide Tce,Perth,WA,6000
+Aisha Khan,aisha@example.com,3 Mitchell St,Darwin,NT,0800
+Liam Nguyen,liam@example.com,55 King William St,Adelaide,SA,5000
+Sophie Martin,sophie@example.com,9 River Rd,Hobart,TAS,7000
+Daniel Park,daniel@example.com,140 Queen St,Brisbane,QLD,4000
+Grace Taylor,grace@example.com,18 Hill St,Ballarat,VIC,3350
+Noah Smith,noah@example.com,2 Northbourne Ave,Canberra,ACT,2601
+Olivia Brown,olivia@example.com,77 George St,Sydney,NSW,2000
+Ethan Lee,ethan@example.com,31 Main Rd,Broome,WA,6725`;
+if (!S.csv) S.csv = SAMPLE_CSV;
+
+/* ---------- CSV parsing and validation ---------- */
+function splitCSV(line){
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++){
+    const c = line[i];
+    if (q){ if (c === '"' && line[i+1] === '"'){ cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+    else if (c === '"') q = true; else if (c === ',' || c === '\t'){ out.push(cur.trim()); cur = ''; } else cur += c;
+  }
+  out.push(cur.trim()); return out;
+}
+function parseRecipients(text){
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) return {rows:[], errors:['The list is empty.'], dupes:0};
+  let head = splitCSV(lines[0]).map(h => h.toLowerCase());
+  const need = ['name','address','state','postcode'];
+  let start = 1;
+  if (!need.every(n => head.includes(n))){ head = ['name','email','address','suburb','state','postcode']; start = 0; }
+  const ix = k => head.indexOf(k);
+  const rows = [], errors = [], seen = new Set(); let dupes = 0;
+  for (let i = start; i < lines.length; i++){
+    if (rows.length >= 2000){ errors.push('Only the first 2,000 recipients are used.'); break; }
+    const c = splitCSV(lines[i]), ln = i + 1;
+    const r = {name:c[ix('name')]||'', email:c[ix('email')]||'', address:c[ix('address')]||'', suburb:c[ix('suburb')]||'', state:(c[ix('state')]||'').toUpperCase(), pc:(c[ix('postcode')]||'').padStart(4,'0')};
+    const pc = parseInt(r.pc, 10);
+    if (!r.name){ errors.push(`Line ${ln}: missing name`); continue; }
+    if (!r.address){ errors.push(`Line ${ln} (${r.name}): missing street address`); continue; }
+    if (!STATES.includes(r.state)){ errors.push(`Line ${ln} (${r.name}): state "${r.state}" is not an Australian state or territory`); continue; }
+    if (!/^\d{4}$/.test(r.pc) || !inR(pc, STATE_PC[r.state])){ errors.push(`Line ${ln} (${r.name}): postcode ${r.pc} doesn't match ${r.state}`); continue; }
+    if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)){ errors.push(`Line ${ln} (${r.name}): email looks wrong`); continue; }
+    const key = (r.name + '|' + r.address + '|' + r.pc).toLowerCase();
+    if (seen.has(key)){ dupes++; continue; }
+    seen.add(key); r.zone = zone(r.state, pc); rows.push(r);
+  }
+  return {rows, errors, dupes};
+}
+
+/* ---------- Pricing ---------- */
+function quote(){
+  const box = BOXES.find(b => b.id === S.box) || BOXES[0];
+  let qty = 0, ship = 0, shipNote = '', rec = null;
+  if (S.mode === 'each'){
+    rec = parseRecipients(S.csv); qty = rec.rows.length;
+    const z = {metro:0, regional:0, remote:0}; rec.rows.forEach(r => z[r.zone]++);
+    ship = z.metro*SHIP.metro + z.regional*SHIP.regional + z.remote*SHIP.remote;
+    shipNote = `${z.metro} metro, ${z.regional} regional, ${z.remote} remote`;
+  } else if (S.mode === 'link'){
+    qty = Math.max(0, Math.min(2000, +S.linkCount || 0));
+    const linkBoxes = BOXES.filter(b => S.linkChoice.includes(b.id));
+    const top = linkBoxes.length ? Math.max(...linkBoxes.map(b => b.price)) : box.price;
+    ship = qty * SHIP.regional; shipNote = 'Budgeted at the regional rate, unused shipping is credited';
+    return finish({...box, price: top, name: 'Gift link (choice of ' + linkBoxes.length + ')'}, qty, ship, shipNote, rec);
+  } else {
+    qty = Math.max(0, Math.min(2000, +S.bulkQty || 0));
+    const pc = parseInt(S.bulkPc, 10) || 0;
+    const z = zone(S.bulkState, pc);
+    const cartons = Math.ceil(qty / 12);
+    ship = qty ? (z === 'metro' ? 45 : z === 'regional' ? 75 : 140) + cartons * 6 : 0;
+    shipNote = `${cartons} carton${cartons === 1 ? '' : 's'}, ${z} drop`;
+  }
+  return finish(box, qty, ship, shipNote, rec);
+}
+function finish(box, qty, ship, shipNote, rec){
+  const tier = [...TIERS].reverse().find(t => qty >= t[0]) || [0,0];
+  const goods = box.price * qty;
+  const disc = goods * tier[1] / 100;
+  const b = BRAND.find(x => x.id === S.brand);
+  const brandUnit = (b.id === 'sticker' && qty >= 25) ? 0 : b.price;
+  const brand = brandUnit * qty;
+  const addUnit = ADDONS.filter(a => S.addons.includes(a.id)).reduce((s,a) => s + a.price, 0);
+  const add = addUnit * qty;
+  const sub = goods - disc + brand + add + ship;
+  const gst = sub * 0.10;
+  const nextTier = TIERS.find(t => t[0] > qty);
+  return {box, qty, goods, disc, tier, brand, brandUnit, b, add, ship, shipNote, sub, gst, total: sub + gst, rec, nextTier, min: qty >= 10};
+}
+
+/* ---------- Render: catalogue ---------- */
+function renderOcc(){
+  $('#occ').innerHTML = OCC.map(o => `<button class="chip" aria-pressed="${S.occ === o}" data-occ="${esc(o)}">${esc(o)}</button>`).join('');
+}
+function renderBoxes(){
+  const list = BOXES.filter(b => (S.occ === 'All' || b.occ.includes(S.occ)) && b.price <= S.budget);
+  $('#budgetv').textContent = S.budget >= 200 ? 'Any' : '$' + S.budget;
+  $('#boxlist').innerHTML = list.length ? list.map(b => `
+    <article class="box"><div class="art" style="background:${b.bg}">${b.tag ? `<span class="tag">${esc(b.tag)}</span>` : ''}<span aria-hidden="true">${b.emoji}</span></div>
+      <div class="bd"><h3>${esc(b.name)}</h3><ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+      <div class="pr"><b>${money(b.price)}<small>per box, ex GST</small></b><button class="btn sm" data-pick="${b.id}">Choose</button></div></div></article>`).join('')
+    : `<div class="empty">No boxes match that occasion and budget. Try a higher budget.</div>`;
+}
+
+/* ---------- Render: builder ---------- */
+function seg(el, items, cur, key){
+  $(el).innerHTML = items.map(i => `<button class="opt" aria-pressed="${cur === i.id}" data-${key}="${i.id}"><b>${esc(i.name)}${i.price !== undefined ? (i.price ? ' · ' + money(i.price) : ' · Free') : ''}</b><span>${esc(i.sub)}</span></button>`).join('');
+}
+function renderBuilder(){
+  $('#selBox').innerHTML = BOXES.map(b => `<option value="${b.id}" ${b.id === S.box ? 'selected' : ''}>${esc(b.name)} · ${money(b.price)}</option>`).join('');
+  $('#addons').innerHTML = ADDONS.map(a => `<label class="addon"><input type="checkbox" data-addon="${a.id}" ${S.addons.includes(a.id) ? 'checked' : ''}><span>${esc(a.name)}<small>${esc(a.sub)}</small></span><em>${a.price ? '+' + money(a.price) : 'Free'}</em></label>`).join('');
+  seg('#brandSeg', BRAND, S.brand, 'brand');
+  seg('#modeSeg', MODES, S.mode, 'mode');
+  $('#ribbons').innerHTML = RIBBONS.map(c => `<button class="sw" style="background:${c}" aria-pressed="${S.ribbon === c}" aria-label="Ribbon ${c}" data-rib="${c}"></button>`).join('');
+  $('#coName').value = S.co; $('#cardMsg').value = S.msg; $('#campName').value = S.camp;
+  const min = new Date(Date.now() + 7*864e5).toISOString().slice(0,10);
+  $('#when').min = min; if (!S.when || S.when < min) S.when = new Date(Date.now() + 21*864e5).toISOString().slice(0,10);
+  $('#when').value = S.when;
+  renderMode(); renderPreview(); renderSummary();
+}
+function renderMode(){
+  const m = $('#modeBody');
+  if (S.mode === 'each'){
+    m.innerHTML = `<label class="f">Recipient list (CSV: name, email, address, suburb, state, postcode)<textarea id="csv" rows="8" spellcheck="false">${esc(S.csv)}</textarea></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn ghost sm" id="loadSample">Load sample list</button><label class="btn ghost sm" style="cursor:pointer">Upload .csv<input type="file" id="csvFile" accept=".csv,text/csv" class="sr"></label></div>
+      <div id="csvMsg"></div>`;
+  } else if (S.mode === 'link'){
+    m.innerHTML = `<label class="f">Number of gift links<input type="number" id="linkCount" min="10" max="2000" value="${esc(S.linkCount)}"></label>
+      <p class="hint" style="margin-top:12px">Boxes recipients can choose from (you are charged for the dearest one, the difference is credited back):</p>
+      <div class="occ" style="margin-top:8px" id="linkChoice">${BOXES.map(b => `<button class="chip" aria-pressed="${S.linkChoice.includes(b.id)}" data-lc="${b.id}">${b.emoji} ${esc(b.name)} · $${b.price}</button>`).join('')}</div>
+      <div class="msg ok">Recipients enter their own address, so you never collect home addresses. Links expire after 60 days and any unredeemed links are credited to your account.</div>`;
+  } else {
+    m.innerHTML = `<div class="row2"><label class="f">Number of boxes<input type="number" id="bulkQty" min="10" max="2000" value="${esc(S.bulkQty)}"></label>
+      <div class="row2"><label class="f">State<select id="bulkState">${STATES.map(s => `<option ${s === S.bulkState ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+      <label class="f">Postcode<input id="bulkPc" inputmode="numeric" maxlength="4" value="${esc(S.bulkPc)}"></label></div></div>
+      <div id="bulkMsg"></div>`;
+  }
+  renderModeMsg();
+}
+function renderModeMsg(){
+  if (S.mode === 'each'){
+    const {rows, errors, dupes} = parseRecipients(S.csv);
+    const z = {metro:0, regional:0, remote:0}; rows.forEach(r => z[r.zone]++);
+    let h = rows.length ? `<div class="msg ok"><b>${rows.length} recipient${rows.length === 1 ? '' : 's'} ready.</b> ${z.metro} metro (${money(SHIP.metro)}), ${z.regional} regional (${money(SHIP.regional)}), ${z.remote} remote (${money(SHIP.remote)}) per parcel.${dupes ? ` ${dupes} duplicate${dupes === 1 ? '' : 's'} removed.` : ''}</div>` : '';
+    if (errors.length) h += `<div class="msg bad"><b>${errors.length} line${errors.length === 1 ? ' needs' : 's need'} fixing</b> (skipped from the quote):<ul>${errors.slice(0,6).map(e => `<li>${esc(e)}</li>`).join('')}</ul>${errors.length > 6 ? `…and ${errors.length - 6} more` : ''}</div>`;
+    if (rows.length && rows.length < 10) h += `<div class="msg warn">The minimum order is 10 boxes. Add ${10 - rows.length} more recipient${10 - rows.length === 1 ? '' : 's'}.</div>`;
+    if (rows.length) h += `<div class="tablewrap"><table><thead><tr><th>Name</th><th>Suburb</th><th>State</th><th>Postcode</th><th>Zone</th></tr></thead><tbody>${rows.slice(0,6).map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.suburb)}</td><td>${r.state}</td><td>${esc(r.pc)}</td><td>${r.zone}</td></tr>`).join('')}${rows.length > 6 ? `<tr><td colspan="5" style="color:var(--muted)">+ ${rows.length - 6} more</td></tr>` : ''}</tbody></table></div>`;
+    $('#csvMsg').innerHTML = h;
+  } else if (S.mode === 'bulk'){
+    const pc = parseInt(S.bulkPc, 10);
+    $('#bulkMsg').innerHTML = /^\d{4}$/.test(S.bulkPc) && inR(pc, STATE_PC[S.bulkState]) ? '' : `<div class="msg bad">Postcode ${esc(S.bulkPc)} doesn't match ${S.bulkState}.</div>`;
+  }
+}
+function firstName(){
+  if (S.mode === 'each'){ const r = parseRecipients(S.csv).rows[0]; if (r) return r.name.split(/\s+/)[0]; }
+  return 'Priya';
+}
+function renderPreview(){
+  const mini = $('#mini');
+  mini.style.background = S.brand === 'sleeve' ? `linear-gradient(135deg, ${S.ribbon}, var(--brand))` : 'var(--brand)';
+  mini.style.setProperty('--rib', S.brand === 'sleeve' ? '#fff' : S.ribbon);
+  const lg = $('#miniLogo');
+  if (S.brand === 'none') lg.style.display = 'none';
+  else { lg.style.display = ''; if (logoURL){ lg.innerHTML = ''; const im = new Image(); im.src = logoURL; im.alt = 'Uploaded logo'; lg.appendChild(im); } else lg.textContent = S.co || 'Your logo'; }
+  const sign = S.co ? '\n\nFrom everyone at ' + S.co : '';
+  $('#cardPrev').textContent = (S.msg || '').replace(/\{first\}/g, firstName()) + sign;
+}
+function renderSummary(){
+  const q = quote();
+  const L = (a, b, cls = '') => `<div class="line ${cls}"><span>${a}</span><span>${b}</span></div>`;
+  let h = L(`${esc(q.box.name)} × ${q.qty}`, money(q.goods));
+  if (q.disc) h += L(`Volume discount ${q.tier[1]}%`, `<span class="save">−${money(q.disc)}</span>`);
+  h += L(`Branding: ${esc(q.b.name)}${q.brandUnit === 0 && q.b.id === 'sticker' && q.qty >= 25 ? ' (free at 25+)' : ''}`, money(q.brand));
+  if (q.add) h += L('Add-ons', money(q.add));
+  h += L(`Delivery <small style="display:block;font-size:12px">${esc(q.shipNote)}</small>`, money(q.ship));
+  h += L('Subtotal ex GST', money(q.sub), 'sub') + L('GST 10%', money(q.gst)) + L('Total', money(q.total), 'tot');
+  if (q.qty) h += `<p class="small" style="margin-top:6px">${money(q.total / q.qty)} per recipient, all-in.${q.nextTier ? ` Add ${q.nextTier[0] - q.qty} more to unlock ${q.nextTier[1]}% off.` : ''}</p>`;
+  $('#sumBody').innerHTML = h;
+  $('#tiers').innerHTML = TIERS.map(t => `<span class="${q.tier[0] === t[0] ? 'on' : ''}">${t[0]}+<br>${t[1] ? t[1] + '% off' : 'Base'}</span>`).join('');
+  const bulkBad = S.mode === 'bulk' && !(/^\d{4}$/.test(S.bulkPc) && inR(parseInt(S.bulkPc, 10), STATE_PC[S.bulkState]));
+  $('#placeBtn').disabled = !q.min || bulkBad;
+  const days = Math.round((new Date(S.when) - new Date()) / 864e5);
+  $('#whenMsg').innerHTML = isNaN(days) ? '' : days < 10 ? `<div class="msg warn">Under 10 days away. We'll need your proof approval within 24 hours, and remote deliveries may miss this date.</div>` : `<div class="msg ok">On track. Approve your proof by ${new Date(Date.now() + (days - 7) * 864e5).toLocaleDateString('en-AU', {day:'numeric', month:'short'})} to make this date.</div>`;
+}
+
+/* ---------- Tracker ---------- */
+const STAGES = [
+  {id:'packing', name:'Packing', c:'#9BA9A4'}, {id:'shipped', name:'In transit', c:'#3A5BA0'},
+  {id:'delivered', name:'Delivered', c:'#2E7D57'}, {id:'issue', name:'Needs attention', c:'#D9583B'}
+];
+const LSTAGES = [
+  {id:'sent', name:'Link sent', c:'#9BA9A4'}, {id:'opened', name:'Opened', c:'#C98A1B'}, {id:'chosen', name:'Chosen, shipping', c:'#3A5BA0'},
+  {id:'delivered', name:'Delivered', c:'#2E7D57'}, {id:'issue', name:'Needs attention', c:'#D9583B'}
+];
+const FIRST = ['Olivia','Noah','Charlotte','Jack','Amelia','William','Isla','Oliver','Mia','Leo','Ava','Lucas','Grace','Henry','Zara','Arjun','Mei','Kai','Sofia','Ethan'];
+const LAST = ['Smith','Nguyen','Williams','Patel','Brown','Chen','Wilson','Kaur','Taylor','Martin','Lee','Kelly','Singh','Walker','Rossi'];
+function rng(seed){ return () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296; }
+function sampleCampaign(){
+  const r = rng(7), people = [];
+  for (let i = 0; i < 48; i++){ const st = STATES[Math.floor(r()*STATES.length)]; people.push({name:FIRST[Math.floor(r()*FIRST.length)] + ' ' + LAST[Math.floor(r()*LAST.length)], state:st, roll:r(), day:0}); }
+  return {id:'sample', name:'Q4 client thank-you (sample)', box:'Cellar Door', mode:'each', day:4, people};
+}
+let CAMPS = store.get('camps', null) || [sampleCampaign()];
+let curCamp = CAMPS[0].id;
+function statusOf(p, c){
+  // Each recipient progresses on its own schedule derived from its random roll.
+  const d = c.day, x = p.roll;
+  if (c.mode === 'link'){
+    if (x > 0.93 && d >= 3) return 'issue';
+    const open = 1 + Math.floor(x * 4), pick = open + 1 + Math.floor(x * 3), del = pick + 2 + Math.floor(x * 3);
+    if (x > 0.82) return d >= open ? 'opened' : 'sent';
+    return d >= del ? 'delivered' : d >= pick ? 'chosen' : d >= open ? 'opened' : 'sent';
+  }
+  if (x > 0.95 && d >= 4) return 'issue';
+  const ship = 1 + Math.floor(x * 2), del = ship + 2 + Math.floor(x * 4);
+  return d >= del ? 'delivered' : d >= ship ? 'shipped' : 'packing';
+}
+const ISSUES = ['Recipient not home, card left', 'Address incomplete, please confirm unit number', 'Bounced email, link not delivered'];
+function renderTracker(){
+  const c = CAMPS.find(x => x.id === curCamp) || CAMPS[0];
+  $('#camps').innerHTML = CAMPS.map(x => `<button class="chip" aria-pressed="${x.id === c.id}" data-camp="${x.id}">${esc(x.name)}</button>`).join('')
+    + (CAMPS.length > 1 ? `<button class="btn ghost sm" id="clearCamps">Remove my demo orders</button>` : '');
+  const stages = c.mode === 'link' ? LSTAGES : STAGES;
+  const counts = Object.fromEntries(stages.map(s => [s.id, 0]));
+  c.people.forEach(p => counts[statusOf(p, c)]++);
+  const n = c.people.length, pct = v => (n ? v / n * 100 : 0);
+  const k = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
+  let h = `<div class="trkhead"><div><b style="font:700 20px var(--serif)">${esc(c.name)}</b><div style="color:var(--muted);font-size:14px">${esc(c.box)} · ${n} recipients · day ${c.day} since dispatch</div></div>
+    <div style="display:flex;gap:8px"><button class="btn sm" id="advance">Advance a day</button><button class="btn ghost sm" id="exportCsv">Export CSV</button></div></div>
+    <div class="kpis">${k(n, 'Recipients')}${stages.filter(s => s.id !== 'issue').slice(-3).map(s => k(counts[s.id], s.name)).join('')}${k(counts.issue, 'Needs attention')}</div>
+    <div class="bar" role="img" aria-label="Status breakdown">${stages.map(s => `<i style="width:${pct(counts[s.id])}%;background:${s.c}" title="${s.name}: ${counts[s.id]}"></i>`).join('')}</div>
+    <div class="legend">${stages.map(s => `<span style="--c:${s.c}">${s.name} ${counts[s.id]}</span>`).join('')}</div>
+    <div class="tablewrap" style="background:var(--card)"><table><thead><tr><th>Recipient</th><th>State</th><th>Status</th><th>Note</th></tr></thead><tbody>`;
+  c.people.forEach((p, i) => {
+    const s = statusOf(p, c), st = stages.find(x => x.id === s);
+    const note = s === 'issue' ? ISSUES[c.mode === 'link' ? 2 : i % 2] : s === 'delivered' ? 'Delivered, left in a safe place' : s === 'shipped' || s === 'chosen' ? 'Tracking RH' + String(100000 + i * 7919).slice(-6) : '';
+    h += `<tr><td>${esc(p.name)}</td><td>${p.state}</td><td><span class="pill" style="background:color-mix(in srgb,${st.c} 18%,transparent);color:${st.c}">${st.name}</span></td><td style="color:var(--muted)">${esc(note)}</td></tr>`;
+  });
+  h += `</tbody></table></div>`;
+  $('#trk').innerHTML = h;
+}
+function exportCsv(){
+  const c = CAMPS.find(x => x.id === curCamp) || CAMPS[0];
+  const stages = c.mode === 'link' ? LSTAGES : STAGES;
+  // Prefix cells that start with a formula character so spreadsheets don't execute them.
+  const cell = v => { v = String(v); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; };
+  const rows = [['name','state','status']].concat(c.people.map(p => [p.name, p.state, stages.find(s => s.id === statusOf(p, c)).name]));
+  const blob = new Blob([rows.map(r => r.map(cell).join(',')).join('\n')], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ribbonhill-' + c.id + '.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- Modal ---------- */
+function modal(html){ $('#modalBody').innerHTML = html; $('#modal').classList.add('on'); const f = $('#modalBody').querySelector('button,input'); if (f) f.focus(); }
+function closeModal(){ $('#modal').classList.remove('on'); }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-close]')) closeModal(); });
+addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function placeOrder(){
+  const q = quote();
+  modal(`<h3 id="mh">Confirm order</h3><p class="hint">${esc(S.camp || 'Untitled campaign')} · ${q.qty} × ${esc(q.box.name)} · deliver by ${new Date(S.when).toLocaleDateString('en-AU', {day:'numeric', month:'long', year:'numeric'})}</p>
+    <div class="seg" style="grid-template-columns:1fr 1fr"><button class="opt" aria-pressed="true" data-paym="inv"><b>Invoice, 14 days</b><span>PO number optional</span></button><button class="opt" aria-pressed="false" data-paym="card"><b>Card</b><span>Disabled in this demo</span></button></div>
+    <label class="f">PO number (optional)<input id="po" maxlength="30" placeholder="PO-1234"></label>
+    <label class="f">Accounts email<input id="acct" type="email" placeholder="accounts@yourcompany.com.au"></label>
+    <div class="summary" style="position:static;margin-top:14px"><div class="line tot"><span>Total inc GST</span><span>${money(q.total)}</span></div></div>
+    <div class="pay"><button class="btn" id="confirm">Confirm (demo)</button><button class="btn ghost" data-close>Cancel</button></div>
+    <p class="small">Demo only: no invoice is sent, nothing is charged and the email address is not stored or sent anywhere.</p>`);
+  $('#modalBody').querySelector('[data-paym="card"]').onclick = () => toast('Card payments are disabled in this demo');
+  $('#confirm').onclick = () => {
+    const r = rng(Date.now() & 0xffff);
+    let people;
+    if (S.mode === 'each') people = parseRecipients(S.csv).rows.map(p => ({name:p.name, state:p.state, roll:r()}));
+    else { const st = S.mode === 'bulk' ? S.bulkState : null; people = Array.from({length: Math.min(q.qty, 300)}, () => ({name:FIRST[Math.floor(r()*FIRST.length)] + ' ' + LAST[Math.floor(r()*LAST.length)], state: st || STATES[Math.floor(r()*STATES.length)], roll:r()})); }
+    const id = 'c' + Date.now().toString(36);
+    CAMPS.push({id, name:S.camp || 'Untitled campaign', box:q.box.name, mode:S.mode === 'link' ? 'link' : 'each', day:0, people});
+    curCamp = id; store.set('camps', CAMPS); closeModal(); renderTracker();
+    toast('Order placed (demo). Your campaign is in the tracker.');
+    $('#tracker').scrollIntoView();
+  };
+}
+function emailQuote(){
+  const q = quote();
+  modal(`<h3 id="mh">Your quote is ready</h3><p class="hint">Quote RH-${String(Math.floor(q.total * 7) % 100000).padStart(5,'0')} · valid for 30 days</p>
+    <div class="summary" style="position:static;margin-top:10px">${$('#sumBody').innerHTML}</div>
+    <div class="pay"><button class="btn" onclick="print()">Print or save PDF</button><button class="btn ghost" data-close>Close</button></div>
+    <p class="small">In this demo the quote isn't emailed anywhere. Use print to save it as a PDF.</p>`);
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button,[data-occ]'); if (!t) return;
+  const d = t.dataset;
+  if (d.occ){ S.occ = d.occ; renderOcc(); renderBoxes(); }
+  else if (d.pick){ S.box = d.pick; save(); renderBuilder(); $('#builder').scrollIntoView(); toast('Box selected'); }
+  else if (d.brand){ S.brand = d.brand; save(); seg('#brandSeg', BRAND, S.brand, 'brand'); renderPreview(); renderSummary(); }
+  else if (d.mode){ S.mode = d.mode; save(); seg('#modeSeg', MODES, S.mode, 'mode'); renderMode(); renderPreview(); renderSummary(); }
+  else if (d.rib){ S.ribbon = d.rib; save(); renderBuilder(); }
+  else if (d.lc){ const i = S.linkChoice.indexOf(d.lc); if (i >= 0){ if (S.linkChoice.length > 1) S.linkChoice.splice(i,1); else toast('Keep at least one box'); } else S.linkChoice.push(d.lc); save(); renderMode(); renderSummary(); }
+  else if (d.camp){ curCamp = d.camp; renderTracker(); }
+  else if (t.id === 'loadSample'){ S.csv = SAMPLE_CSV; save(); renderMode(); renderPreview(); renderSummary(); }
+  else if (t.id === 'advance'){ const c = CAMPS.find(x => x.id === curCamp); c.day++; store.set('camps', CAMPS); renderTracker(); }
+  else if (t.id === 'exportCsv') exportCsv();
+  else if (t.id === 'clearCamps'){ CAMPS = [sampleCampaign()]; curCamp = 'sample'; store.set('camps', null); renderTracker(); toast('Demo orders removed'); }
+  else if (t.id === 'placeBtn') placeOrder();
+  else if (t.id === 'quoteBtn') emailQuote();
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'budget'){ S.budget = +t.value; renderBoxes(); }
+  else if (t.id === 'coName'){ S.co = t.value; renderPreview(); }
+  else if (t.id === 'cardMsg'){ S.msg = t.value; renderPreview(); }
+  else if (t.id === 'campName') S.camp = t.value;
+  else if (t.id === 'csv'){ S.csv = t.value; clearTimeout(renderModeMsg.t); renderModeMsg.t = setTimeout(() => { renderModeMsg(); renderPreview(); renderSummary(); }, 250); }
+  else if (t.id === 'linkCount'){ S.linkCount = t.value; renderSummary(); }
+  else if (t.id === 'bulkQty'){ S.bulkQty = t.value; renderSummary(); }
+  else if (t.id === 'bulkPc'){ S.bulkPc = t.value.replace(/\D/g, ''); renderModeMsg(); renderSummary(); }
+  else return;
+  save();
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'selBox'){ S.box = t.value; }
+  else if (t.dataset.addon){ const id = t.dataset.addon; S.addons = t.checked ? [...new Set([...S.addons, id])] : S.addons.filter(a => a !== id); }
+  else if (t.id === 'bulkState'){ S.bulkState = t.value; renderModeMsg(); }
+  else if (t.id === 'when'){ S.when = t.value; }
+  else if (t.id === 'logo'){
+    const f = t.files[0]; if (!f) return;
+    if (f.size > 2e6){ toast('Logo must be under 2 MB'); t.value = ''; return; }
+    if (!/^image\/(png|jpeg|svg\+xml)$/.test(f.type)){ toast('Use a PNG, JPG or SVG'); t.value = ''; return; }
+    if (logoURL) URL.revokeObjectURL(logoURL);
+    logoURL = URL.createObjectURL(f); // stays in the browser, never uploaded
+    if (S.brand === 'none'){ S.brand = 'sticker'; seg('#brandSeg', BRAND, S.brand, 'brand'); }
+    renderPreview(); renderSummary(); return;
+  }
+  else if (t.id === 'csvFile'){
+    const f = t.files[0]; if (!f) return;
+    if (f.size > 1e6){ toast('CSV must be under 1 MB'); return; }
+    f.text().then(txt => { S.csv = txt; save(); renderMode(); renderPreview(); renderSummary(); toast('Recipient list loaded'); });
+    return;
+  }
+  else return;
+  save(); renderSummary();
+});
+$('#budget').value = S.budget;
+
+renderOcc(); renderBoxes(); renderBuilder(); renderTracker();
+</script>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
