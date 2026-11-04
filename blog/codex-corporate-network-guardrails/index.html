@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Running Codex on a Corporate Network with Hard Guardrails | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/codex-corporate-network-guardrails/">
+<meta name="description" content="A practical corporate Codex baseline: block command networking, isolate corporate systems, enforce sandbox policy and disable model-training data sharing.">
+<meta name="author" content="Yogesh">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/codex-corporate-network-guardrails/">
+<meta property="og:title" content="Running Codex on a Corporate Network with Hard Guardrails">
+<meta property="og:description" content="A practical corporate Codex baseline: block command networking, isolate corporate systems, enforce sandbox policy and disable model-training data sharing.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Running Codex on a Corporate Network with Hard Guardrails">
+<meta name="twitter:description" content="A practical corporate Codex baseline: block command networking, isolate corporate systems, enforce sandbox policy and disable model-training data sharing.">
+<meta property="article:published_time" content="2026-11-04">
+<meta property="article:modified_time" content="2026-11-04">
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/codex-corporate-network-guardrails/#article",
+      "url": "https://globalsoc.com.au/blog/codex-corporate-network-guardrails/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/codex-corporate-network-guardrails/"
+      },
+      "headline": "Running Codex on a Corporate Network with Hard Guardrails",
+      "description": "A practical corporate Codex baseline: block command networking, isolate corporate systems, enforce sandbox policy and disable model-training data sharing.",
+      "datePublished": "2026-11-04",
+      "dateModified": "2026-11-04",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Running Codex on a Corporate Network with Hard Guardrails",
+          "item": "https://globalsoc.com.au/blog/codex-corporate-network-guardrails/"
+        }
+      ]
+    }
+  ]
+}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#120c2a,#2d1f6b 55%,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(32px,6vw,48px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.88;max-width:620px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px}
+article h2{font-size:27px;letter-spacing:-.02em;line-height:1.25;margin:44px 0 12px}
+article h3{font-size:19px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:4px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 10px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14.5px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout.warn{border-color:var(--fail)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.f{color:var(--fail)}.w{color:var(--warn)}.p{color:var(--pass)}.i{color:var(--info)}
+figure{margin:22px 0}
+figure img{width:100%;max-width:340px;display:block;margin:0 auto;border:1px solid var(--line);border-radius:16px}
+figcaption{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:23px}}
+
+html{scroll-behavior:smooth;scroll-padding-top:82px}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+article{overflow-wrap:anywhere}pre{overflow-wrap:normal;max-width:100%}
+article p:last-child{margin-bottom:0}article h2,article h3{scroll-margin-top:82px}
+.callout p{margin-bottom:0}.callout p+p{margin-top:12px}
+.architecture{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+.architecture-grid{display:grid;grid-template-columns:1fr;gap:10px}
+.architecture-box{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--bg)}
+.architecture-box.primary{border:2px solid var(--brand)}
+.architecture-box strong,.architecture-box small,.architecture-deny span{display:block}
+.architecture-box small{color:var(--muted);margin-top:6px;line-height:1.5}
+.eyebrow{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--brand);margin-bottom:6px}
+.architecture-arrow{text-align:center;font-size:24px;transform:rotate(90deg);line-height:1}
+.architecture-deny{border-left:4px solid var(--fail);padding:10px 14px;background:var(--bg);margin-top:16px;border-radius:8px}
+.architecture-deny strong{font-size:11px;letter-spacing:.05em;color:var(--fail)}
+.architecture-deny span{font-size:13px;line-height:1.5;margin-top:5px}
+.architecture figcaption{font-size:12px;text-align:left;line-height:1.5}
+details{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:16px;margin:24px 0}
+summary{font-weight:700;cursor:pointer}details[open] summary{margin-bottom:16px}
+.sources{border-top:1px solid var(--line);margin-top:38px}.sources p,.sources li{font-size:14px}
+.article-date{font-size:13px;color:var(--muted);margin-top:24px}
+.related{margin-top:24px}.author p{margin:0}
+@media(min-width:700px){.architecture-grid{grid-template-columns:1fr 24px 1.2fr 24px 1fr;align-items:center}.architecture-arrow{transform:none}.architecture-box{height:100%;padding:12px}.architecture-box strong{font-size:14px}.architecture-box small{font-size:11px}.eyebrow{font-size:9px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC <small>Insights</small></a><nav aria-label="Main navigation"><a href="/blog/">Blog</a><a href="/cybersecurity/" class="hide">Cybersecurity</a><a href="/#contact">Contact</a></nav></div></header>
+<main>
+<section class="hero"><div class="wrap"><span class="tag">AI SECURITY · CORPORATE DEPLOYMENT</span><h1>Running Codex on a Corporate Network with Hard Guardrails</h1><p class="lede">Practical controls for command execution, internet access, corporate network isolation and model-training data sharing.</p><div class="by"><div class="av" aria-hidden="true">Y</div><div><b>Yogesh · Global SOC</b><span><time datetime="2026-11-04">4 November 2026</time> · 12 min read</span></div></div></div></section>
+<article class="wrap">
+<nav class="toc" aria-label="On this page"><b>In this guide</b><ol>
+<li><a href="#boundary">Define the corporate boundary</a></li>
+<li><a href="#network">Block internet and corporate network access</a></li>
+<li><a href="#configuration">Apply the Codex configuration</a></li>
+<li><a href="#execution">Allow builds only inside the isolated environment</a></li>
+<li><a href="#training">Disable use of data for model training</a></li>
+<li><a href="#verification">Verify the guardrails before rollout</a></li>
+</ol></nav>
+
+<p>Codex can review code, edit files and run tools. In a corporate environment, the question is how to give it useful work while keeping production systems, credentials and the internal network outside its reach.</p>
+<p>This guide proposes a conservative starting architecture: a dedicated development VM, a sanitised repository, no route to corporate systems, command networking disabled, and an organisation-managed account. Administrators own the enforcement. The article focuses on <strong>local Codex CLI and supported local desktop execution</strong>; cloud execution requires its own policy.</p>
+<div class="callout key"><b>Two requirements, two different controls</b><p><strong>Execution and connectivity:</strong> sandbox policy, disabled tools and an external network boundary determine what actions are possible. <strong>Model training:</strong> account and workspace data controls determine whether supplied content can be used to improve models. Both need attention.</p></div>
+
+<h2 id="boundary">1. Define the corporate boundary</h2>
+<p>Write down the intended outcome before configuring a client: <strong>Codex may inspect an approved copy of code, but it must have no authorised path to execute actions against corporate systems.</strong> If the requirement is zero command execution even inside the development VM, remove command tools as well.</p>
+<p>A read-only sandbox still permits commands that can read allowed files. A sandbox is a technical boundary around the tools it governs; a prompt such as “never touch the corporate network” is an instruction the model can misinterpret. OpenAI documents sandboxing and approvals as separate controls. <a href="https://learn.chatgpt.com/docs/sandboxing">Source: sandboxing</a>.</p>
+
+<figure class="architecture">
+<div class="architecture-grid">
+<div class="architecture-box"><span class="eyebrow">APPROVED INPUT</span><strong>Sanitised code copy</strong><small>No secrets, production data or deployment credentials</small></div>
+<div class="architecture-arrow" aria-hidden="true">→</div>
+<div class="architecture-box primary"><span class="eyebrow">ISOLATED DEVELOPMENT VM</span><strong>Codex + enforced policy</strong><small>Restricted workspace · command network off · no escalation</small></div>
+<div class="architecture-arrow" aria-hidden="true">→</div>
+<div class="architecture-box"><span class="eyebrow">CONTROLLED SERVICE EGRESS</span><strong>Approved OpenAI endpoints</strong><small>Client service traffic through an IT-managed gateway</small></div>
+</div>
+<div class="architecture-deny"><strong>DENIED AT THE NETWORK BOUNDARY</strong><span>Corporate subnets · VPN routes · production services · arbitrary internet destinations</span></div>
+<figcaption>Recommended architecture. The network gateway and VM restrictions are managed outside the agent.</figcaption>
+</figure>
+
+<p>Use a separate, non-administrator account in the VM. Provide only the repository and tools required for the task. Leave out corporate VPN clients, mounted file shares, SSH agent forwarding, cloud CLI sessions, browser sign-ins, Kubernetes contexts, deployment keys and container-engine sockets. An isolated environment with no corporate credentials offers a much smaller blast radius.</p>
+<p>Disable device remote control and application snapshots where supported, and do not configure SSH remote hosts or local computer access for this baseline. Keep source import and result export deliberate: a trusted process supplies an approved snapshot, a person reviews the resulting diff, and normal CI and change controls handle integration. Don’t give this review VM a production deployment role.</p>
+
+<h2 id="network">2. Block internet and corporate network access</h2>
+<div class="callout warn"><b>“No internet” needs a precise definition</b><p>A cloud-backed Codex session needs a connection to its model service. Blocking every external connection prevents that workflow. The practical target is <strong>no network from agent commands, plus narrowly approved client service connectivity</strong>. Local execution can still send relevant task content to OpenAI. <a href="https://learn.chatgpt.com/docs/enterprise/chatgpt-work-local-security">Source: local execution and data handling</a>.</p></div>
+<p>For a hard corporate boundary, place the VM in a dedicated subnet or security zone with firewall policy enforced by infrastructure the VM account cannot change. Our recommended rule set is:</p>
+<div class="tw"><table><thead><tr><th scope="col">Traffic</th><th scope="col">Recommended policy</th></tr></thead><tbody>
+<tr><td>Agent shell commands and subprocesses</td><td>Network disabled in Codex; remove shell tools entirely for review-only use.</td></tr>
+<tr><td>VM → corporate services</td><td>Deny internal prefixes, VPN and peered routes, management interfaces, internal public addresses and private DNS destinations.</td></tr>
+<tr><td>VM → general internet</td><td>Deny by default. Prevent direct egress around the managed gateway, including alternate DNS, IPv6 and UDP paths.</td></tr>
+<tr><td>Codex client → model/authentication service</td><td>Allow only the current endpoints required by the approved authentication and client configuration, through a managed gateway.</td></tr>
+<tr><td>Downloads, package installation and updates</td><td>Use a separate trusted image-building process and approved mirrors; provide dependencies before starting the agent.</td></tr>
+<tr><td>Inbound traffic and host integration</td><td>Restrict to the approved administration path; disable unnecessary shared folders, host bridges and local privileged sockets.</td></tr>
+</tbody></table></div>
+<p>Blocking RFC1918 alone is insufficient: organisations can use public address space internally, IPv6, cloud management endpoints and public SaaS administration interfaces. Maintain the organisation’s actual destination inventory and apply the same boundary to DNS resolution and resolved addresses.</p>
+<p>A proxy environment variable only tells cooperative software where to connect. Enforce egress at the firewall or gateway, and ensure the agent cannot modify those controls. If the client and commands share a VM, retain both the command sandbox and the external gateway policy: a whole-VM endpoint allowlist alone does not stop commands using an allowed endpoint.</p>
+<p>Web search, apps, MCP servers, browsers and native application tools have separate access paths. Turn them off for this baseline and remove existing connections. For an approved cloud workflow, configure and test cloud permissions independently; local settings do not establish its boundary. <a href="https://learn.chatgpt.com/docs/enterprise/chatgpt-work-cloud-security">Source: cloud capability boundaries</a>.</p>
+
+<h2 id="configuration">3. Apply the Codex configuration</h2>
+<p>The following is a proposed <strong>strict local review baseline</strong>. Permission profiles are beta. Managed profile allowlists require Codex <code>0.138.0</code> or later, but that minimum does <em>not</em> establish support for every newer key below. Pin an approved release and validate the complete policy on each operating system before deployment. <a href="https://learn.chatgpt.com/docs/permissions">Source: permission profiles</a>; <a href="https://learn.chatgpt.com/docs/config-file/config-reference">configuration reference</a>.</p>
+<p>Deploy the administrator-owned <code>requirements.toml</code> through device management or a supported managed-policy channel. The documented local locations are <code>/etc/codex/requirements.toml</code> on Unix systems and <code>%ProgramData%&#92;OpenAI&#92;Codex&#92;requirements.toml</code> on Windows. Users must not be able to edit the policy or substitute an unmanaged client. Check the effective merged policy, including any higher-priority workspace or MDM settings. <a href="https://learn.chatgpt.com/docs/enterprise/managed-configuration">Source: managed configuration</a>.</p>
+<h3>Administrator policy: requirements.toml</h3>
+<p><a href="strict/requirements.toml" download>Download the proposed requirements.toml</a></p>
+<pre><code># Administrator-managed local Codex policy.
+# Validate every key on your approved client version and operating system.
+allowed_approval_policies = [&quot;never&quot;]
+allowed_web_search_modes = []
+default_permissions = &quot;corp_review&quot;
+allow_appshots = false
+allow_remote_control = false
+
+[allowed_permission_profiles]
+corp_review = true
+
+[permissions.corp_review]
+description = &quot;Review the approved workspace without command networking.&quot;
+extends = &quot;:read-only&quot;
+
+[permissions.corp_review.filesystem]
+&quot;:root&quot; = &quot;deny&quot;
+&quot;:minimal&quot; = &quot;read&quot;
+
+[permissions.corp_review.filesystem.&quot;:workspace_roots&quot;]
+&quot;.&quot; = &quot;read&quot;
+
+[permissions.corp_review.network]
+enabled = false
+
+[features]
+shell_tool = false
+apps = false
+plugins = false
+browser_use = false
+browser_use_external = false
+browser_use_full_cdp_access = false
+in_app_browser = false
+computer_use = false
+hooks = false
+
+# An explicitly empty approved list disables local MCP servers.
+[mcp_servers]
+
+# Feedback submission is separate from the account&#x27;s training preference.
+[feedback]
+enabled = false
+</code></pre>
+<p>This allowlist selects only the corporate review profile. The profile makes the approved workspace readable and disables command networking; supported capability switches remove shell, browser and integration paths. <code>approval_policy = "never"</code> prevents approval requests—it does not grant extra permissions. Keep full access unavailable. The effective behaviour must be tested on the selected client. <a href="https://learn.chatgpt.com/docs/agent-approvals-security">Source: approvals and sandbox boundaries</a>.</p>
+
+<h3>User defaults: config.toml</h3>
+<p>Pair the policy with these defaults in the user’s <code>~/.codex/config.toml</code>. The profile definition above must already be installed. <a href="strict/config.toml" download>Download the matching config.toml</a>.</p>
+<pre><code># User defaults paired with the administrator-managed policy.
+# This file alone is not an enforced corporate boundary.
+approval_policy = &quot;never&quot;
+web_search = &quot;disabled&quot;
+default_permissions = &quot;corp_review&quot;
+</code></pre>
+<p><strong>Migration:</strong> remove old <code>sandbox_mode</code>, <code>[sandbox_workspace_write]</code> and <code>--sandbox</code> selections when adopting permission profiles. Keep the two configuration systems separate. Filesystem rules govern the documented local tool scope; they are not a promise that every plugin or application shares the same restrictions. <a href="https://learn.chatgpt.com/docs/permissions">Source: profile migration and scope</a>.</p>
+
+<details><summary>Older clients using legacy sandbox settings</summary>
+<p>Use these as a compatibility example only while upgrading. They restrict sandbox and approval choices; they do not replace the VM, firewall, integration restrictions or a supported no-command policy.</p>
+<p><strong>Legacy user config.toml:</strong></p>
+<pre><code># Legacy configuration only; do not combine with permission profiles.
+sandbox_mode = "read-only"
+approval_policy = "never"
+web_search = "disabled"</code></pre>
+<p><strong>Legacy administrator requirements.toml:</strong></p>
+<pre><code>allowed_sandbox_modes = ["read-only"]
+allowed_approval_policies = ["never"]
+allowed_web_search_modes = []</code></pre>
+<p>Read-only still allows sandboxed commands. For any separately authorised legacy <code>workspace-write</code> workflow, explicitly set <code>[sandbox_workspace_write]</code> with <code>network_access = false</code> and enforce the surrounding controls. <a href="https://learn.chatgpt.com/docs/agent-approvals-security">Source: legacy sandbox settings</a>.</p>
+</details>
+
+<h2 id="execution">4. Allow builds only inside the isolated environment</h2>
+<p>Some teams need compilation and tests. Introduce that as a separately approved policy: enable command tools, use an administrator-defined workspace-write profile with command networking still disabled, and permit only the intended writable workspace and required temporary paths. Keep the VM detached from corporate routes and credentials.</p>
+<p>Builds and test suites execute repository code, including dependency hooks. Treat the repository as untrusted input. Preinstall vetted dependencies, inspect build scripts and use disposable VM snapshots. Review files before anyone executes them on a connected machine.</p>
+<p>If the business requirement is <strong>no generated code execution anywhere</strong>, keep command tools disabled and use a workflow limited to reviewing supplied text. A sandbox cannot make code execution disappear; it limits where execution can act.</p>
+<p>On Windows, validate the selected sandbox implementation and policy coverage rather than assuming every fallback has identical isolation. Keep VM segmentation in place regardless of the client’s operating system. <a href="https://learn.chatgpt.com/docs/permissions">Source: platform enforcement limits</a>.</p>
+
+<h2 id="training">5. Disable use of data for model training</h2>
+<p>Choose the account and data policy before supplying work material.</p>
+<h3>Personal ChatGPT accounts</h3>
+<ol>
+<li>Open ChatGPT on the web or mobile and go to <strong>Settings → Data controls</strong>.</li>
+<li>Disable the option allowing your content to improve models. <strong>If your interface shows “Improve the model for everyone”, set it to Off.</strong></li>
+<li>Review any separate Codex model-improvement or data-sharing controls offered to your account and leave optional sharing disabled.</li>
+<li>Confirm the effective setting before supplying company information. UI wording and available controls vary by account and client; a personal opt-out alone is insufficient for corporate approval.</li>
+</ol>
+<p>The official browser documentation identifies the <strong>Settings → Data controls</strong> location. The exact personal-account labels and any separate Codex opt-in should be checked in your current interface. <a href="https://learn.chatgpt.com/docs/browser">Source: ChatGPT data controls location</a>.</p>
+
+<h3>ChatGPT Business, Enterprise and Edu</h3>
+<p>Covered business workspace data is <strong>not used to train OpenAI models by default</strong>. For corporate deployment, prefer the organisation-managed workspace, confirm its applicable agreement and settings, and prevent sign-in to an unapproved personal workspace. Separate account/workspace access controls from execution permissions. <a href="https://learn.chatgpt.com/docs/enterprise/chatgpt-work-local-security">Source: business data protections</a>.</p>
+
+<h3>OpenAI API</h3>
+<p>API data is not used to train or improve OpenAI models unless you explicitly opt in. Keep optional organisation/project data sharing disabled. Retention remains a separate decision: default abuse-monitoring logs may be retained for up to 30 days, and some features persist application state. Zero Data Retention and Modified Abuse Monitoring require eligibility and have feature-specific limits. <a href="https://developers.openai.com/api/docs/guides/your-data">Source: API data controls</a>.</p>
+<div class="callout key"><b>No training does not mean no processing or storage</b><p>The service still processes the content needed to answer. Training preferences do not create an air gap, redact secrets, configure all retention periods or govern third-party services. Classify and minimise input, and review the actual product, endpoint and connected-service policies.</p></div>
+<p>The sample’s <code>[feedback] enabled = false</code> disables supported feedback submission. It is <strong>not</strong> an account-level training opt-out. Likewise, disabling analytics or local history is not a replacement for the workspace data policy. <a href="https://learn.chatgpt.com/docs/config-file/config-reference">Source: feedback setting</a>.</p>
+
+<h2 id="verification">6. Verify the guardrails before rollout</h2>
+<p>Use a disposable, authorised test environment with synthetic data and administrator-controlled test destinations. The following is an acceptance plan; it is not a claim that these controls have been tested on your network.</p>
+<div class="tw"><table><thead><tr><th scope="col">Check</th><th scope="col">Required evidence</th></tr></thead><tbody>
+<tr><td>Approved client and policy</td><td>Record client version, OS, applied requirements and effective permissions. Unknown or unsupported security keys stop the rollout.</td></tr>
+<tr><td>Strict review tools</td><td>Shell execution, browser/computer use, web search, apps, plugins and MCP are unavailable under the intended baseline.</td></tr>
+<tr><td>File access</td><td>Approved source is readable. Workspace modification and reading a dummy file outside permitted roots fail through each enabled file-access path.</td></tr>
+<tr><td>Sandboxed build variant</td><td>When separately enabled, a harmless command runs locally; attempted internet and controlled internal connections fail from inside the sandbox.</td></tr>
+<tr><td>External VM boundary</td><td>IT verifies blocked corporate routes and unapproved egress independently of Codex, including IPv6, DNS and any proxy bypass paths. Use controlled test listeners, not production scans.</td></tr>
+<tr><td>Escalation and policy changes</td><td>Full-access selection, a network permission request and conflicting local overrides cannot expand the effective boundary. Retest after restart and policy refresh.</td></tr>
+<tr><td>Separate cloud capabilities</td><td>Unauthorised cloud execution and local remote-access paths are unavailable under workspace/device policy. Test cloud separately if it is approved.</td></tr>
+<tr><td>Data controls</td><td>Record the approved workspace, training/data-sharing status, retention decision and evidence of the effective account configuration.</td></tr>
+</tbody></table></div>
+<p>Monitor policy drift, client updates and unexpected egress. Retain enough operational evidence for review while limiting prompts, source code and secrets in logs. An allowed model connection can carry authorised task content, so data minimisation remains necessary even with perfect command isolation.</p>
+<div class="callout"><b>A useful starting policy</b><p>Begin with review-only access to a sanitised code copy in a segmented VM. Add execution or connectivity only when a concrete workflow needs it, with a reviewed policy change and repeatable acceptance checks.</p></div>
+
+<section class="sources" aria-labelledby="source-heading"><h2 id="source-heading">Official documentation</h2>
+<p>Documentation checked on 4 November 2026. Product settings, policy schemas and platform support can change. The examples are proposed deployment baselines and require validation against the approved fleet.</p>
+<ul>
+<li><a href="https://learn.chatgpt.com/docs/sandboxing">Sandboxing across ChatGPT and Codex clients</a></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-approvals-security">Agent approvals and security</a></li>
+<li><a href="https://learn.chatgpt.com/docs/permissions">Permission profiles and platform limits</a></li>
+<li><a href="https://learn.chatgpt.com/docs/enterprise/managed-configuration">Administrator-managed configuration</a></li>
+<li><a href="https://learn.chatgpt.com/docs/config-file/config-reference">Configuration reference</a></li>
+<li><a href="https://learn.chatgpt.com/docs/enterprise/chatgpt-work-local-security">Local execution and business data protections</a></li>
+<li><a href="https://learn.chatgpt.com/docs/enterprise/chatgpt-work-cloud-security">Cloud security and separate capability controls</a></li>
+<li><a href="https://learn.chatgpt.com/docs/browser">ChatGPT browser and data-controls location</a></li>
+<li><a href="https://developers.openai.com/api/docs/guides/your-data">OpenAI API data controls</a></li>
+</ul></section>
+<div class="cta"><h3>Planning a corporate AI pilot?</h3><p>Discuss network segmentation, identity, data handling and practical guardrails for your environment with Global SOC.</p><a href="/#contact">Contact Global SOC</a><a href="/cybersecurity/">Cybersecurity services</a></div>
+<p class="related">Related reading: <a href="/blog/ai-agent-email-prompt-injection/">Can an email hijack your AI assistant?</a></p>
+<div class="author"><div class="av" aria-hidden="true">Y</div><p><strong>Yogesh · Global SOC</strong><br>Practical cybersecurity and secure development guidance from Melbourne, Australia.</p></div>
+</article>
+</main>
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · ABN 46 646 550 094</span><span><a href="/blog/">All articles</a> · <a href="/privacy.html">Privacy</a></span></div></footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>

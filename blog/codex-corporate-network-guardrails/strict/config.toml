@@ -1,0 +1,5 @@
+# User defaults paired with the administrator-managed policy.
+# This file alone is not an enforced corporate boundary.
+approval_policy = "never"
+web_search = "disabled"
+default_permissions = "corp_review"

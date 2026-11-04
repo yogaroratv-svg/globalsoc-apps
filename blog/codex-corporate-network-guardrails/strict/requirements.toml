@@ -1,0 +1,42 @@
+# Administrator-managed local Codex policy.
+# Validate every key on your approved client version and operating system.
+allowed_approval_policies = ["never"]
+allowed_web_search_modes = []
+default_permissions = "corp_review"
+allow_appshots = false
+allow_remote_control = false
+
+[allowed_permission_profiles]
+corp_review = true
+
+[permissions.corp_review]
+description = "Review the approved workspace without command networking."
+extends = ":read-only"
+
+[permissions.corp_review.filesystem]
+":root" = "deny"
+":minimal" = "read"
+
+[permissions.corp_review.filesystem.":workspace_roots"]
+"." = "read"
+
+[permissions.corp_review.network]
+enabled = false
+
+[features]
+shell_tool = false
+apps = false
+plugins = false
+browser_use = false
+browser_use_external = false
+browser_use_full_cdp_access = false
+in_app_browser = false
+computer_use = false
+hooks = false
+
+# An explicitly empty approved list disables local MCP servers.
+[mcp_servers]
+
+# Feedback submission is separate from the account's training preference.
+[feedback]
+enabled = false
