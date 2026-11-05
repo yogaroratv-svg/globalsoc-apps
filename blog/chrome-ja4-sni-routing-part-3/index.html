@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Part 3: Spoofing Google Chrome's JA4 Profile, IP vs. SNI Routing &amp; Catching SNI Anomalies | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/chrome-ja4-sni-routing-part-3/">
+<meta name="description" content="Part 3 of our 4-part protocol engineering series: how to disguise a raw x86_64 assembly binary as Google Chrome (t13d1514h2_8daaf6152771_02713d6af862), why putting globalsoc.com.au or bravofly.com in the TLS SNI field still routes to 20.248.231.206, and how JA4's 'i' flag catches 18,240+ real scanner hits.">
+<meta name="author" content="Yogesh">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/chrome-ja4-sni-routing-part-3/">
+<meta property="og:title" content="Part 3: Spoofing Google Chrome's JA4 Profile, IP vs. SNI Routing &amp; Catching SNI Anomalies">
+<meta property="og:description" content="How raw_chrome.s mimics Google Chrome's 15 ciphers and 14 extensions from 115.129.50.130 to 20.248.231.206, why routers ignore TLS SNI, and real SNI spoofing caught on our Azure honeypot.">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="article:published_time" content="2026-11-06">
+<meta property="article:modified_time" content="2026-11-06">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#101a24;--muted:#5d6b78;--line:#e2e7ec;--brand:#0e4d6e;--accent:#e9771a;--soft:#e6f0f6;--code:#0d1b24;--codeink:#d7e6ee;--pass:#1f8a5b;--warn:#b7700a;--fail:#c8372d;--info:#4b6a88}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1015;--card:#151e27;--ink:#e9eff4;--muted:#95a3af;--line:#25303a;--brand:#5fb3dd;--accent:#ffa04a;--soft:#13293a;--code:#081118;--pass:#3ccf8e;--warn:#f0b03c;--fail:#ff6b5e;--info:#8fb0cf;color-scheme:dark}}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:82px}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+.wrap{max-width:820px;margin:0 auto;padding:0 18px}
+header.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{max-width:1120px;display:flex;justify-content:space-between;align-items:center;height:60px}
+.logo{font-weight:800;text-decoration:none;color:var(--ink);letter-spacing:-.01em}
+.logo small{color:var(--muted);font-weight:600;margin-left:6px}
+header.top nav a{text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;margin-left:18px}
+.hero{background:linear-gradient(135deg,#1f1037,#0e4d6e 55%,#0b5563);color:#fff;padding:56px 0 46px}
+.tag{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:600;letter-spacing:.03em}
+.hero h1{font-size:clamp(30px,5.2vw,42px);line-height:1.15;letter-spacing:-.025em;margin:16px 0 14px}
+.hero p.lede{font-size:18px;opacity:.9;max-width:700px}
+.by{display:flex;align-items:center;gap:12px;margin-top:24px;font-size:14px}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e9771a,#ffb35c);display:grid;place-items:center;font-weight:800;color:#2a1300;font-size:18px}
+.by b{display:block}.by span{opacity:.75}
+article{padding:40px 0 20px;overflow-wrap:anywhere}
+article h2{font-size:26px;letter-spacing:-.02em;line-height:1.25;margin:46px 0 12px;scroll-margin-top:82px;border-bottom:1px solid var(--line);padding-bottom:8px}
+article h3{font-size:19.5px;margin:30px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 16px 22px}
+article li{margin:6px 0}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 22px;margin:0 0 28px}
+.toc b{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.toc ol{margin:8px 0 0 20px}
+.tw{overflow-x:auto;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em;background:var(--soft);padding:2px 6px;border-radius:6px}
+pre{position:relative;background:var(--code);color:var(--codeink);border-radius:14px;padding:18px;overflow-x:auto;font:13.5px/1.6 'JetBrains Mono',ui-monospace,monospace;margin:14px 0 20px}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+.callout{border-left:5px solid var(--accent);background:var(--card);border-radius:12px;padding:16px 18px;margin:20px 0}
+.callout.key{border-color:var(--brand)}
+.callout.warn{border-color:var(--fail)}
+.callout b:first-child{display:block;margin-bottom:4px}
+.cta{margin:46px 0 10px;background:linear-gradient(135deg,#0b3b4a,#12806f);color:#fff;border-radius:20px;padding:26px}
+.cta h3{margin:0 0 6px;font-size:21px}.cta p{opacity:.88;margin:0 0 14px}
+.cta a{display:inline-block;background:#fff;color:#0b3b4a;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:12px;margin:4px 8px 0 0}
+footer{border-top:1px solid var(--line);padding:22px 0;color:var(--muted);font-size:13.5px;margin-top:30px}
+footer .wrap{max-width:1120px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="/">Global SOC<small>Blog</small></a><nav aria-label="Main navigation"><a href="/blog/">All posts</a><a href="/dnsaudit/">DNS Audit</a><a href="/#contact">Contact</a></nav></div></header>
+
+<section class="hero"><div class="wrap">
+  <span class="tag">SERIES PART 3 OF 4 · CHROME JA4 SPOOFING &amp; SNI ROUTING</span>
+  <h1>Part 3: Spoofing Google Chrome's JA4 Profile, IP vs. SNI Routing &amp; Catching SNI Anomalies in SOC Logs</h1>
+  <p class="lede">Why our stripped-down assembly packet (`t13n010400...`) stands out vs. our Google Chrome assembly packet (`t13d1514h2...`), why putting <code>globalsoc.com.au</code> or <code>bravofly.com</code> inside the TLS SNI field still delivers the packet to our honeypot (`20.248.231.206`), and what we caught across 19,613 real attacks.</p>
+  <div class="by"><div class="av" aria-hidden="true">Y</div><div><b>Yogesh · Global SOC</b><span><time datetime="2026-11-06">6 Nov 2026</time> · 15 min read · Live Honeypot Telemetry</span></div></div>
+</div></section>
+
+<main class="wrap"><article>
+
+<div class="toc">
+  <b>4-Part Raw TCP, TLS 1.3 &amp; JA4 Assembly Series</b>
+  <ol>
+    <li><a href="/blog/raw-tcp-handshake-assembly-part-1/">Part 1: Building a Raw TCP 3-Way Handshake (<code>SYN</code> &rarr; <code>SYN-ACK</code> &rarr; <code>ACK</code>) in <code>x86_64</code> Assembly</a></li>
+    <li><a href="/blog/tls13-ja4-fingerprinting-assembly-part-2/">Part 2: Crafting a TLS 1.3 ClientHello in Assembly &amp; Dissecting JA4 Fingerprints Byte-by-Byte</a></li>
+    <li><strong>Part 3 (You are here):</strong> Spoofing Google Chrome's JA4 Profile, Layer-3 IP Routing vs. Layer-7 TLS SNI, and Catching SNI Anomalies</li>
+    <li><a href="/blog/tls-cpu-asymmetry-concurrency-part-4/">Part 4: TLS CPU Asymmetry, Sub-Second Kernel Profiling (<code>/proc/1/stat</code>), and 1,000-Connection Stampedes</a></li>
+  </ol>
+</div>
+
+<h2 id="two-packets">1. Why We Built Two Different Assembly Packets: "Weird" vs. "Chrome"</h2>
+<p>In <a href="/blog/tls13-ja4-fingerprinting-assembly-part-2/">Part 2</a>, we built a minimal 117-byte TLS 1.3 <code>ClientHello</code> (`raw_tcp_tls_ja4.s`), and then in `raw_chrome.s` we expanded it to 247 bytes to mimic Google Chrome. Comparing those two packets side-by-side shows why JA4 is so important for both senders and defenders:</p>
+
+<div class="tw"><table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Packet A: Stripped-Down Assembly (<code>raw_tcp_tls_ja4.s</code>)</th>
+      <th>Packet B: Chrome-Disguised Assembly (<code>raw_chrome.s</code>)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Total Packet Size</strong></td>
+      <td><code>157 bytes</code> (40B IP/TCP + 117B TLS)</td>
+      <td><code>287 bytes</code> (40B IP/TCP + 247B TLS)</td>
+    </tr>
+    <tr>
+      <td><strong>JA4 Fingerprint</strong></td>
+      <td><code>t13<strong>n010400</strong>_0f2cb44170f4_f86e416269f0</code></td>
+      <td><code>t13<strong>d1514h2</strong>_8daaf6152771_02713d6af862</code></td>
+    </tr>
+    <tr>
+      <td><strong>SNI Extension (<code>0x0000</code>)</strong></td>
+      <td>None (<code>n</code>)</td>
+      <td><code>globalsoc.com.au</code> (<code>d</code> = domain present)</td>
+    </tr>
+    <tr>
+      <td><strong>Cipher Suites Count</strong></td>
+      <td><code>01</code> (Only <code>0x1301</code>)</td>
+      <td><code>15</code> (All 15 standard Chrome TLS 1.3 + 1.2 ciphers)</td>
+    </tr>
+    <tr>
+      <td><strong>Extensions &amp; ALPN</strong></td>
+      <td><code>04</code> extensions, <code>00</code> (No ALPN)</td>
+      <td><code>14</code> extensions, <code>h2</code> (HTTP/2 ALPN)</td>
+    </tr>
+    <tr>
+      <td><strong>How a SOC Defender Sees It</strong></td>
+      <td><strong>Immediate Red Flag!</strong> No normal browser on an employee laptop ever connects with 1 cipher, 4 extensions, and no domain name.</td>
+      <td><strong>Blends In Completely!</strong> To a JA4 firewall rule, this raw assembly binary looks identical to Google Chrome.</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<h2 id="sni-explained-two-ways">2. How Does `globalsoc.com.au` Come Into the Picture When Sending from `115.129.50.130` to `20.248.231.206`?</h2>
+<p>This is one of the most confusing concepts in networking until you see it explained two ways: <strong>how can we send a packet from our IP `115.129.50.130` to the honeypot IP `20.248.231.206`, write `"globalsoc.com.au"` inside the packet, and still have it land on our honeypot without ever touching the real `globalsoc.com.au` server?</strong></p>
+
+<h3>Way 1: The Postal Envelope vs. The Letter Inside</h3>
+<p>Think of your 287-byte network packet as a physical paper letter inside a stamped envelope:</p>
+<ol>
+  <li><strong>The Outside of the Envelope (Bytes 12–19: IPv4 Header):</strong>
+    <ul>
+      <li><strong>From:</strong> <code>115.129.50.130</code> (Your IP)</li>
+      <li><strong>Deliver To:</strong> <code>20.248.231.206</code> (Our Azure Honeypot IP)</li>
+    </ul>
+    The postal trucks (<strong>Internet Routers</strong>) <strong>ONLY read the IP address on the outside of the envelope</strong>. They never open the envelope! So the packet is guaranteed to be delivered straight to our honeypot at <code>20.248.231.206</code>.
+  </li>
+  <li><strong>The Letter Inside the Envelope (TLS Extension `0x0000` SNI):</strong>
+    <ul>
+      <li>Inside the letter, we wrote the plain-text words: <code>"Hello, I am here to visit globalsoc.com.au"</code> (or <code>"skyscanner.com"</code>, or <code>"bravofly.com"</code>).</li>
+    </ul>
+    Why does that field exist? Because a single web server IP often hosts 50 different websites, so a normal browser writes the website name inside the letter to tell the server which website's certificate to hand back.
+  </li>
+</ol>
+<p><strong>The Trick:</strong> Because we built the packet ourselves in assembly (`raw_chrome.s`), nobody stops us from addressing the outside of the envelope to <strong><code>20.248.231.206</code></strong> while writing a completely different domain name (like <strong><code>globalsoc.com.au</code></strong>) inside the TLS SNI field! Our honeypot at <code>20.248.231.206</code> gets the traffic, but a basic security monitor reading the SNI field thinks you are visiting <code>globalsoc.com.au</code>!</p>
+
+<h3>Way 2: The Exact Byte Layout Inside `raw_chrome.s`</h3>
+<p>Here is how those two separate layers sit inside the same 287-byte packet in <a href="https://github.com/yogaroratv-svg/raw-tcp-tls-ja4-assembly-lab/blob/main/raw_chrome.s" target="_blank" rel="noopener">`raw_chrome.s`</a>:</p>
+<ul>
+  <li><strong>Layer 3 (Bytes 12–19 — Where the packet actually goes):</strong>
+    <pre><code>.byte 115, 129, 50, 130         # [Offset 0x0C] Source IP      = 115.129.50.130 (You)
+.byte 20, 248, 231, 206         # [Offset 0x10] Destination IP = 20.248.231.206 (Honeypot)</code></pre>
+  </li>
+  <li><strong>Layer 7 (Inside the TLS `ClientHello` — What the SNI extension claims):</strong>
+    <pre><code># Extension 0x0000 (Server Name Indication = "globalsoc.com.au")
+.byte 0x00, 0x00                # Extension Type: 0x0000 (server_name)
+.byte 0x00, 0x15                # Extension Length: 21 bytes (0x0015)
+.byte 0x00, 0x13                # Server Name List Length: 19 bytes (0x0013)
+.byte 0x00                      # Server Name Type: 0x00 (DNS Hostname)
+.byte 0x00, 0x10                # Hostname Length: 16 bytes ("globalsoc.com.au")
+.ascii "globalsoc.com.au"       # The 16 ASCII bytes read by firewalls &amp; JA4 ("d")</code></pre>
+  </li>
+</ul>
+
+<h2 id="real-honeypot-audit">3. Auditing 19,613 Real TLS Handshakes on Our Honeypot: Who Is Spoofing SNI Right Now?</h2>
+<p>We audited all <strong>19,613 TLS handshakes</strong> (`tls_attacks.jsonl`) and <strong>30,782 HTTP requests</strong> (`http_attacks.jsonl`) captured on our live Azure honeypot (`20.248.231.206`). Here are the three real-world attacker techniques we caught:</p>
+
+<h3>Finding 1: The "Bravofly" SNI Impersonator (`50.236.138.77`)</h3>
+<p>Out of 19,613 external TLS connections, one attacker IP (<strong><code>50.236.138.77</code></strong>) connected to our raw Azure IP <code>20.248.231.206</code> and injected a real company's domain name into the TLS <code>ClientHello</code> SNI field:</p>
+<ul>
+  <li><strong>Attacker IP:</strong> <code>50.236.138.77</code> &rarr; <strong>Honeypot IP:</strong> <code>20.248.231.206</code></li>
+  <li><strong>Injected TLS SNI:</strong> <code>bravofly.com</code> (a major European flight booking website)</li>
+  <li><strong>Captured JA4:</strong> <code>t13d131000_f57a46bbacb6_a089bac06eae</code> (Notice the <code>d</code> at character 4!)</li>
+</ul>
+<p><strong>Why did they do this?</strong> Attackers scan cloud IP ranges (like Azure and AWS) injecting popular domains like <code>bravofly.com</code> into the SNI field to hunt for <strong>forgotten origin servers or dangling DNS records</strong> (Subdomain Takeover / Virtual-Host hunting), or to make their outbound scanning traffic look like harmless travel-booking traffic to their local firewall.</p>
+
+<h3>Finding 2: How JA4's 4th Character (`i`) Caught 18,240+ Automated Scanner Bots</h3>
+<p>Over <strong>18,240 TLS attacks</strong> (from <code>20.169.33.201</code>, <code>94.102.49.190</code>, <code>184.105.247.252</code>, <code>45.138.12.51</code>, and <code>138.197.176.235</code>) tried to look like normal web clients by filling in the SNI field—<strong>but their scripts automatically copied our raw IP address (<code>"20.248.231.206"</code>) into the DNS hostname slot!</strong></p>
+<ul>
+  <li>According to internet standards (RFC 6066), a real web browser (Chrome, Edge, Safari, Firefox) will <strong>never</strong> put a raw IP address inside the SNI hostname extension.</li>
+  <li>When our honeypot's JA4 engine sees an IP address inside the SNI field instead of a domain name, it sets the 4th character of JA4 to <strong><code>i</code> (IP literal)</strong> instead of <code>d</code> (Domain): <code>t13<strong>i</strong>181100_...</code> and <code>t12<strong>i</strong>520900_...</code>.</li>
+  <li><strong>Defensive Takeaway:</strong> In any SOC, a single filter rule matching <code>t13i*</code> or <code>t12i*</code> catches lazy automated IP scanners with zero false positives!</li>
+</ul>
+
+<h3>Finding 3: HTTP Proxy &amp; Cloud Metadata Fronting (`http_attacks.jsonl`)</h3>
+<p>Once the TCP/TLS connection opened, several attackers sent HTTP requests with external domains in the request line to test if our server (`20.248.231.206`) could be tricked into forwarding their traffic (Open Proxy / SSRF):</p>
+
+<div class="tw"><table>
+  <thead>
+    <tr>
+      <th>Attacker IP</th>
+      <th>Foreign Host Injected</th>
+      <th>Exact Request Captured on <code>20.248.231.206</code></th>
+      <th>Attacker's Goal</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong><code>177.16.198.72</code></strong></td>
+      <td><code>a7x.overflow.biz</code></td>
+      <td><code>GET http://a7x.overflow.biz/hachk.php</code><br>(User-Agent: <code>proxy-prefilter/1</code>)</td>
+      <td>Testing if our Azure IP will relay botnet check-in traffic to their C2 server.</td>
+    </tr>
+    <tr>
+      <td><strong><code>45.153.34.230</code></strong></td>
+      <td><code>ip-api.com</code></td>
+      <td><code>GET http://ip-api.com/json/</code> &amp; <code>CONNECT ip-api.com:80</code></td>
+      <td>Testing if our server can be used as an anonymous proxy tunnel to hide their IP.</td>
+    </tr>
+    <tr>
+      <td><strong><code>65.49.1.184</code></strong></td>
+      <td><code>api.ipify.org</code></td>
+      <td><code>GET http://api.ipify.org/?format=json</code></td>
+      <td>Checking if our server masks their real IP address.</td>
+    </tr>
+    <tr>
+      <td><strong><code>20.169.33.201</code></strong></td>
+      <td><code>169.254.169.254</code></td>
+      <td><code>GET http://169.254.169.254/latest/meta-data/</code></td>
+      <td><strong>SSRF Attack:</strong> Trying to trick our server into fetching internal Azure cloud credentials!</td>
+    </tr>
+  </tbody>
+</table></div>
+
+<div class="cta">
+  <h3>Continue to Part 4: TLS CPU Asymmetry, `/proc/1/stat` Profiling &amp; 1,000-Connection Stampedes</h3>
+  <p>What happens when an attacker fires 50 or 1,000 of these Chrome-disguised TLS requests at our honeypot? In Part 4, we measure the exact kernel CPU ticks (`/proc/1/stat`) and watch what happens when 1,000 connections hit `listen(100)` at the exact same millisecond.</p>
+  <a href="/blog/tls-cpu-asymmetry-concurrency-part-4/">Read Part 4: TLS CPU &amp; 1,000-Request Stress Test &rarr;</a>
+  <a href="https://github.com/yogaroratv-svg/raw-tcp-tls-ja4-assembly-lab" target="_blank" rel="noopener">View Full Code on GitHub</a>
+</div>
+
+</article></main>
+<footer><div class="wrap"><span>© 2020–2026 Global SOC Pty Ltd · ABN 46 646 550 094</span><span><a href="/blog/">All Blog Posts</a> · <a href="/privacy.html">Privacy</a></span></div></footer>
+</body>
+</html>
