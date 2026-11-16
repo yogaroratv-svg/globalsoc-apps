@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting AI Key, Coding-Agent Token and MCP Server Probing in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-ai-credential-mcp-probing/">
+<meta name="description" content="My honeypot received 178 requests for AI API keys, coding-agent token files and MCP endpoints, on a server with none of them. I walk through the wordlists and the one MCP handshake I captured, then give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint, including rules for the developer machines and agent hosts where these secrets actually live.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-ai-credential-mcp-probing/">
+<meta property="og:title" content="Detecting AI Key, Coding-Agent Token and MCP Server Probing in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="My honeypot received 178 requests for AI API keys, coding-agent token files and MCP endpoints, on a server with none of them. I walk through the wordlists and the one MCP handshake I captured, then give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint, including rules for the developer machines and agent hosts where these secrets actually live.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting AI Key, Coding-Agent Token and MCP Server Probing in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="My honeypot received 178 requests for AI API keys, coding-agent token files and MCP endpoints, on a server with none of them. I walk through the wordlists and the one MCP handshake I captured, then give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint, including rules for the developer machines and agent hosts where these secrets actually live.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-ai-credential-mcp-probing/#article",
+      "url": "https://globalsoc.com.au/blog/detect-ai-credential-mcp-probing/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-ai-credential-mcp-probing/"
+      },
+      "headline": "Scanners Are Hunting Claude, Codex and MCP Credentials: How to Detect It and Protect Your Agents",
+      "description": "My honeypot received 178 requests for AI API keys, coding-agent token files and MCP endpoints, on a server with none of them. I walk through the wordlists and the one MCP handshake I captured, then give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint, including rules for the developer machines and agent hosts where these secrets actually live.",
+      "datePublished": "2026-11-11",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Scanners Are Hunting Claude, Codex and MCP Credentials: How to Detect It and Protect Your Agents",
+          "item": "https://globalsoc.com.au/blog/detect-ai-credential-mcp-probing/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-11">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 11 November 2026</p>
+<h1>Scanners Are Hunting Claude, Codex and MCP Credentials: How to Detect It and Protect Your Agents</h1>
+<p>My honeypot received 178 requests for AI API keys, coding-agent token files and MCP endpoints, on a server with none of them. I walk through the wordlists and the one MCP handshake I captured, then give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint, including rules for the developer machines and agent hosts where these secrets actually live.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint and Egress Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint and egress queries are written for developer workstations and agent hosts, so adapt the process names and allowlists to your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>My honeypot runs no model, no agent and no MCP server. It still got 178 requests from 73 IPs for 101 AI-related paths:</p>
+
+<table><thead><tr><th>Group</th><th>Requests</th><th>Source IPs</th><th>Distinct paths</th></tr></thead><tbody>
+<tr><td>MCP server endpoints</td><td>74</td><td>65</td><td>4</td></tr>
+<tr><td>Model API key files</td><td>53</td><td>4</td><td>48</td></tr>
+<tr><td>AI coding-tool config and tokens</td><td>45</td><td>5</td><td>44</td></tr>
+<tr><td>Model API endpoints</td><td>4</td><td>2</td><td>4</td></tr>
+<tr><td>llms.txt</td><td>2</td><td>1</td><td>1</td></tr>
+</tbody></table>
+
+<p>The first one came about four hours after the server went online, from a tool that names its purpose: <code>opendirme-credhunt/gen2+riskd-baseline-20261012-1-g5b5b7ae</code>. It asked for exactly the files you'd want if you were stealing an AI developer's identity:</p>
+<pre><code>2026-10-22 09:00:34  GET / HTTP/1.1  -&gt; 206
+2026-10-22 09:00:34  GET /.local/share/opencode/auth.json HTTP/1.1  -&gt; 404
+2026-10-22 09:00:35  GET /.claude/.credentials.json HTTP/1.1  -&gt; 404
+2026-10-22 09:00:35  GET /.codex/auth.json HTTP/1.1  -&gt; 404
+2026-10-22 09:00:35  GET /.credentials.json HTTP/1.1  -&gt; 404
+2026-10-22 09:00:35  GET /auth.json HTTP/1.1  -&gt; 404
+2026-10-22 09:00:35  GET /.env HTTP/1.1  -&gt; 404
+2026-10-22 09:00:35  GET /.hermes/.env HTTP/1.1  -&gt; 404
+2026-10-22 09:00:35  GET /.grok/auth.json HTTP/1.1  -&gt; 404
+2026-10-22 09:00:36  GET /.openclaw/openclaw.json HTTP/1.1  -&gt; 404
+2026-10-22 09:00:36  GET /.openclaw/.env HTTP/1.1  -&gt; 404
+2026-10-22 09:00:36  GET /.git/config HTTP/1.1  -&gt; 404</code></pre>
+
+<p>Those are the on-disk login stores of Claude Code, Codex CLI, opencode and Grok. They only pay off when a web root is someone's home directory or a project folder an agent has been run in. That happens more than you'd think: <code>python3 -m http.server</code> in the wrong folder, a dev container with its port published, an agent that "helpfully" started a static server.</p>
+
+<p>The defender's lesson isn't really about web servers. These secrets live on developer laptops, build agents and agent hosts. The scanners have shown us which files they want. So the useful detections are on those machines, and on the network paths where a stolen key gets used.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Recon</span> Step 1: Wordlists with AI paths added</h3>
+<p>The technique is the same as for <code>/.env</code>, just with new entries (T1595.003). One scanner built its list by combining provider names with config extensions:</p>
+<pre><code>22:41:51  GET /bedrock/credentials.json HTTP/1.1  -&gt; 404
+22:41:57  GET /bedrock-credentials HTTP/1.1  -&gt; 404
+22:41:57  GET /bedrock-credentials.json HTTP/1.1  -&gt; 404
+22:41:57  GET /bedrock-credentials.yml HTTP/1.1  -&gt; 404
+22:41:57  GET /bedrock/credentials HTTP/1.1  -&gt; 404
+22:42:06  GET /.env.bedrock HTTP/1.1  -&gt; 404
+22:42:13  GET /aws-bedrock.env HTTP/1.1  -&gt; 404
+22:42:16  GET /bedrock-api-key.env HTTP/1.1  -&gt; 404
+22:42:16  GET /bedrock.env HTTP/1.1  -&gt; 404
+22:42:16  GET /bedrock/.env HTTP/1.1  -&gt; 404
+22:42:17  GET /config/bedrock.env HTTP/1.1  -&gt; 404
+22:42:19  GET /gemini.env HTTP/1.1  -&gt; 404
+22:42:29  GET /.amazonq/mcp.json HTTP/1.1  -&gt; 404
+22:42:30  GET /.claude.json HTTP/1.1  -&gt; 404
+22:42:31  GET /.claude/settings.local.json HTTP/1.1  -&gt; 404
+22:42:31  GET /.claude/settings.json HTTP/1.1  -&gt; 404
+22:42:31  GET /.config/claude.json HTTP/1.1  -&gt; 404
+22:42:32  GET /.codex/config.toml HTTP/1.1  -&gt; 404
+22:42:32  GET /.cursor/mcp.json HTTP/1.1  -&gt; 404
+22:42:33  GET /.gemini/settings.json HTTP/1.1  -&gt; 404
+22:42:33  GET /.junie/mcp.json HTTP/1.1  -&gt; 404
+22:42:34  GET /.mcp.json HTTP/1.1  -&gt; 404
+22:42:36  GET /.zed/settings.json HTTP/1.1  -&gt; 404
+22:42:36  GET /.vscode/mcp.json HTTP/1.1  -&gt; 404
+22:42:45  GET /aws-bedrock.config HTTP/1.1  -&gt; 404
+22:42:46  GET /aws-bedrock.json HTTP/1.1  -&gt; 404
+22:42:46  GET /aws-bedrock.yml HTTP/1.1  -&gt; 404
+22:42:49  GET /azure-openai.config HTTP/1.1  -&gt; 404
+22:42:49  GET /azure-openai.json HTTP/1.1  -&gt; 404
+22:42:50  GET /azure-openai.yml HTTP/1.1  -&gt; 404
+22:42:50  GET /bedrock-api-key.json HTTP/1.1  -&gt; 404
+22:42:51  GET /bedrock-api-key.txt HTTP/1.1  -&gt; 404
+22:42:51  GET /bedrock-api-key.yml HTTP/1.1  -&gt; 404
+22:42:51  GET /bedrock.config HTTP/1.1  -&gt; 404
+22:42:51  GET /bedrock.json HTTP/1.1  -&gt; 404
+22:42:51  GET /bedrock.yml HTTP/1.1  -&gt; 404
+22:42:52  GET /bedrock/config.json HTTP/1.1  -&gt; 404
+22:42:52  GET /claude.json HTTP/1.1  -&gt; 404
+22:42:52  GET /claude_desktop_config.json HTTP/1.1  -&gt; 404
+22:42:52  GET /cline_mcp_settings.json HTTP/1.1  -&gt; 404
+22:42:55  GET /config/azure-openai.json HTTP/1.1  -&gt; 404
+22:42:55  GET /config/bedrock.config HTTP/1.1  -&gt; 404
+22:42:56  GET /config/bedrock.json HTTP/1.1  -&gt; 404
+22:42:56  GET /config/bedrock.yml HTTP/1.1  -&gt; 404
+22:42:56  GET /config/gemini.json HTTP/1.1  -&gt; 404
+22:42:57  GET /config/openai.json HTTP/1.1  -&gt; 404
+22:43:00  GET /gemini.config HTTP/1.1  -&gt; 404
+22:43:01  GET /gemini.json HTTP/1.1  -&gt; 404
+22:43:01  GET /gemini.yml HTTP/1.1  -&gt; 404
+22:43:03  GET /mcp.json HTTP/1.1  -&gt; 404
+22:43:03  GET /mcp.yaml HTTP/1.1  -&gt; 404
+22:43:04  GET /mcp.yml HTTP/1.1  -&gt; 404
+22:43:04  GET /mcp_config.json HTTP/1.1  -&gt; 404
+22:43:04  GET /my/openaikey HTTP/1.1  -&gt; 404
+22:43:04  GET /openai.config HTTP/1.1  -&gt; 404
+22:43:05  GET /openai.json HTTP/1.1  -&gt; 404
+22:43:05  GET /openai.yml HTTP/1.1  -&gt; 404
+22:43:05  GET /opencode.json HTTP/1.1  -&gt; 404</code></pre>
+<p>Another asked for 18 directories in nine seconds. They were the per-project folders of Claude Code, Cursor, opencode, Kilo, Windsurf, Cline, Roo, Gemini, Qwen, Continue, Aider, Codex, Amazon Q, Kiro, Zed, Trae, Augment and Junie. A 301 or a 403 on any of them tells the scanner the folder exists.</p>
+
+<h3><span class="kc">Credential Access</span> Step 2: Read the token file</h3>
+<p>If one of these files is served, it's T1552.001 Credentials in Files. A model API key is billed by usage and resold. A coding agent's token is worse, because it carries the user's subscription and whatever repository and tool access the agent has. MCP config files (<code>.mcp.json</code>, <code>.cursor/mcp.json</code>, <code>claude_desktop_config.json</code>) usually hold API keys for every MCP server listed in their <code>env</code> blocks.</p>
+
+<h3><span class="kc">Recon</span> Step 3: Find MCP servers</h3>
+<p>The Model Context Protocol lets an AI client call tools on a remote server over HTTP, on <code>/mcp</code> or <code>/sse</code> by convention. A scanner calling itself Infrawatch probed those paths on 18 different days. Each visit was spread across several addresses so no single IP sent more than a request or two:</p>
+<pre><code>2026-10-22 23:11:13  69.5.169.245     GET / HTTP/1.1  -&gt; 200
+2026-10-22 23:11:33  193.176.31.250   GET / HTTP/1.1  -&gt; 200
+2026-10-22 23:11:33  81.19.216.74     GET /favicon.ico HTTP/1.1  -&gt; 404
+2026-10-22 23:11:34  185.223.235.34   GET /mcp/ HTTP/1.1  -&gt; 404
+2026-10-22 23:11:34  89.21.67.181     GET / HTTP/1.1  -&gt; 200
+2026-10-22 23:11:34  81.19.216.100    GET /mcp HTTP/1.1  -&gt; 404
+2026-10-22 23:11:34  193.176.31.248   GET /api/mcp HTTP/1.1  -&gt; 404
+2026-10-22 23:11:35  81.19.216.70     GET /sse HTTP/1.1  -&gt; 404</code></pre>
+<p>Its MCP probes came from 64 addresses in five <code>/24</code> networks. A per-IP rate limit never sees that.</p>
+
+<h3><span class="kc">Discovery</span> Step 4: Speak the protocol</h3>
+<p>One scanner sent a real MCP <code>initialize</code>:</p>
+<pre><code>{
+  "jsonrpc": "2.0",
+  "id": 4205234,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-06-18",
+    "capabilities": {
+      "sampling": {},
+      "elicitation": {},
+      "roots": {
+        "listChanged": true
+      }
+    },
+    "clientInfo": {
+      "name": "internet-census-mcp-scanner",
+      "version": "1.0.0"
+    }
+  }
+}</code></pre>
+<p>A live server would reply with its name, version and capabilities. A hostile client's next calls are <code>tools/list</code> to see what the server can do, then <code>tools/call</code> to do it. On an MCP server with a shell, file or database tool and no authentication, that's remote code execution through a feature, not a bug (T1190, T1059).</p>
+
+<h3><span class="kc">Actions on Objectives</span> Step 5: Use the key</h3>
+<p>A stolen model key gets used from somewhere else (T1078.004). A stolen agent token can be used to act as the developer: read their repos, run their tools, and spend their quota.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>Infrawatch's five <code>/24</code>s; the wordlist runners</td><td>Pointless against Infrawatch, which rotates per request.</td></tr>
+<tr><td>Network artefacts</td><td>UAs <code>opendirme-credhunt</code>, <code>Infrawatch/1.0</code>; MCP <code>clientInfo</code> <code>internet-census-mcp-scanner</code></td><td>Useful labels, and trivially changed.</td></tr>
+<tr><td>Tools</td><td>AI-path wordlists; one scanner distributed across many source IPs</td><td>Detect by path set and by "many sources, one User-Agent, one path set".</td></tr>
+<tr><td>TTPs</td><td>Agent token files read by something other than the agent; AI API calls from unapproved processes; MCP servers spawning shells</td><td>The highest-value rules, and they're on the endpoint, where the secrets actually are.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Web-Layer Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used the CIM <code>Web</code> data model.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. AI credential and agent-config paths (T1595.003, T1552.001)</h3>
+<p><span class="org orgB">Org B</span> Tested: 89 requests for 82 paths from 7 sources.</p>
+<pre><code>let AiPaths = @"(?i)/(\.claude|\.codex|\.cursor|\.gemini|\.opencode|\.local/share/opencode|\.grok|\.hermes|\.openclaw|\.kilo|\.kilocode|\.windsurf|\.roo|\.qwen|\.continue|\.aider|\.amazonq|\.kiro|\.zed|\.trae|\.augment|\.junie|\.clinerules|\.huggingface|\.config/huggingface)(/|$)|(claude_desktop_config|cline_mcp_settings|\.mcp)\.json|/(\.env\.)?(openai|anthropic|claude|gemini|bedrock|aws-bedrock|bedrock-api-key|bedrock-credentials|azure-openai|huggingface|llm)[\w\-]*\.(env|json|ya?ml|config|txt)$|/bedrock(/|\.env|-)";
+WebAccess
+| where Url matches regex AiPaths
+| summarize Requests = count(), Paths = dcount(Url), Sources = dcount(SrcIp)</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web by Web.src Web.dest Web.url Web.status
+| rename Web.* as *
+| regex url="(?i)/(\.claude|\.codex|\.cursor|\.gemini|\.opencode|\.local/share/opencode|\.grok|\.hermes|\.openclaw|\.kilo|\.kilocode|\.windsurf|\.roo|\.qwen|\.continue|\.aider|\.amazonq|\.kiro|\.zed|\.trae|\.augment|\.junie|\.clinerules|\.huggingface|\.config/huggingface)(/|$)|(claude_desktop_config|cline_mcp_settings|\.mcp)\.json|/(\.env\.)?(openai|anthropic|claude|gemini|bedrock|aws-bedrock|bedrock-api-key|bedrock-credentials|azure-openai|huggingface|llm)[\w\-]*\.(env|json|ya?ml|config|txt)$|/bedrock(/|\.env|-)"
+| stats sum(count) as requests dc(url) as paths values(status) as status by src dest</code></pre>
+<p>Pair it with the "secret file actually served" rule from the <a href="/blog/detect-env-git-secret-hunting/">.env post</a>. Any 200 here that isn't your home page is critical.</p>
+
+<h3>W2. Distributed MCP discovery</h3>
+<p><span class="org orgB">Org B</span> Tested: 19 five-minute windows, all from Infrawatch, with up to 4 source IPs per window.</p>
+<pre><code>WebAccess
+| where Url in ("/mcp", "/mcp/", "/sse", "/api/mcp")
+| summarize Sources = dcount(SrcIp), Paths = make_set(Url), DurationSec = datetime_diff("second", max(TimeGenerated), min(TimeGenerated))
+          by UserAgent, Window = bin(TimeGenerated, 5m)
+| where Sources &gt;= 3</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web where Web.url IN ("/mcp","/mcp/","/sse","/api/mcp")
+    by _time span=5m Web.http_user_agent Web.src Web.url
+| rename Web.* as *
+| stats dc(src) as sources values(url) as paths by _time http_user_agent
+| where sources &gt;= 3</code></pre>
+<p>On a server that doesn't run MCP, it's informational. On one that does, it means you're on a target list. Check the next rule.</p>
+
+<h3>W3. MCP JSON-RPC from unknown clients</h3>
+<p><span class="org orgB">Org B</span> Tested: one <code>initialize</code> from the census scanner, plus my own scanner's <code>initialize</code> and <code>tools/list</code>.</p>
+<pre><code>WebAccess
+| where Method == "POST" and Body has "\"jsonrpc\"" and Body has_any ("\"initialize\"", "\"tools/list\"", "\"tools/call\"")
+| extend Rpc = extract(@"""method""\s*:\s*""([^""]+)""", 1, Body),
+         Client = extract(@"""clientInfo""\s*:\s*\{[^}]*""name""\s*:\s*""([^""]+)""", 1, Body)
+| summarize Requests = count() by SrcIp, Url, Rpc, Client</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access method=POST "\"jsonrpc\"" ("\"initialize\"" OR "\"tools/list\"" OR "\"tools/call\"")
+| rex "\"method\"\s*:\s*\"(?&lt;rpc&gt;[^\"]+)\""
+| rex "\"clientInfo\"\s*:\s*\{[^}]*\"name\"\s*:\s*\"(?&lt;client&gt;[^\"]+)\""
+| stats count by clientip uri rpc client</code></pre>
+<p>If you run a remote MCP server, keep a list of the client names and source networks you expect. A <code>tools/list</code> or <code>tools/call</code> from anyone else is high severity. It means they got past discovery, and probably past authentication too.</p>
+
+<h2 id="endpoint">5. Endpoint and Egress Detections</h2>
+<p>Here's where the secrets actually live. These rules are for developer workstations, build agents and agent hosts.</p>
+
+<h3>E1. Agent token files touched by something other than the agent (T1552.001)</h3>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let AgentFiles = dynamic([".claude/.credentials.json", ".codex/auth.json", ".local/share/opencode/auth.json", ".grok/auth.json",
+                   ".config/gcloud/application_default_credentials.json", ".aws/credentials", ".huggingface/token",
+                   "claude_desktop_config.json", ".cursor/mcp.json", ".mcp.json"]);
+let AgentBinaries = dynamic(["claude", "codex", "opencode", "cursor", "code", "node", "gcloud", "aws", "huggingface-cli"]);
+DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where ProcessCommandLine has_any (AgentFiles)
+| where FileName !in~ (AgentBinaries)
+| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine,
+          InitiatingProcessFileName, InitiatingProcessCommandLine</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_simpleName=ProcessRollup2
+    (CommandLine="*.claude/.credentials.json*" OR CommandLine="*.codex/auth.json*"
+     OR CommandLine="*opencode/auth.json*" OR CommandLine="*.grok/auth.json*"
+     OR CommandLine="*application_default_credentials.json*" OR CommandLine="*.aws/credentials*"
+     OR CommandLine="*.huggingface/token*" OR CommandLine="*claude_desktop_config.json*"
+     OR CommandLine="*.cursor/mcp.json*" OR CommandLine="*.mcp.json*")
+    NOT FileName IN ("claude","codex","opencode","cursor","code","node","gcloud","aws","huggingface-cli")
+| table _time ComputerName UserName ParentBaseFileName FileName CommandLine</code></pre>
+<p>Infostealers and post-exploitation scripts copy these files by name with <code>cat</code>, <code>cp</code>, <code>tar</code> or <code>curl -F</code>. The agent itself reads them without its path showing up in the command line, so this list stays quiet in normal use. High severity.</p>
+
+<h3>E2. AI API calls from processes you didn't approve (T1078.004)</h3>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let ApprovedAiClients = dynamic(["claude", "codex", "cursor", "code", "msedge.exe", "chrome.exe"]);
+DeviceNetworkEvents
+| where Timestamp &gt; ago(7d)
+| where RemoteUrl has_any ("api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com",
+                           "bedrock-runtime", "openai.azure.com", "api.x.ai", "openrouter.ai")
+| where InitiatingProcessFileName !in~ (ApprovedAiClients)
+| summarize Connections = count(), Urls = make_set(RemoteUrl, 10), FirstSeen = min(Timestamp)
+          by DeviceName, InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessAccountName</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_simpleName=DnsRequest
+    (DomainName="api.anthropic.com" OR DomainName="api.openai.com" OR DomainName="generativelanguage.googleapis.com"
+     OR DomainName="bedrock-runtime.*" OR DomainName="*.openai.azure.com" OR DomainName="api.x.ai" OR DomainName="openrouter.ai")
+| join type=inner aid ContextProcessId_decimal
+    [ search index=crowdstrike event_simpleName=ProcessRollup2
+      | rename TargetProcessId_decimal as ContextProcessId_decimal
+      | fields aid ContextProcessId_decimal FileName ImageFileName ]
+| search NOT FileName IN ("claude","codex","cursor","code","msedge.exe","chrome.exe")
+| stats count values(DomainName) as domains min(_time) as first by ComputerName FileName ImageFileName</code></pre>
+<p>This catches a stolen key being used from inside your network by a script or implant, and catches shadow AI as a side effect. Start by running it as a hunt to build the allowlist, then turn it into a medium-severity rule.</p>
+
+<h3>E3. MCP server spawns a shell (T1059)</h3>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessCommandLine has_any ("mcp", "modelcontextprotocol", "fastmcp")
+| where FileName in~ ("sh", "bash", "dash", "zsh", "powershell.exe", "cmd.exe", "curl", "wget")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessCommandLine, FileName, ProcessCommandLine</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_simpleName=ProcessRollup2
+    FileName IN ("sh","bash","dash","zsh","powershell.exe","cmd.exe","curl","wget")
+| join type=inner aid ParentProcessId_decimal
+    [ search index=crowdstrike event_simpleName=ProcessRollup2
+        (CommandLine="*mcp*" OR CommandLine="*modelcontextprotocol*" OR CommandLine="*fastmcp*")
+      | rename TargetProcessId_decimal as ParentProcessId_decimal, CommandLine as ParentCommandLine
+      | fields aid ParentProcessId_decimal ParentCommandLine ]
+| table _time ComputerName UserName ParentCommandLine FileName CommandLine</code></pre>
+<p>Some MCP servers run commands on purpose (shell and git tools). For those, alert when the parent was reached over the network rather than through local stdio, or when the command is a downloader. For everything else, any shell is high severity.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>W1 or W2 only:</strong> confirm nothing was served. Then search your estate for web servers whose document root is a home directory or a project folder.</li>
+<li><strong>A W1 hit served a real file, or E1 fired:</strong> revoke the token at the provider (sign out the Claude Code or Codex session, rotate the API key), and check the provider's usage console for activity you don't recognise.</li>
+<li><strong>W3 <code>tools/call</code> or E3:</strong> treat the MCP host as compromised. <span class="org orgA">Org A</span> Network-contain it in Falcon. <span class="org orgB">Org B</span> Isolate it in Defender. Then rotate every secret in that server's <code>env</code> block.</li>
+<li><strong>E2:</strong> find out what the unapproved process is. If it's a script someone wrote, that's a policy conversation. If it's unsigned and new, treat it as an implant.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Never serve a home directory or project root over HTTP. Check what <code>python3 -m http.server</code> and dev containers expose.</li>
+<li>Use short-lived, scoped tokens for agents where the provider supports it, and set spend limits on API keys.</li>
+<li>Put authentication in front of every remote MCP server, and don't expose shell or file tools on servers that are reachable from the network.</li>
+<li>Keep MCP server secrets in a secret store rather than in plain-text <code>env</code> blocks in config files that get committed and copied.</li>
+<li>Route AI API traffic through your proxy so E2 has data to work with.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>Credential hunter</td><td><code>34.213.231.51</code>, UA <code>opendirme-credhunt/…</code></td><td>Agent token files</td></tr>
+<tr><td>Wordlist runs</td><td><code>45.138.12.179</code> (svs), <code>54.170.28.185</code>, <code>79.124.58.22</code></td><td>Provider key files; agent folder census</td></tr>
+<tr><td>MCP census</td><td>UA <code>Infrawatch/1.0</code> from <code>89.21.67.0/24</code>, <code>185.223.235.0/24</code>, <code>81.19.216.0/24</code>, <code>193.176.31.0/24</code>, <code>69.5.169.0/24</code></td><td>Distributed <code>/mcp</code>, <code>/sse</code> discovery</td></tr>
+<tr><td>MCP handshake</td><td><code>45.156.129.80</code>, client <code>internet-census-mcp-scanner</code></td><td>JSON-RPC <code>initialize</code></td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
