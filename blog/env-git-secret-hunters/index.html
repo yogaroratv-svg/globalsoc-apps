@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <title>.env and .git Scanners: 3,307 Requests for Secrets on a PHP Honeypot | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/env-git-secret-hunters/">
-<meta name="description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
+<meta name="description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 884 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/env-git-secret-hunters/">
 <meta property="og:title" content=".env and .git Scanners: 3,307 Requests for Secrets on a PHP Honeypot | Global SOC">
-<meta property="og:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
+<meta property="og:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 884 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content=".env and .git Scanners: 3,307 Requests for Secrets on a PHP Honeypot | Global SOC">
-<meta name="twitter:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
+<meta name="twitter:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 884 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -27,7 +27,7 @@
         "@id": "https://globalsoc.com.au/blog/env-git-secret-hunters/"
       },
       "headline": "3,307 Requests for Files That Should Never Be on a Web Server",
-      "description": "One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.",
+      "description": "One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 884 paths they asked for, who asked, and the AndroxGh0st check that came with them.",
       "datePublished": "2026-11-15",
       "author": {
         "@type": "Person",
@@ -111,8 +111,8 @@ td code{overflow-wrap:anywhere}
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
 <h1>3,307 Requests for Files That Should Never Be on a Web Server</h1>
-<p>One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.</p>
-<nav class="toc"><strong>Key Sections:</strong> Summary · What They Ask For · .env in 479 Places · Git, Cloud Keys, Backups · Who Is Asking · 283 Paths in Two Minutes · AndroxGh0st · Did Anything Leak? · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
+<p>One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 884 paths they asked for, who asked, and the AndroxGh0st check that came with them.</p>
+<nav class="toc"><strong>Key Sections:</strong> Summary · What They Ask For · .env in 480 Places · Git, Cloud Keys, Backups · Who Is Asking · 283 Paths in Two Minutes · AndroxGh0st · Did Anything Leak? · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
 <p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). Every request on this page is shown as it was logged.</p>
 
 <h2>1. Summary</h2>
@@ -146,7 +146,7 @@ td code{overflow-wrap:anywhere}
 <tr><td>SSH and TLS private keys</td><td>16</td><td>4</td><td>10</td><td><code>/.ssh/id_rsa</code></td></tr>
 </tbody></table>
 
-<h2>3. .env in 479 Places</h2>
+<h2>3. .env in 480 Places</h2>
 <p>A <code>.env</code> file holds an application's settings as <code>KEY=value</code> lines: database password, mail server login, payment and cloud API keys, the framework's signing key. Laravel, Symfony, Node, Django and Rails projects all use one. It belongs one level above the web root. When the project root is the web root, <code>/.env</code> is a public URL.</p>
 <p>2,000 requests asked for 480 variations. The 40 most requested:</p>
 <pre><code> 318  /.env
