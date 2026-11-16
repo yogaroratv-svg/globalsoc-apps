@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Non-HTTP Traffic on Port 80: TLS, RDP, Databases, ICS and RAT Probes in a Web Honeypot | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/non-http-traffic-on-port-80/">
+<meta name="description" content="Our honeypot&#x27;s web port received TLS handshakes, HTTP/2 prefaces, fake Gh0st and njRAT victims hunting for malware controllers, and in 15 hours of packet capture probes for 17 other protocols, from RDP and MongoDB to Siemens S7 and DNP3. Most of them never reached nginx at all. Every probe decoded.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/non-http-traffic-on-port-80/">
+<meta property="og:title" content="Non-HTTP Traffic on Port 80: TLS, RDP, Databases, ICS and RAT Probes in a Web Honeypot | Global SOC">
+<meta property="og:description" content="Our honeypot&#x27;s web port received TLS handshakes, HTTP/2 prefaces, fake Gh0st and njRAT victims hunting for malware controllers, and in 15 hours of packet capture probes for 17 other protocols, from RDP and MongoDB to Siemens S7 and DNP3. Most of them never reached nginx at all. Every probe decoded.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Non-HTTP Traffic on Port 80: TLS, RDP, Databases, ICS and RAT Probes in a Web Honeypot | Global SOC">
+<meta name="twitter:description" content="Our honeypot&#x27;s web port received TLS handshakes, HTTP/2 prefaces, fake Gh0st and njRAT victims hunting for malware controllers, and in 15 hours of packet capture probes for 17 other protocols, from RDP and MongoDB to Siemens S7 and DNP3. Most of them never reached nginx at all. Every probe decoded.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/non-http-traffic-on-port-80/#article",
+      "url": "https://globalsoc.com.au/blog/non-http-traffic-on-port-80/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/non-http-traffic-on-port-80/"
+      },
+      "headline": "Not Everything on Port 80 Is HTTP: 738 Strange Requests and a 17-Protocol Census",
+      "description": "Our honeypot's web port received TLS handshakes, HTTP/2 prefaces, fake Gh0st and njRAT victims hunting for malware controllers, and in 15 hours of packet capture probes for 17 other protocols, from RDP and MongoDB to Siemens S7 and DNP3. Most of them never reached nginx at all. Every probe decoded.",
+      "datePublished": "2026-11-15",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Not Everything on Port 80 Is HTTP: 738 Strange Requests and a 17-Protocol Census",
+          "item": "https://globalsoc.com.au/blog/non-http-traffic-on-port-80/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-15">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
+<h1>Not Everything on Port 80 Is HTTP: 738 Strange Requests and a 17-Protocol Census</h1>
+<p>Our honeypot&#x27;s web port received TLS handshakes, HTTP/2 prefaces, fake Gh0st and njRAT victims hunting for malware controllers, and in 15 hours of packet capture probes for 17 other protocols, from RDP and MongoDB to Siemens S7 and DNP3. Most of them never reached nginx at all. Every probe decoded.</p>
+<nav class="toc"><strong>Key Sections:</strong> Summary · What nginx Writes Down · TLS on Port 80 · HTTP/2 Prefaces · Hunting for RAT Controllers · A 17-Protocol Census · Why nginx Never Saw It · Proxy Checks · Odds and Ends · IOCs · Detection (KQL) · Mitigation</nav>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC), and a packet capture from 15 Nov 09:06 to 16 Nov 00:10 UTC. Byte dumps are from the capture.</p>
+
+<h2>1. Summary</h2>
+<p>Port 80 is the web port, but nothing forces a client to speak HTTP to it. In 24 days nginx logged 738 requests from 286 addresses that were not valid HTTP at all (400 x735, 200 x3). And 15 hours of packet capture showed that most non-HTTP probing never shows up in the web log.</p>
+<ul>
+<li>520 were TLS handshakes from 250 addresses: clients trying HTTPS on the plain HTTP port.</li>
+<li>94 were HTTP/2 connection prefaces, checking for unencrypted HTTP/2.</li>
+<li>13 came from two addresses pretending to be computers infected with the Gh0st and njRAT remote access trojans. A real controller would answer them, and so give itself away.</li>
+<li>In 15 hours the capture recorded 125 probes for 17 other protocols (RDP, SQL Server, Oracle, MongoDB, Redis, memcached, PostgreSQL, SMB, MQTT, Siemens S7, DNP3, IPMI, PPTP, X11, Niagara Fox, DNS and one we could not identify) from nine addresses. Not one of them reached nginx: the scanner's own operating system reset each connection before the probe was sent.</li>
+</ul>
+
+<h2>2. What nginx Writes Down</h2>
+<p>nginx expects a request line ending in a line break. When the bytes are not HTTP, it answers <code>400 Bad Request</code> and logs whatever came before the first line break as the "request", with no method, no path and a request size of 0. For binary protocols that is a fragment, sometimes a few bytes, sometimes nothing. That fragment is still enough to tell most protocols apart:</p>
+<table><thead><tr><th>What the first bytes are</th><th>Lines</th><th>Source IPs</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
+<tr><td>TLS handshake (ClientHello)</td><td>520</td><td>250</td><td>2026-10-22 08:39</td><td>2026-11-15 08:19</td></tr>
+<tr><td>HTTP/2 connection preface</td><td>94</td><td>87</td><td>2026-10-23 22:07</td><td>2026-11-09 01:32</td></tr>
+<tr><td>TPKT (RDP / Siemens S7)</td><td>41</td><td>10</td><td>2026-10-22 19:53</td><td>2026-11-08 17:37</td></tr>
+<tr><td>Other binary</td><td>24</td><td>11</td><td>2026-10-22 17:39</td><td>2026-11-05 09:39</td></tr>
+<tr><td>Empty (connection, no line)</td><td>14</td><td>6</td><td>2026-10-22 19:56</td><td>2026-11-08 13:17</td></tr>
+<tr><td>Proxy CONNECT</td><td>12</td><td>9</td><td>2026-10-22 21:01</td><td>2026-11-05 07:24</td></tr>
+<tr><td>Fragment of a shell command</td><td>7</td><td>7</td><td>2026-10-23 09:13</td><td>2026-11-07 02:40</td></tr>
+<tr><td>njRAT / RAT C2 probes</td><td>7</td><td>2</td><td>2026-10-24 12:39</td><td>2026-11-07 12:53</td></tr>
+<tr><td>Gh0st RAT login</td><td>6</td><td>2</td><td>2026-10-24 12:39</td><td>2026-11-08 07:41</td></tr>
+<tr><td>SOCKS4/5 greeting</td><td>5</td><td>3</td><td>2026-10-25 14:22</td><td>2026-11-05 07:24</td></tr>
+<tr><td>Random 4-letter method</td><td>3</td><td>3</td><td>2026-10-28 03:02</td><td>2026-11-05 07:35</td></tr>
+<tr><td>WebLogic T3 handshake</td><td>2</td><td>2</td><td>2026-10-31 17:05</td><td>2026-11-04 23:46</td></tr>
+<tr><td>SSH banner</td><td>2</td><td>2</td><td>2026-11-03 04:28</td><td>2026-11-03 05:03</td></tr>
+<tr><td>Other text</td><td>1</td><td>1</td><td>2026-11-08 10:27</td><td>2026-11-08 10:27</td></tr>
+</tbody></table>
+<p>The rest of this post goes through them, using the full bytes from the packet capture where we have them.</p>
+
+<h2>3. TLS on Port 80</h2>
+<p>520 connections from 250 addresses opened with a TLS ClientHello, the first message of an HTTPS connection. Internet-wide scanners try TLS on every open port, because services run HTTPS on all sorts of ports and the only way to find out is to try. nginx answers in plain text:</p>
+<pre><code>HTTP/1.1 400 Bad Request
+Server: nginx/1.18.0 (Ubuntu)
+Date: Sun, 15 Nov 2026 09:33:36 GMT
+Content-Type: text/html
+Content-Length: 166
+Connection: close
+
+&lt;html&gt;
+&lt;head&gt;&lt;title&gt;400 Bad Request&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;center&gt;&lt;h1&gt;400 Bad Request&lt;/h1&gt;&lt;/center&gt;
+&lt;hr&gt;&lt;center&gt;nginx/1.18.0 (Ubuntu)&lt;/center&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>which a TLS client cannot parse, so it gives up. Two ClientHellos in the capture stand out. The one from 91.231.89.212 carries the IP address <code>13.75.195.138</code> as its server name; the TLS standard does not allow IP addresses there, and browsers never send one. And the one from 35.214.164.203 has a "random" field that is not random at all: it spells <code>random1random2random3random4</code> in ASCII. Both are easy fingerprints for those tools.</p>
+
+<h2>4. HTTP/2 Prefaces</h2>
+<p>94 connections from 87 addresses began with the HTTP/2 connection preface, which nginx logs as:</p>
+<pre><code>PRI * HTTP/2.0</code></pre>
+<p>The full preface is <code>PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n</code>, followed by binary frames. A client that sends it on port 80 is testing for "h2c", HTTP/2 without TLS. Few public servers support it, but proxies that do have had request-smuggling bugs, so scanners keep a list. Most senders came once; the busiest were 66.132.224.89 (2), 66.132.172.32 (2), 66.132.195.192 (2).</p>
+
+<h2>5. Hunting for RAT Controllers</h2>
+<p>At 12:39:55 on 24 October, 143.244.175.42 sent 12 non-HTTP messages in five seconds:</p>
+<pre><code>12:39:55  lv|'|'|VHJvamFuX0M0NkY2RTk=|'|'|MARK|'|'|user|'|'|2013-11-22|'|'||'|'|Win XP|'|'|No|'|'|0.6.4|'|'|..|'|'||'|'|[endof]
+12:39:56  Gh0st + 123 bytes of binary
+12:39:56  145.ll|'|'|SGFjS2VkX0Q0OTkwNjI3|'|'|WIN-JNAPIER0859|'|'|JNapier|'|'|19-02-01|'|'||'|'|Win 7 Professional SP1 x64|'|'|No|'|'|0.7d|'|'|..|'|'|AA==|'|'|112.inf|'|'|SGFjS2VkDQoxOTIuMTY4LjkyLjIyMjo1NTUyDQpEZXNrdG9wDQpjbGllbnRhLmV4ZQ0KRmFsc2UNCkZhbHNlDQpUcnVlDQpGYWxzZQ==12.act|'|'|AA==
+12:39:57  Gh0st + 65 bytes of binary
+12:39:57  HELP
+12:39:57  Gh0st + 25 bytes of binary
+12:39:58  batman
+12:39:58  Gh0st + 47 bytes of binary
+12:39:59  Gh0st + 128 bytes of binary
+12:39:59  Gh0st + 91 bytes of binary
+12:39:59  Gh0st + 58 bytes of binary
+12:40:00  Gh0st + 70 bytes of binary</code></pre>
+<p>These are the first messages that infected computers send to their controller in three remote access trojans (RATs). The sender is not infected. It is checking whether our server is a RAT controller, which would answer with the next step of the protocol. Security companies and threat-intelligence feeds run this kind of scan to map malware command-and-control servers; so, presumably, do people looking for other people's botnets to take over.</p>
+<p><strong>njRAT 0.6.4.</strong> njRAT separates fields with <code>|'|'|</code>:</p>
+<pre><code> 0  lv
+ 1  VHJvamFuX0M0NkY2RTk=
+ 2  MARK
+ 3  user
+ 4  2013-11-22
+ 5  
+ 6  Win XP
+ 7  No
+ 8  0.6.4
+ 9  ..
+10  
+11  [endof]</code></pre>
+<p>Field 0 is the command (<code>lv</code>, a new victim checking in), field 1 is the victim's name in base64, which decodes to <code>Trojan_C46F6E9</code>, then user, install date, operating system, webcam (<code>No</code>) and the njRAT version. All invented.</p>
+<p><strong>njRAT 0.7d</strong>, a widely copied version, has a different command name and a few more fields:</p>
+<pre><code> 0  145.ll
+ 1  SGFjS2VkX0Q0OTkwNjI3
+ 2  WIN-JNAPIER0859
+ 3  JNapier
+ 4  19-02-01
+ 5  
+ 6  Win 7 Professional SP1 x64
+ 7  No
+ 8  0.7d
+ 9  ..
+10  AA==
+11  112.inf
+12  SGFjS2VkDQoxOTIuMTY4LjkyLjIyMjo1NTUyDQpEZXNrdG9wDQpjbGllbnRhLmV4ZQ0KRmFsc2UNCkZhbHNlDQpUcnVlDQpGYWxzZQ==12.act
+13  AA==</code></pre>
+<p>The name decodes to <code>HacKed_D4990627</code>, and field 12 is the infected client's configuration in base64 followed by <code>12.act</code>:</p>
+<pre><code>HacKed
+192.168.92.222:5552
+Desktop
+clienta.exe
+False
+False
+True
+False</code></pre>
+<p>Campaign name, controller address and port (5552 is njRAT's default), install folder and file name, then option flags. The "controller" here, 192.168.92.222, is a private address: this is a recording of a sample run in someone's lab, replayed at the whole internet.</p>
+<p><strong>Gh0st RAT.</strong> Gh0st packets start with the five-byte magic <code>Gh0st</code>, then the packet length and the uncompressed length as 32-bit little-endian numbers, then a zlib-compressed body. nginx logged the first line of these packets, which ends at whatever byte happens to be a line break, so the log has them at different lengths. The capture has a complete one, from 66.240.205.34:</p>
+<pre><code>0000  47 68 30 73 74 ad 00 00 00 e0 00 00 00 78 9c 4b  Gh0st........x.K
+0010  53 60 60 98 c3 c0 c0 c0 06 c4 8c 40 bc 51 96 81  S``........@.Q..
+0020  81 09 48 07 a7 16 95 65 26 a7 2a 04 24 26 67 2b  ..H....e&amp;.*.$&amp;g+
+0030  18 32 94 f6 b0 30 30 ac a8 72 63 00 01 11 a0 82  .2...00..rc.....
+0040  1f 5c 60 26 83 c7 4b 37 86 19 e5 6e 0c 39 95 6e  .\`&amp;..K7...n.9.n
+0050  0c 3b 84 0f 33 ac e8 73 63 68 a8 5e cf 34 27 4a  .;..3..sch.^.4'J
+      [... 77 more bytes]</code></pre>
+<p>Packet length 173 bytes, uncompressed 224. We decompressed the body (it is data, not code):</p>
+<pre><code>0000  66 20 00 00 9c 00 00 00 06 00 00 00 01 00 00 00  f ..............
+0010  b1 1d 00 00 02 00 00 00 53 65 72 76 69 63 65 20  ........Service 
+0020  50 61 63 6b 20 31 00 75 8c 04 00 00 a8 7a 46 00  Pack 1.u.....zF.
+0030  00 00 00 00 14 02 00 00 f8 0a 00 00 00 00 00 00  ................
+0040  48 e9 46 00 98 77 46 00 6c 79 46 00 b8 13 c3 00  H.F..wF.lyF.....
+0050  a8 8e 46 00 80 7b af 02 9c 5a 2d 02 78 08 c3 00  ..F..{...Z-.x...
+0060  c4 5b 2d 02 b8 13 c3 00 b9 e9 95 77 b8 13 c3 00  .[-........w....
+0070  00 00 00 00 14 02 00 00 00 00 00 00 14 02 00 00  ................
+0080  00 00 00 00 90 c8 a4 80 d0 5a 2d 02 d0 5a 2d 02  .........Z-..Z-.
+0090  d0 5b 2d 02 57 2f 2b 75 01 00 00 00 00 01 01 1e  .[-.W/+u........
+00a0  a0 0f 00 00 c0 a8 01 3c 57 49 4e 2d 54 39 55 4e  .......&lt;WIN-T9UN
+00b0  34 48 49 49 48 45 43 00 00 00 00 00 00 00 00 00  4HIIHEC.........
+00c0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00d0  00 00 00 00 00 00 00 00 00 00 00 77 00 00 00 00  ...........w....</code></pre>
+<p>A Gh0st login packet: an operating system version block with <code>Service Pack 1</code>, other system fields, the local IP address <code>192.168.1.60</code> (<code>c0 a8 01 3c</code>) and the host name <code>WIN-T9UN4HIIHEC</code>. Again a fixed recording.</p>
+<p>66.240.205.34 kept coming back. Our log has it on these dates:</p>
+<pre><code>2026-10-28 23:22:06  Gh0st login packet
+2026-10-29 03:03:10  145.ll|'|'|SGFjS2VkX0Q0OTkwNjI3|'|'|WIN-…
+2026-10-29 16:36:25  145.ll|'|'|SGFjS2VkX0Q0OTkwNjI3|'|'|WIN-…
+2026-10-31 14:13:41  Gh0st login packet
+2026-11-01 17:05:36  Gh0st login packet
+2026-11-05 09:09:48  Gh0st login packet
+2026-11-07 12:53:06  145.ll|'|'|SGFjS2VkX0Q0OTkwNjI3|'|'|WIN-…
+2026-11-08 07:41:22  Gh0st login packet</code></pre>
+<p>The honeypot answered every one with nginx's 400 page, which no RAT controller would send, so it was crossed off the list each time and checked again a few days later.</p>
+
+<h2>6. A 17-Protocol Census</h2>
+<p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for 22 October to 15 November no longer exist, so for that period we have only what nginx wrote down. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Sections 6 to 8 use a new capture.</p>
+<p>The new capture recorded 404 TCP connections from the internet to port 80 in 15 hours. 162 were SYN-only port checks with no data. 139 carried something other than HTTP, from 17 addresses:</p>
+<table><thead><tr><th>Protocol</th><th>Streams</th><th>Sources</th><th>Honeypot replied</th></tr></thead><tbody>
+<tr><td>TLS ClientHello</td><td>15</td><td>12</td><td>10 of 15</td></tr>
+<tr><td>MongoDB isMaster</td><td>10</td><td>6</td><td>0 of 10</td></tr>
+<tr><td>Niagara Fox hello</td><td>10</td><td>9</td><td>0 of 10</td></tr>
+<tr><td>MS SQL Server TDS pre-login</td><td>9</td><td>7</td><td>0 of 9</td></tr>
+<tr><td>RDP connection request</td><td>8</td><td>5</td><td>1 of 8</td></tr>
+<tr><td>IPMI over RMCP</td><td>8</td><td>5</td><td>0 of 8</td></tr>
+<tr><td>Oracle TNS connect</td><td>8</td><td>6</td><td>0 of 8</td></tr>
+<tr><td>DNS query over TCP</td><td>8</td><td>7</td><td>0 of 8</td></tr>
+<tr><td>X11 connection setup</td><td>7</td><td>4</td><td>0 of 7</td></tr>
+<tr><td>PPTP start-control-connection</td><td>7</td><td>6</td><td>0 of 7</td></tr>
+<tr><td>Redis PING</td><td>6</td><td>5</td><td>0 of 6</td></tr>
+<tr><td>DNP3 link status requests</td><td>6</td><td>5</td><td>0 of 6</td></tr>
+<tr><td>Siemens S7 (COTP connect, TSAP 0x0100/0x0102)</td><td>6</td><td>5</td><td>0 of 6</td></tr>
+<tr><td>SMB1 negotiate</td><td>6</td><td>6</td><td>0 of 6</td></tr>
+<tr><td>MQTT CONNECT</td><td>6</td><td>5</td><td>0 of 6</td></tr>
+<tr><td>Unidentified (&quot;ZG&quot; header)</td><td>6</td><td>5</td><td>0 of 6</td></tr>
+<tr><td>memcached stats</td><td>5</td><td>4</td><td>0 of 5</td></tr>
+<tr><td>Line breaks only</td><td>3</td><td>3</td><td>0 of 3</td></tr>
+<tr><td>PostgreSQL SSLRequest</td><td>3</td><td>3</td><td>0 of 3</td></tr>
+<tr><td>Gh0st RAT login</td><td>2</td><td>1</td><td>2 of 2</td></tr>
+</tbody></table>
+<p>125 of those came from nine addresses, all in Linode (Akamai Cloud) address space: 45.79.115.59, 45.79.207.71, 45.33.109.10, 198.74.56.135, 45.33.12.122, 192.155.88.231, 45.33.14.5, 45.79.163.53, 173.255.221.189. Between 15 Nov 11:02 to 15 Nov 23:41 UTC they also sent 84 SYN-only checks and 11 HTTP requests, whose User-Agent was <code>Mozilla/5.0 zgrab/0.x</code>. Each address sent a different subset of the same probe list. That is one scanning operation spread over a pool of cloud addresses, trying every protocol it knows on every open port.</p>
+<p>Each probe is the smallest message that makes a server of that type answer with something identifying. In order of the table:</p>
+<p><strong>MongoDB</strong> (45.79.115.59): an <code>OP_QUERY</code> (opcode 2004, <code>d4 07</code>) for <code>isMaster</code> on <code>admin.$cmd</code>. A MongoDB server answers with its version and replica-set details, without authentication.</p>
+<pre><code>0000  3a 00 00 00 00 00 00 00 00 00 00 00 d4 07 00 00  :...............
+0010  00 00 00 00 61 64 6d 69 6e 2e 24 63 6d 64 00 00  ....admin.$cmd..
+0020  00 00 00 01 00 00 00 13 00 00 00 10 69 73 4d 61  ............isMa
+0030  73 74 65 72 00 01 00 00 00 00                    ster......</code></pre>
+<p><strong>Niagara Fox</strong> (45.33.12.122): the protocol of Tridium Niagara building-automation controllers (heating, ventilation, access control), normally on port 1911. The probe is a complete client hello from a fictional Windows XP workstation running Niagara Workbench 3.7.44:</p>
+<pre><code>fox a 1 -1 fox hello
+{
+fox.version=s:1.0
+id=i:1
+hostName=s:xpvm-0omdc01xmy
+hostAddress=s:192.168.1.125
+app.name=s:Workbench
+app.version=s:3.7.44
+vm.name=s:Java HotSpot(TM) Server VM
+vm.version=s:20.4-b02
+os.name=s:Windows XP
+os.version=s:5.1
+lang=s:en
+timeZone=s:America/Los_Angeles;-28800000;3600000;02:00:00.000,wall,march,8,on or after,sunday,undefined;02:00:00.000,wall,november,1,on or after,sunday,undefined
+hostId=s:Win-99CB-D49D-5442-07BB
+vmUuid=s:8b530bc8-76c5-4139-a2ea-0fabd394d305
+brandId=s:vykon
+}</code></pre>
+<p>A canned hello like this, with the same host name and IDs, also appears in public scanning tools. A real Niagara station answers with its own name, version and host details.</p>
+<p><strong>Microsoft SQL Server</strong>: a TDS pre-login packet (type <code>0x12</code>), which makes SQL Server report its version and encryption settings.</p>
+<pre><code>0000  12 01 00 2f 00 00 02 00 00 00 1a 00 06 01 00 02  .../............
+0010  00 01 02 00 21 00 01 03 00 22 00 04 04 00 26 00  ....!...."....&amp;.
+0020  01 ff 00 00 00 00 00 00 01 00 00 00 00 00 00     ...............</code></pre>
+<p><strong>RDP</strong>: a TPKT header (<code>03 00</code>), an X.224 connection request, and a cookie line <code>Cookie: mstshash=</code> where a real client puts the user name. One scanner in the capture fills it in with its own name, <code>mstshash=zgrab</code>.</p>
+<pre><code>0000  03 00 00 26 21 e0 00 00 fe ca 00 43 6f 6f 6b 69  ...&amp;!......Cooki
+0010  65 3a 20 6d 73 74 73 68 61 73 68 3d 0d 0a 01 00  e: mstshash=....
+0020  08 00 01 00 00 00                                ......</code></pre>
+<p><strong>Siemens S7</strong>: the same TPKT header, but a connection request with TSAP parameters <code>c1 02 01 00</code> and <code>c2 02 02 00</code>, which is how S7 engineering software opens a session with a Siemens PLC on port 102. A PLC that answers can be asked for its model and firmware next.</p>
+<pre><code>0000  03 00 00 16 11 e0 00 00 00 04 00 c1 02 01 00 c2  ................
+0010  02 02 00 c0 01 0a                                ......</code></pre>
+<p><strong>Oracle</strong>: a TNS connect packet whose connect string names the client program:</p>
+<pre><code>0000  00 6d 00 00 01 00 00 00 01 38 01 2c 0c 41 20 00  .m.......8.,.A .
+0010  ff ff 7f 08 00 00 01 00 00 33 00 3a 00 00 08 00  .........3.:....
+0020  41 41 00 00 00 00 00 00 00 00 00 00 00 00 00 00  AA..............
+0030  00 00 00 00 00 00 00 00 00 00 28 44 45 53 43 52  ..........(DESCR
+0040  49 50 54 49 4f 4e 3d 28 43 4f 4e 4e 45 43 54 5f  IPTION=(CONNECT_
+0050  44 41 54 41 3d 28 43 49 44 3d 28 50 52 4f 47 52  DATA=(CID=(PROGR
+0060  41 4d 3d 6c 7a 72 4f 52 41 29 29 29 29           AM=lzrORA))))</code></pre>
+<p><strong>DNP3</strong>, the protocol of electricity and water SCADA systems: a run of "request link status" frames (start bytes <code>05 64</code>, function <code>c9</code>), one for each outstation address 0, 1, 2 and up, so that any device answers whatever its address.</p>
+<pre><code>0000  00 00 00 00 05 64 05 c9 00 00 00 00 36 4c 05 64  .....d......6L.d
+0010  05 c9 01 00 00 00 de 8e 05 64 05 c9 02 00 00 00  .........d......
+0020  9f 84 05 64 05 c9 03 00 00 00 77 46 05 64 05 c9  ...d......wF.d..
+0030  04 00 00 00 1d 90 05 64 05 c9 05 00 00 00 f5 52  .......d.......R
+0040  05 64 05 c9 06 00 00 00 b4 58 05 64 05 c9 07 00  .d.......X.d....
+0050  00 00 5c 9a 05 64 05 c9 08 00 00 00 19 b9 05 64  ..\..d.........d
+      [... 908 more bytes]</code></pre>
+<p><strong>MQTT</strong>, the IoT message broker protocol: a CONNECT packet for protocol version 4 with client ID <code>LZR</code>.</p>
+<pre><code>0000  10 0f 00 04 4d 51 54 54 04 00 00 0a 00 03 4c 5a  ....MQTT......LZ
+0010  52                                               R</code></pre>
+<p>That client ID and the Oracle program name <code>lzrORA</code> match the probe set of LZR, an open-source scanner published by Stanford researchers in 2021 to find services running on unexpected ports. Anyone can run it, so the name tells us the tool, not the operator.</p>
+<p>The rest, briefly: <strong>IPMI</strong> over RMCP (<code>06 00 ff 07</code>), which on server management controllers can leak password hashes; <strong>DNS</strong> over TCP asking for <code>stackoverflow.com</code>, an open-resolver test; <strong>X11</strong> connection setup (<code>6c 00 0b 00</code>, "little-endian, protocol 11"), which an open X server would accept and so expose the screen and keyboard; <strong>PPTP</strong> (magic cookie <code>1a 2b 3c 4d</code>); <strong>Redis</strong> <code>PING</code> and <strong>memcached</strong> <code>stats</code>, both unauthenticated by default; a <strong>PostgreSQL</strong> SSLRequest; and an <strong>SMB1</strong> negotiate offering only the <code>NT LM 0.12</code> dialect:</p>
+<pre><code>0000  06 00 ff 07 00 00 00 00 00 00 00 00 00 09 20 18  .............. .
+0010  c8 81 00 38 8e 04 b5                             ...8...
+
+0000  00 23 39 62 01 00 00 01 00 00 00 00 00 00 0d 73  .#9b...........s
+0010  74 61 63 6b 6f 76 65 72 66 6c 6f 77 03 63 6f 6d  tackoverflow.com
+0020  00 00 01 00 01                                   .....
+
+0000  6c 00 0b 00 00 00 00 00 00 00 00 00              l...........
+
+0000  2a 31 0d 0a 24 34 0d 0a 50 49 4e 47 0d 0a        *1..$4..PING..
+
+0000  00 00 00 08 04 d2 16 2f                          ......./
+
+0000  00 00 00 27 ff 53 4d 42 72 00 00 00 00 00 00 00  ...'.SMBr.......
+0010  00 00 00 00 00 00 00 00 00 00 00 00 00 0e 00 02  ................
+0020  4e 54 20 4c 4d 20 30 2e 31 32 00                 NT LM 0.12.</code></pre>
+<p>Six probes start with <code>ZG</code> and we could not identify them.</p>
+
+<h2>7. Why nginx Never Saw It</h2>
+<p>None of these 125 probes appear in the nginx log, and none got an answer. The packets show why. This is the MongoDB probe from 45.79.115.59:</p>
+<pre><code>+  0.0000 s  scanner  -&gt; honeypot S   
++  0.0000 s  honeypot -&gt; scanner  AS  
++  0.1379 s  scanner  -&gt; honeypot R   
++  2.7160 s  scanner  -&gt; honeypot AP  58 bytes
++  2.7160 s  honeypot -&gt; scanner  R   </code></pre>
+<p>The scanner sends a SYN and our server answers SYN-ACK. Then the scanner's own machine sends a reset, 0.18 seconds later (median). The scanner builds its packets itself instead of using the operating system's TCP stack; the operating system sees a SYN-ACK for a connection it never opened and resets it. The scanner does not notice. Seconds later (0.6 to 174.4 seconds after the SYN in this capture) it sends its probe as if the connection were still open, and our server, which has already closed it, answers with a reset. All 125 census probes went this way.</p>
+<p>So this census learned nothing about our server except that port 80 was open, and a web server log would never show that it happened. On a firewall or flow log it is visible: many short connections from the same small set of addresses, each reset by the client before any data.</p>
+
+<h2>8. Proxy Checks</h2>
+<p>12 requests asked our server to act as an HTTP proxy, with a <code>CONNECT</code> to a site that reports the caller's IP address:</p>
+<pre><code>104.196.65.137  CONNECT internetdb.shodan.io:443 HTTP/1.1
+138.2.225.106  CONNECT ip.ifconfig.dpdns.org:443 HTTP/1.1
+141.76.94.28  CONNECT proxydetection.research.netd.cs.tu-dresden.de:443 HTTP/1.1
+185.119.17.139  CONNECT ipee.pw:443 HTTP/1.1
+191.217.250.16  CONNECT ip-api.com:80 HTTP/1.1
+192.3.163.147  CONNECT ip.ifconfig.dpdns.org:443 HTTP/1.1
+34.148.97.93  CONNECT api.ipify.org:443 HTTP/1.1
+35.190.164.228  CONNECT api.ipify.org:443 HTTP/1.1
+35.229.131.63  CONNECT api.ipify.org:443 HTTP/1.1</code></pre>
+<p>If the answer came back from that site, the server is an open proxy that can be used to hide traffic. One sender says who it is: <code>proxydetection.research.netd.cs.tu-dresden.de</code> is a university research project. Five more connections opened with SOCKS4 or SOCKS5 greetings, the same test for a different proxy protocol. All got 400.</p>
+
+<h2>9. Odds and Ends</h2>
+<p><strong>Random methods.</strong> Three requests from three Google Cloud addresses used made-up four-letter methods, and got a normal page:</p>
+<pre><code>2026-10-28 03:02:58  34.140.181.137   OCHH / HTTP/1.1  -&gt; 200, 3684 bytes
+2026-11-04 02:21:32  35.210.196.80    INVI / HTTP/1.1  -&gt; 200, 3684 bytes
+2026-11-05 07:35:33  35.210.39.217    JMTX / HTTP/1.1  -&gt; 200, 3684 bytes</code></pre>
+<p>Apache passes unknown methods to PHP, and a script that does not check <code>$_SERVER['REQUEST_METHOD']</code> treats them like GET. Scanners use this to find servers where a WAF that filters GET and POST can be bypassed by sending something else.</p>
+<p><strong>WebLogic T3.</strong> Oracle WebLogic's T3 protocol starts with a version line. Exploits for WebLogic deserialisation bugs begin exactly like this:</p>
+<pre><code>2026-10-31 17:05:37  103.210.22.74    't3 12.1.2'
+2026-11-04 23:46:07  165.154.11.225   't3 12.1.2'</code></pre>
+<p><strong>SSH banners</strong>, from two Google Cloud addresses 35 minutes apart:</p>
+<pre><code>2026-11-03 04:28:57  35.244.17.9      'SSH-2.0-probe'
+2026-11-03 05:03:14  34.93.191.113    'SSH-2.0-probe'</code></pre>
+<p><strong>Shell fragments.</strong> Seven "requests" were pieces of shell commands, such as <code>sh+/tmp/…</code>. They are most likely the remains of exploit requests that contained a raw line break, so nginx logged the part after it as a request of its own.</p>
+
+<h2>10. IOCs</h2>
+<p>The busiest senders of non-HTTP data in the log:</p>
+<table><thead><tr><th>Source IP</th><th>Country</th><th>Requests</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
+<tr><td>185.242.226.113</td><td>United States</td><td>53</td><td>2026-10-22 13:10</td><td>2026-11-15 08:19</td></tr>
+<tr><td>18.218.118.203</td><td>United States</td><td>26</td><td>2026-10-22 19:49</td><td>2026-11-08 17:38</td></tr>
+<tr><td>150.107.38.251</td><td>Hong Kong</td><td>22</td><td>2026-10-24 20:03</td><td>2026-10-24 20:03</td></tr>
+<tr><td>3.130.168.2</td><td>United States</td><td>21</td><td>2026-10-24 23:52</td><td>2026-11-04 16:26</td></tr>
+<tr><td>45.135.193.198</td><td>Germany</td><td>19</td><td>2026-10-24 03:44</td><td>2026-11-07 00:14</td></tr>
+<tr><td>176.32.193.16</td><td>Armenia</td><td>18</td><td>2026-10-27 04:07</td><td>2026-11-08 22:09</td></tr>
+<tr><td>18.116.101.220</td><td>United States</td><td>16</td><td>2026-10-28 14:02</td><td>2026-11-07 16:27</td></tr>
+<tr><td>148.153.56.174</td><td>United States</td><td>13</td><td>2026-10-24 20:03</td><td>2026-10-24 20:03</td></tr>
+<tr><td>87.251.64.23</td><td>Russia</td><td>13</td><td>2026-11-05 00:54</td><td>2026-11-06 18:00</td></tr>
+<tr><td>213.136.68.185</td><td>France</td><td>12</td><td>2026-10-23 12:23</td><td>2026-11-07 14:59</td></tr>
+<tr><td>143.244.175.42</td><td>United States</td><td>12</td><td>2026-10-24 12:39</td><td>2026-10-24 12:40</td></tr>
+<tr><td>89.248.172.11</td><td>The Netherlands</td><td>9</td><td>2026-10-23 11:46</td><td>2026-11-08 21:31</td></tr>
+</tbody></table>
+<table>
+<tr><th>Type</th><th>Value</th><th>Context</th></tr>
+<tr><td>RAT C2 hunting</td><td><code>143.244.175.42</code>, <code>66.240.205.34</code></td><td>Fake njRAT 0.6.4 / 0.7d and Gh0st victims</td></tr>
+<tr><td>Fake victim names</td><td><code>Trojan_C46F6E9</code>, <code>HacKed_D4990627</code>, <code>WIN-JNAPIER0859</code>, <code>WIN-T9UN4HIIHEC</code></td><td>In the probe payloads</td></tr>
+<tr><td>Protocol census</td><td>45.79.115.59, 45.79.207.71, 45.33.109.10, 198.74.56.135, 45.33.12.122, 192.155.88.231, 45.33.14.5, 45.79.163.53, 173.255.221.189</td><td>Linode address space, client RST before data</td></tr>
+<tr><td>Probe strings</td><td><code>lzrORA</code>, MQTT client ID <code>LZR</code>, <code>mstshash=zgrab</code>, <code>random1random2random3random4</code>, <code>SSH-2.0-probe</code></td><td>Tool fingerprints</td></tr>
+</table>
+
+<h2>11. Detection (KQL)</h2>
+<p>Non-HTTP data on a web port, grouped by what it looks like. nginx's <code>$request</code> holds the raw first line:</p>
+<pre><code class="language-kusto">Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| extend Client = tostring(j.client), Req = tostring(j.request), Status = toint(j.status)
+| where isempty(tostring(j.method)) and Status == 400
+| extend B0 = toint(unicode_codepoints_from_string(substring(Req, 0, 1))[0])
+| extend Kind = case(
+    B0 == 22, "TLS",                       // 0x16, TLS handshake record
+    Req startswith "PRI * HTTP/2", "HTTP/2 preface",
+    Req startswith "Gh0st" or Req has "|'|'|", "RAT C2 probe",
+    Req startswith "CONNECT " , "proxy CONNECT",
+    B0 == 3, "TPKT (RDP/S7)",              // 0x03 0x00
+    Req startswith "SSH-", "SSH banner",
+    Req startswith "t3 ", "WebLogic T3",
+    "other")
+| summarize Count = count(), Sources = dcount(Client), First = min(TimeGenerated), Last = max(TimeGenerated) by Kind
+| order by Count desc</code></pre>
+<p>For the census that never reaches the application, use flow logs. With Azure VNet flow logs in Traffic Analytics, look for sources whose inbound connections to one port are almost all short and data-less:</p>
+<pre><code class="language-kusto">NTANetAnalytics
+| where TimeGenerated > ago(1d)
+| where FlowDirection == "Inbound" and DestPort == 80
+| summarize Flows = sum(AllowedInFlows), BytesFromSrc = sum(BytesSrcToDest), Dests = dcount(DestIp) by SrcIp
+| where Flows > 10 and BytesFromSrc / Flows < 200
+| order by Flows desc</code></pre>
+<p>Column names in <code>NTANetAnalytics</code> vary a little between flow-log versions; check yours before using this.</p>
+
+<h2>12. Mitigation</h2>
+<ul>
+<li><strong>Nothing here needs a fix on a web server</strong>, as long as the web server only speaks HTTP. nginx's 400 answer is the right one.</li>
+<li><strong>The same probes find the services that do need protecting.</strong> RDP, SQL Server, MongoDB, Redis, memcached, IPMI, Siemens S7, DNP3 and Niagara Fox should never be reachable from the internet. If a scanner like this one gets a real answer from any of them on your address space, it is in a public index within days. Check your own ranges with the same tools before someone else does.</li>
+<li><strong>Do not run unexpected services on port 80 or 443</strong> to "hide" them. This census tried 17 protocols on the web port.</li>
+<li><strong>Use flow logs, not only application logs</strong>, to see scanning. Section 7 is invisible to nginx.</li>
+<li><strong>If you run malware analysis sandboxes or RAT test labs</strong>, make sure their controllers are not reachable from the internet. The RAT probes in section 5 exist to find exactly those.</li>
+</ul>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
