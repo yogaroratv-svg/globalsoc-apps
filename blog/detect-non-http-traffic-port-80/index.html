@@ -266,6 +266,7 @@ False</code></pre>
 | eval src_ip=coalesce('id.orig_h', src_ip), dest_ip=coalesce('id.resp_h', dest_ip), dest_port=coalesce('id.resp_p', dest_port)
 | where dest_port IN (80, 443, 8080) AND NOT (cidrmatch("10.0.0.0/8", dest_ip) OR cidrmatch("172.16.0.0/12", dest_ip) OR cidrmatch("192.168.0.0/16", dest_ip))
 | where isnull(service) OR NOT match(service, "http|ssl|tls")
+| eval service=coalesce(service, "unknown")
 | stats count dc(dest_ip) as dests sum(orig_bytes) as bytes_out by src_ip dest_port service
 | where count &gt;= 5
 

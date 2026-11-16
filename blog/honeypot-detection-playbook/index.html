@@ -191,6 +191,17 @@ definition = eval FileName=coalesce(FileName, replace(ImageFileName, "^.*[\\\\/]
   ParentProcessId_decimal=coalesce(ParentProcessId_decimal, ParentProcessId) \
 | lookup aid_master aid OUTPUTNEW ComputerName \
 | lookup falcon_user_map UserSid_readable OUTPUTNEW UserName</code></pre>
+<p>The macro needs two lookups, built by two scheduled searches (run them hourly):</p>
+<pre><code># aid_master: host name for each sensor ID, from FDR's aidmaster records
+index=crowdstrike sourcetype=crowdstrike:events:aidmaster
+| stats latest(ComputerName) as ComputerName by aid
+| outputlookup aid_master
+
+# falcon_user_map: user name for each SID, from FDR's user identity events
+index=crowdstrike event_simpleName=UserIdentity
+| stats latest(UserName) as UserName by UserSid_readable
+| outputlookup falcon_user_map</code></pre>
+<p>Check the sourcetype names against your Falcon add-on. They differ between the FDR add-on and older Event Stream setups.</p>
 <p>Raw FDR doesn't always carry the grandparent's name. Where a query filters on <code>GrandParentBaseFileName</code>, either use the Event Search field or join <code>ProcessRollup2</code> to itself on <code>aid</code> and <code>ParentProcessId</code> to walk one level up.</p>
 
 <p>The Org B web parser used throughout the series. Swap the source for your own and keep the column names:</p>

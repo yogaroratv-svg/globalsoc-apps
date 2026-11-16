@@ -245,7 +245,7 @@ SshAuth
 <p><span class="org orgA">Org A</span></p>
 <pre><code>index=linux sourcetype=linux_secure process=sshd ("Failed password" OR "Accepted")
 | rex "(?&lt;outcome&gt;Failed|Accepted) (?&lt;method&gt;\S+) for (?:invalid user )?(?&lt;user&gt;\S+) from (?&lt;src&gt;\d+\.\d+\.\d+\.\d+)"
-| sort 0 host src _time
+| sort 0 _time
 | streamstats time_window=1h count(eval(outcome="Failed")) as failures_last_hour by host src
 | where outcome="Accepted" AND failures_last_hour &gt;= 5
 | table _time host src user method failures_last_hour</code></pre>
@@ -253,26 +253,25 @@ SshAuth
 
 <p>Both EDRs also record logons on Linux, which gives you the same rule without relying on syslog forwarding:</p>
 <p><span class="org orgB">Org B</span></p>
-<pre><code>let Window = 1h;
+<pre><code>let Lookback = 1h;
+let Failures = DeviceLogonEvents
+| where Timestamp &gt; ago(7d) and ActionType == "LogonFailed" and RemoteIPType == "Public"
+| project FailTime = Timestamp, DeviceId, RemoteIP;
 DeviceLogonEvents
-| where Timestamp &gt; ago(7d)
-| where ActionType in ("LogonFailed", "LogonSuccess") and isnotempty(RemoteIP)
-| where RemoteIPType == "Public"
-| summarize Failures = countif(ActionType == "LogonFailed"), FirstFailure = minif(Timestamp, ActionType == "LogonFailed"),
-            LastSuccess = maxif(Timestamp, ActionType == "LogonSuccess"), Accounts = make_set(AccountName, 10)
-          by DeviceName, RemoteIP, bin(Timestamp, Window)
-| where Failures &gt;= 10 and LastSuccess &gt; FirstFailure</code></pre>
+| where Timestamp &gt; ago(7d) and ActionType == "LogonSuccess" and RemoteIPType == "Public"
+| project SuccessTime = Timestamp, DeviceId, DeviceName, RemoteIP, AccountName
+| join kind=inner Failures on DeviceId, RemoteIP
+| where FailTime between ((SuccessTime - Lookback) .. SuccessTime)
+| summarize FailuresBefore = count() by SuccessTime, DeviceName, RemoteIP, AccountName
+| where FailuresBefore &gt;= 10</code></pre>
 <p><span class="org orgA">Org A</span></p>
-<pre><code>index=crowdstrike event_platform=Lin event_simpleName IN (UserLogon, UserLogonFailed2)
-    RemoteAddressIP4=*
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName IN (UserLogon, UserLogonFailed2) RemoteAddressIP4=*
 | where NOT cidrmatch("10.0.0.0/8", RemoteAddressIP4) AND NOT cidrmatch("172.16.0.0/12", RemoteAddressIP4)
     AND NOT cidrmatch("192.168.0.0/16", RemoteAddressIP4)
-| bin _time span=1h
-| stats count(eval(event_simpleName="UserLogonFailed2")) as failures
-        min(eval(if(event_simpleName="UserLogonFailed2", _time, null()))) as first_failure
-        max(eval(if(event_simpleName="UserLogon", _time, null()))) as last_success values(UserName) as users
-        by _time aid ComputerName RemoteAddressIP4
-| where failures &gt;= 10 AND last_success &gt; first_failure</code></pre>
+| sort 0 _time
+| streamstats time_window=1h count(eval(event_simpleName="UserLogonFailed2")) as failures_last_hour by aid RemoteAddressIP4
+| where event_simpleName="UserLogon" AND failures_last_hour &gt;= 10
+| table _time ComputerName RemoteAddressIP4 UserName failures_last_hour</code></pre>
 
 <h2 id="endpoint">5. Endpoint Detections (after the login)</h2>
 
