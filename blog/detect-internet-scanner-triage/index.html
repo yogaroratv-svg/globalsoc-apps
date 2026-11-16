@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Triaging Internet Scanners: Research, Search Engines or Attackers? (Splunk and Sentinel) | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-internet-scanner-triage/">
+<meta name="description" content="The first request reached my new server 33 minutes after it went online. 24 scanners named themselves, and several that claimed to be &quot;research&quot; collected secrets like any attacker. Here&#x27;s how to triage scanner traffic by behaviour in Splunk and Sentinel, auto-close the benign ones safely, and find your own new exposures before the scanners do with CrowdStrike and Defender for Endpoint.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-internet-scanner-triage/">
+<meta property="og:title" content="Triaging Internet Scanners: Research, Search Engines or Attackers? (Splunk and Sentinel) | Global SOC">
+<meta property="og:description" content="The first request reached my new server 33 minutes after it went online. 24 scanners named themselves, and several that claimed to be &quot;research&quot; collected secrets like any attacker. Here&#x27;s how to triage scanner traffic by behaviour in Splunk and Sentinel, auto-close the benign ones safely, and find your own new exposures before the scanners do with CrowdStrike and Defender for Endpoint.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Triaging Internet Scanners: Research, Search Engines or Attackers? (Splunk and Sentinel) | Global SOC">
+<meta name="twitter:description" content="The first request reached my new server 33 minutes after it went online. 24 scanners named themselves, and several that claimed to be &quot;research&quot; collected secrets like any attacker. Here&#x27;s how to triage scanner traffic by behaviour in Splunk and Sentinel, auto-close the benign ones safely, and find your own new exposures before the scanners do with CrowdStrike and Defender for Endpoint.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-internet-scanner-triage/#article",
+      "url": "https://globalsoc.com.au/blog/detect-internet-scanner-triage/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-internet-scanner-triage/"
+      },
+      "headline": "Found in 33 Minutes: How to Triage Internet Scanners by Behaviour, Not by What They Call Themselves",
+      "description": "The first request reached my new server 33 minutes after it went online. 24 scanners named themselves, and several that claimed to be \"research\" collected secrets like any attacker. Here's how to triage scanner traffic by behaviour in Splunk and Sentinel, auto-close the benign ones safely, and find your own new exposures before the scanners do with CrowdStrike and Defender for Endpoint.",
+      "datePublished": "2026-11-14",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Found in 33 Minutes: How to Triage Internet Scanners by Behaviour, Not by What They Call Themselves",
+          "item": "https://globalsoc.com.au/blog/detect-internet-scanner-triage/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-14">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 14 November 2026</p>
+<h1>Found in 33 Minutes: How to Triage Internet Scanners by Behaviour, Not by What They Call Themselves</h1>
+<p>The first request reached my new server 33 minutes after it went online. 24 scanners named themselves, and several that claimed to be &quot;research&quot; collected secrets like any attacker. Here&#x27;s how to triage scanner traffic by behaviour in Splunk and Sentinel, auto-close the benign ones safely, and find your own new exposures before the scanners do with CrowdStrike and Defender for Endpoint.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · Who Came · Pyramid of Pain · Detections · Endpoint: Beat the Scanners · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are templates for your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>The container started at 05:01 UTC on 22 October. The first request from the internet arrived 33 minutes later. In the first 24 hours, 86 addresses sent 666 requests. Nobody had published the address anywhere. Scanners found it because they scan everything, all the time.</p>
+
+<p>24 scanners named themselves in their User-Agent, usually with a link explaining the scan. Together they sent 831 requests from 417 addresses, only 7.9% of external traffic. The rest didn't say who they were.</p>
+
+<p>For a SOC, this traffic is mostly noise, and it's tempting to auto-close anything that says "research". This post is about why that's a mistake, and what to key on instead.</p>
+
+<h2 id="who">2. Who Came</h2>
+<table><thead><tr><th>Scanner</th><th>What it is</th><th>Requests</th><th>IPs</th><th>Days seen</th><th>First seen (UTC)</th><th>After container start</th><th>Top paths</th></tr></thead><tbody>
+<tr><td>Censys</td><td>internet search engine</td><td>231</td><td>89</td><td>18</td><td>2026-10-23 16:08</td><td>35.1 h</td><td><code>/, /favicon.ico, /info.php</code></td></tr>
+<tr><td>Infrawatch</td><td>internet search engine</td><td>144</td><td>119</td><td>18</td><td>2026-10-22 23:11</td><td>18.2 h</td><td><code>/, /favicon.ico, /mcp/</code></td></tr>
+<tr><td>Palo Alto Networks Cortex Xpanse</td><td>attack-surface management</td><td>109</td><td>98</td><td>19</td><td>2026-10-22 23:18</td><td>18.3 h</td><td><code>/, /.well-known/security.txt, /yawhpsiabsent</code></td></tr>
+<tr><td>Nokia (GenomeCrawler)</td><td>internet mapping</td><td>109</td><td>10</td><td>11</td><td>2026-10-23 05:27</td><td>24.4 h</td><td><code>/, /manage/account/login, /admin/index.html</code></td></tr>
+<tr><td>ForestEngine</td><td>internet search engine</td><td>74</td><td>36</td><td>19</td><td>2026-10-22 14:12</td><td>9.2 h</td><td><code>/, /favicon.ico</code></td></tr>
+<tr><td>Modat</td><td>internet search engine</td><td>20</td><td>9</td><td>10</td><td>2026-10-23 03:30</td><td>22.5 h</td><td><code>/, /favicon.ico</code></td></tr>
+<tr><td>Odin</td><td>internet search engine</td><td>17</td><td>7</td><td>5</td><td>2026-10-23 05:15</td><td>24.2 h</td><td><code>/, /sdk, /HNAP1</code></td></tr>
+<tr><td>mrtscan</td><td>unknown, names a cloud region</td><td>33</td><td>11</td><td>11</td><td>2026-10-23 21:10</td><td>40.1 h</td><td><code>/</code></td></tr>
+<tr><td>visionheight.com</td><td>attack-surface scanning</td><td>26</td><td>4</td><td>13</td><td>2026-10-22 19:47</td><td>14.8 h</td><td><code>/, /robots.txt</code></td></tr>
+<tr><td>CyberConvoy Scout</td><td>attack-surface scanning</td><td>11</td><td>3</td><td>11</td><td>2026-10-23 13:15</td><td>32.2 h</td><td><code>/</code></td></tr>
+<tr><td>Apcosys</td><td>internet scanning</td><td>11</td><td>5</td><td>7</td><td>2026-10-23 14:14</td><td>33.2 h</td><td><code>/robots.txt, /, /favicon.ico</code></td></tr>
+<tr><td>IVRE (masscan)</td><td>open-source tool</td><td>8</td><td>5</td><td>8</td><td>2026-10-23 13:20</td><td>32.3 h</td><td><code>/admin/config.php, /</code></td></tr>
+<tr><td>Ruhr-Universität Bochum</td><td>academic research</td><td>7</td><td>1</td><td>1</td><td>2026-10-22 15:29</td><td>10.5 h</td><td><code>/</code></td></tr>
+<tr><td>InternetMeasurement</td><td>internet measurement</td><td>6</td><td>6</td><td>6</td><td>2026-10-22 06:08</td><td>1.1 h</td><td><code>/</code></td></tr>
+<tr><td>FH Münster</td><td>academic research</td><td>6</td><td>1</td><td>2</td><td>2026-10-28 18:41</td><td>6.6 days</td><td><code>/, /app-config.js, /dicom-web/studies?0020000D=2.25.83961957171485309472578960013521734519&amp;00080020=30000101</code></td></tr>
+<tr><td>Netcraft</td><td>internet survey</td><td>1</td><td>1</td><td>1</td><td>2026-11-05 20:52</td><td>14.7 days</td><td><code>/</code></td></tr>
+<tr><td>ipip.net</td><td>internet scanning</td><td>2</td><td>2</td><td>2</td><td>2026-10-22 16:02</td><td>11.0 h</td><td><code>/</code></td></tr>
+<tr><td>FlowIQ Labs</td><td>internet scanning</td><td>2</td><td>2</td><td>2</td><td>2026-10-24 19:18</td><td>2.6 days</td><td><code>/</code></td></tr>
+<tr><td>Keydrop.io / onlyscans</td><td>internet scanning</td><td>6</td><td>3</td><td>3</td><td>2026-10-27 17:34</td><td>5.5 days</td><td><code>/.env, /.git/config</code></td></tr>
+<tr><td>tchelebi</td><td>internet scanning</td><td>2</td><td>1</td><td>2</td><td>2026-10-28 19:52</td><td>6.6 days</td><td><code>/</code></td></tr>
+<tr><td>ipbase</td><td>internet scanning</td><td>1</td><td>1</td><td>1</td><td>2026-11-03 09:02</td><td>12.2 days</td><td><code>/</code></td></tr>
+<tr><td>InternetData.io</td><td>internet scanning</td><td>1</td><td>1</td><td>1</td><td>2026-11-05 07:26</td><td>14.1 days</td><td><code>/</code></td></tr>
+<tr><td>URSA</td><td>unknown</td><td>3</td><td>1</td><td>1</td><td>2026-10-22 23:10</td><td>18.1 h</td><td><code>/, /api/export-auth</code></td></tr>
+<tr><td>Synthient</td><td>research claim</td><td>1</td><td>1</td><td>1</td><td>2026-11-01 22:09</td><td>10.7 days</td><td><code>hxxp://probe.invalid/</code></td></tr>
+</tbody></table>
+
+<p>The big internet search engines (Censys, Infrawatch, Palo Alto's Xpanse) arrived within a day or two and came back almost daily. They mostly fetch <code>/</code>, the favicon and <code>security.txt</code>, which is what their indexes show.</p>
+
+<p>Then there are the ones that call themselves research and behave like attackers:</p>
+<table><thead><tr><th>User-Agent</th><th>Requests</th><th>IPs</th><th>What it asked for</th></tr></thead><tbody>
+<tr><td><code>Mozilla/5.0 (compatible; research-scan/1.0)</code></td><td>38</td><td>1</td><td>/, /@vite/client, /.git/HEAD, /.env, /.env~</td></tr>
+<tr><td><code>Mozilla/5.0 (compatible; Scanner/1.0)</code></td><td>21</td><td>19</td><td>/.git/config</td></tr>
+<tr><td><code>php2shell-scan/3.1 (authorized-security-assessment)</code></td><td>37</td><td>1</td><td>/, /phpinfo.php, /info.php, /test.php, /phpversion.php</td></tr>
+<tr><td><code>grok-fp/1.0 (authorized research)</code></td><td>1</td><td>1</td><td>/</td></tr>
+<tr><td><code>Mozilla/5.0 (compatible; opendir-scanner/1.0)</code></td><td>4</td><td>1</td><td>/</td></tr>
+<tr><td><code>Mozilla/5.0 (X11; Linux x86_64) HighPerfScanner/10G</code></td><td>4</td><td>4</td><td>/</td></tr>
+</tbody></table>
+
+<p><code>research-scan/1.0</code> needed four seconds for this list:</p>
+<pre><code>/
+/@vite/client
+/.git/HEAD
+/.env
+/.env~
+/.env.local
+/.env.bak
+/.env.old
+/.env.zip
+/backup.tar.gz
+/.git-credentials
+/.env.prod
+/.env.save
+/backup.zip
+/site.zip
+/.env.production.local
+/.git/config
+/www.zip
+...</code></pre>
+<p><code>.env</code> files, Git credentials, AWS keys, Docker registry credentials, Terraform variables and site backups. No link, no contact, no opt-out, and nothing in that list measures anything. It collects secrets. The name is a claim, not an identity (T1036.005 Match Legitimate Name).</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>Censys's and Xpanse's published ranges</td><td>Reasonable for allowlisting <em>published</em> ranges of real search engines, as long as you still watch what they request.</td></tr>
+<tr><td>User-Agent</td><td><code>research-scan/1.0</code>, <code>Scanner/1.0</code>, <code>authorized-security-assessment</code></td><td>Never trust it for suppression. It costs the attacker nothing to type.</td></tr>
+<tr><td>Behaviour</td><td>What the client asks for: public pages, or secrets and exploits?</td><td>This is the line between a census and an attack. Key your triage on it.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used the CIM <code>Web</code> data model.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. "Research" names that hunt secrets or send exploits (T1036.005)</h3>
+<p><span class="org orgB">Org B</span> Tested: five User-Agents. <code>Scanner/1.0</code> (23 of 23 requests hostile, from 21 addresses), <code>research-scan/1.0</code> (18 of 38), Nokia's GenomeCrawler (9 of 119, all router and VPN login pages), <code>Keydrop.io</code> (6 of 6), and plain <code>research</code> (4 of 4).</p>
+<pre><code>let SecretOrExploit = @"(?i)(/\.env|\.git/|/\.aws/|credentials|wp-config\.|\.sql|eval-stdin|invokefunction|allow_url_include|/cgi-bin/|\$\{jndi|/\.ssh/)";
+WebAccess
+| where UserAgent matches regex @"(?i)(research|scan|census|bot|crawler|measurement|security|authori[sz]ed)" and UserAgent !has "Googlebot"
+| summarize Requests = count(), Sources = dcount(SrcIp),
+            Hostile = countif(Url matches regex SecretOrExploit or Body matches regex SecretOrExploit) by UserAgent
+| extend HostilePct = round(100.0 * Hostile / Requests, 0)
+| where Hostile &gt; 0
+| order by Hostile desc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count dc(Web.src) as sources from datamodel=Web by Web.http_user_agent Web.url
+| rename Web.* as *
+| regex http_user_agent="(?i)(research|scan|census|bot|crawler|measurement|security|authori[sz]ed)"
+| eval hostile=if(match(url, "(?i)(/\.env|\.git/|/\.aws/|credentials|wp-config\.|\.sql|eval-stdin|invokefunction|allow_url_include|/cgi-bin/|\$\{jndi|/\.ssh/)"), count, 0)
+| stats sum(count) as requests sum(hostile) as hostile max(sources) as sources by http_user_agent
+| eval hostile_pct=round(100*hostile/requests,0)
+| where hostile &gt; 0
+| sort - hostile</code></pre>
+<p>The ratio is the useful number. A real census sits near 0% hostile. Anything near 100% is an attacker wearing a lanyard. Use this to decide which scanner names go on your benign list, and which go on a block list.</p>
+
+<h3>W2. A "benign" scanner that starts misbehaving</h3>
+<p>Once you have a benign list, the risk is that someone hides behind it. This rule fires when a client matching a benign scanner token asks for secrets or sends an exploit:</p>
+<p><span class="org orgB">Org B</span> Tested with Censys, Infrawatch, Xpanse, GenomeCrawler, Odin, Modat, InternetMeasurement, ShadowServer, Onyphe and BitSight as the benign list: zero hits. The named scanners that publish opt-outs behaved like scanners.</p>
+<pre><code>// Watchlist "BenignScanners": SearchKey = UA token (e.g. "censys"), plus Owner and OptOutUrl columns
+let BenignTokens = toscalar(_GetWatchlist("BenignScanners") | summarize make_list(tolower(SearchKey)));
+let SecretOrExploit = @"(?i)(/\.env|\.git/|/\.aws/|eval-stdin|invokefunction|allow_url_include|\$\{jndi|constructor:constructor)";
+WebAccess
+| where tolower(UserAgent) has_any (BenignTokens)
+| where Url matches regex SecretOrExploit or Body matches regex SecretOrExploit
+| project TimeGenerated, SrcIp, UserAgent, Url</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web by Web.src Web.http_user_agent Web.url
+| rename Web.* as *
+| lookup benign_scanners.csv ua_token AS http_user_agent OUTPUT owner    ``` lookup with WILDCARD(ua_token) match_type ```
+| where isnotnull(owner)
+| regex url="(?i)(/\.env|\.git/|/\.aws/|eval-stdin|invokefunction|allow_url_include|\$\{jndi)"
+| table src http_user_agent owner url count</code></pre>
+<p>With this rule in place, you can safely auto-close benign-scanner traffic in your other rules, because you'll hear about it the moment one of them stops behaving like a scanner. High severity: it means either a spoofed name or a scanner that changed what it does.</p>
+
+<h2 id="endpoint">5. Endpoint: Beat the Scanners to Your Own Exposure</h2>
+<p>Censys found my server in under a day and a half, and the unnamed scanners found it in 33 minutes. You want to know about a new internet-facing service before either of them. Both EDRs see a process start listening on a port.</p>
+
+<h3>E1. New listening port on an internet-facing host</h3>
+<p><span class="org orgB">Org B</span> Defender for Endpoint marks internet-facing devices (<code>IsInternetFacing</code> in <code>DeviceInfo</code>):</p>
+<pre><code>// Know about a new internet-facing service before the scanners do
+let InternetFacing = DeviceInfo | where Timestamp &gt; ago(1d) and IsInternetFacing == true | distinct DeviceId;
+DeviceNetworkEvents
+| where Timestamp &gt; ago(1d)
+| where ActionType == "ListeningConnectionCreated"
+| where DeviceId in (InternetFacing)
+| where LocalIP !in ("127.0.0.1", "::1")
+| summarize FirstListen = min(Timestamp) by DeviceName, LocalPort, InitiatingProcessFileName
+| join kind=leftanti (
+    DeviceNetworkEvents
+    | where Timestamp between (ago(30d) .. ago(1d)) and ActionType == "ListeningConnectionCreated"
+    | distinct DeviceName, LocalPort) on DeviceName, LocalPort</code></pre>
+<p><span class="org orgA">Org A</span> Falcon's <code>NetworkListenIP4</code> events, plus your own list of internet-facing hosts:</p>
+<pre><code>index=crowdstrike event_simpleName=NetworkListenIP4 earliest=-30d
+| where LocalAddressIP4!="127.0.0.1"
+| eval recent=if(_time &gt;= relative_time(now(), "-1d"), 1, 0)
+| stats min(_time) as first_seen max(recent) as seen_today by aid ComputerName LocalPort
+| where seen_today=1 AND first_seen &gt;= relative_time(now(), "-1d")
+| lookup internet_facing_hosts.csv ComputerName OUTPUT exposure
+| where exposure="internet"</code></pre>
+<p>A new port on an internet-facing host is either a change you knew about, or the start of the next incident: a debug server, a forgotten admin panel, an MCP server, a database. Medium severity, and route it to the team that owns the host.</p>
+
+<p>For the outside view, both stacks have an external attack-surface product: Microsoft Defender External Attack Surface Management, and CrowdStrike Falcon Exposure Management. They do what Censys does, but for you. Feed their new-asset findings into the same SIEM queue.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>W1:</strong> decide per User-Agent. Near 0% hostile with a working opt-out link goes on the benign list. Near 100% goes on the block list at the WAF.</li>
+<li><strong>W2:</strong> look at the source IP. If it isn't in the scanner's published ranges, it's spoofed, so block it and hunt for the same IP in other logs. If it is in the published ranges, contact the scanner's operator through their opt-out page.</li>
+<li><strong>E1:</strong> confirm with the owner. If nobody expected it, close the port first and ask questions after. <span class="org orgA">Org A</span> Network-contain the host in Falcon if the service looks hostile. <span class="org orgB">Org B</span> Isolate the device in Defender if the service looks hostile.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Assume any new public IP is scanned within an hour. Deploy with the firewall already closed, and open only what you need.</li>
+<li>Publish <code>security.txt</code>. The well-behaved scanners read it, and it gives researchers a way to report what they find.</li>
+<li>Opt out of the scanners you don't want through their published pages, then let W2 tell you if any of them ignore it.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>Fake research</td><td><code>129.213.151.234</code> (<code>research-scan/1.0</code>)</td><td>Secret-file collection in 4 seconds</td></tr>
+<tr><td>Fake research</td><td>UA <code>Scanner/1.0</code>, 21 addresses</td><td><code>/.git/config</code> only</td></tr>
+<tr><td>Self-described "authorised"</td><td><code>php2shell-scan/3.1 (authorized-security-assessment)</code></td><td>Nobody authorised it here</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
