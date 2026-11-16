@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <title>React2Shell Payloads Captured on a PHP Honeypot: Reverse Shell, Redirect Hijack, .env Theft | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/">
-<meta name="description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.">
+<meta name="description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 51 times.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/">
 <meta property="og:title" content="React2Shell Payloads Captured on a PHP Honeypot: Reverse Shell, Redirect Hijack, .env Theft | Global SOC">
-<meta property="og:description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.">
+<meta property="og:description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 51 times.">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="React2Shell Payloads Captured on a PHP Honeypot: Reverse Shell, Redirect Hijack, .env Theft | Global SOC">
-<meta name="twitter:description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.">
+<meta name="twitter:description" content="Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 51 times.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -27,7 +27,7 @@
         "@id": "https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/"
       },
       "headline": "React2Shell on a Server With No React: Seven Payloads, Decoded",
-      "description": "Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.",
+      "description": "Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 51 times.",
       "datePublished": "2026-11-15",
       "author": {
         "@type": "Person",
@@ -111,7 +111,7 @@ td code{overflow-wrap:anywhere}
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
 <h1>React2Shell on a Server With No React: Seven Payloads, Decoded</h1>
-<p>Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.</p>
+<p>Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 51 times.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · How the Exploit Request Works · Scanner Checks · Dropper · Environment Theft · Redirect Hijack · Reverse Shell x 47 · What the Honeypot Answered · Reverse Shell on the Wire · IOCs · Detection (KQL) · Mitigation</nav>
 <p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Payloads are shown as captured; URLs are defanged.</p>
 
