@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting Exploit-Spray Scanners by Behaviour, and Making the Noise Useful | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-spray-scanners/">
+<meta name="description" content="152 sources sent 1,143 exploit requests to my honeypot, and 52 of them tried more than one exploit type. I show how to detect spray kits by behaviour (canary paths, kit fingerprints, slow fingerprinting), then how to turn all that noise into one high-fidelity alert with risk-based correlation in Splunk and Sentinel.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-spray-scanners/">
+<meta property="og:title" content="Detecting Exploit-Spray Scanners by Behaviour, and Making the Noise Useful | Global SOC">
+<meta property="og:description" content="152 sources sent 1,143 exploit requests to my honeypot, and 52 of them tried more than one exploit type. I show how to detect spray kits by behaviour (canary paths, kit fingerprints, slow fingerprinting), then how to turn all that noise into one high-fidelity alert with risk-based correlation in Splunk and Sentinel.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting Exploit-Spray Scanners by Behaviour, and Making the Noise Useful | Global SOC">
+<meta name="twitter:description" content="152 sources sent 1,143 exploit requests to my honeypot, and 52 of them tried more than one exploit type. I show how to detect spray kits by behaviour (canary paths, kit fingerprints, slow fingerprinting), then how to turn all that noise into one high-fidelity alert with risk-based correlation in Splunk and Sentinel.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-spray-scanners/#article",
+      "url": "https://globalsoc.com.au/blog/detect-spray-scanners/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-spray-scanners/"
+      },
+      "headline": "One IP, Many Exploits: Detecting Spray Scanners by How They Behave, Not What They Send",
+      "description": "152 sources sent 1,143 exploit requests to my honeypot, and 52 of them tried more than one exploit type. I show how to detect spray kits by behaviour (canary paths, kit fingerprints, slow fingerprinting), then how to turn all that noise into one high-fidelity alert with risk-based correlation in Splunk and Sentinel.",
+      "datePublished": "2026-11-12",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "One IP, Many Exploits: Detecting Spray Scanners by How They Behave, Not What They Send",
+          "item": "https://globalsoc.com.au/blog/detect-spray-scanners/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-12">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 12 November 2026</p>
+<h1>One IP, Many Exploits: Detecting Spray Scanners by How They Behave, Not What They Send</h1>
+<p>152 sources sent 1,143 exploit requests to my honeypot, and 52 of them tried more than one exploit type. I show how to detect spray kits by behaviour (canary paths, kit fingerprints, slow fingerprinting), then how to turn all that noise into one high-fidelity alert with risk-based correlation in Splunk and Sentinel.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Behaviour Detections · Correlation: Making Noise Useful · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk Enterprise Security with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The behaviour KQL ran against the honeypot's real logs. The correlation rules are templates for your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>I counted 15 kinds of exploit in the honeypot data. 1,143 requests tried one of them, from 152 sources. Most sources tried one thing. The rest sprayed:</p>
+
+<table><thead><tr><th>Exploit types sent</th><th>Source IPs</th><th>Exploit requests</th></tr></thead><tbody>
+<tr><td>1</td><td>100</td><td>229</td></tr>
+<tr><td>2</td><td>33</td><td>113</td></tr>
+<tr><td>3</td><td>1</td><td>3</td></tr>
+<tr><td>4</td><td>5</td><td>120</td></tr>
+<tr><td>5</td><td>2</td><td>150</td></tr>
+<tr><td>6</td><td>11</td><td>528</td></tr>
+</tbody></table>
+
+<p>A spray scanner doesn't ask what it's talking to. It fires its whole list and looks for a response that proves success. Most kits finished in under two minutes.</p>
+
+<p>Every SOC sees this all day, and the usual answer is either to alert on all of it (alert fatigue) or none of it (blind spot). This post is about a third option: detect the <em>behaviour</em> of the kit, cheaply and with no CVE list to maintain, and then only page a human when that behaviour lines up with something on the endpoint.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Recon</span> Step 1: Calibrate with canary paths</h3>
+<p>Good scanners first check how your server says "not found". ReconX asked for paths that can't exist:</p>
+<pre><code>/__l2s_debug_probe__
+/reconx-2bdaef5dde6d
+/.git/reconx-599a9650d3d5
+/html/.git/reconx-91cffb045283
+/old/.git/reconx-abbf32b43304
+/.svn/reconx-12d8891a6fc1
+/.git.bak/reconx-6735de42a3b1
+/backup/.git/reconx-84cfd5238b0a</code></pre>
+<p>If <code>/.git/reconx-599a9650d3d5</code> returns 200, the server answers 200 to everything, and a 200 for <code>/.git/config</code> means nothing. That's how the scanner avoids false positives (T1595.003). For us it's a fingerprint: random-suffix paths only come from tools.</p>
+
+<h3><span class="kc">Recon</span> Step 2: Fingerprint slowly</h3>
+<p><code>67.205.160.10</code> sent 78 requests over 21 minutes, one every 14 seconds, with no payloads. Just login pages:</p>
+<pre><code>12:43:35  /robots.txt
+12:44:03  /+CSCOE+/logon.html
+12:44:20  /+CSCOT+/oem-customization?app=AnyConnect&amp;type=oem&amp;platform=..&amp;resource-type=..&amp;name=%2BCSCOE%2B/portal_inc.lua
+12:44:35  /.env
+12:44:48  /.ftpconfig
+12:45:01  /.git/config
+12:45:16  /.idea/WebServers.xml
+12:45:33  /.remote-sync.json
+12:45:52  /.vscode/ftp-sync.json
+12:46:12  /.vscode/sftp.json
+12:46:31  /AHT/AHT_UI/public/js/app.min.js
+12:46:52  /CACHE/sdesktop/install/start.htm
+12:47:14  /EndUserPortal.jsp
+12:47:35  /Guest.aspx
+...</code></pre>
+<p>Read it as a product list: Cisco ASA and AnyConnect, CrushFTP, Pulse Secure / Ivanti, Fortinet, SolarWinds Orion, SharePoint. One request every 14 seconds stays under almost every rate limit and doesn't look like a scan on a per-minute dashboard (T1595.002, T1592.002). It's the reconnaissance that comes before the next edge-device zero-day.</p>
+
+<h3><span class="kc">Exploit</span> Step 3: Spray the kit</h3>
+<p>Kits run unchanged from many addresses. The RedTail kit came from 11 addresses with identical path sets. A phpMyAdmin hunter calling itself "Go Web Pentest Tool" ran the same 128 paths from 7 addresses. A Laravel kit called SNIPPER ran Ignition, Livewire, Passport and PHPUnit checks, then 143 <code>.env</code> variants, in 68 seconds (T1190).</p>
+
+<h3><span class="kc">Exploit</span> Step 4: Check the answer</h3>
+<p>Each exploit carries a check: an MD5, an arithmetic result like <code>$((63187*52324))</code>, or a marker. Covered in detail in the <a href="/blog/detect-legacy-php-rce/">legacy PHP post</a>.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>152 sources</td><td>Kits run from many disposable addresses. A blocklist is always a step behind.</td></tr>
+<tr><td>Network artefacts</td><td>User-Agents (<code>Go Web Pentest Tool</code>, <code>ReconX-L2S</code>), canary prefixes (<code>reconx-</code>)</td><td>Fine for labelling. ReconX rotated its User-Agent mid-run anyway.</td></tr>
+<tr><td>Tools</td><td>The kit's exact path set; canary calibration; fixed-interval fingerprinting</td><td>Detect these. A kit fingerprint survives IP rotation, because the operator rarely edits the list.</td></tr>
+<tr><td>TTPs</td><td>Spray against a host, then a web-server child process on that host</td><td>The only combination worth waking someone for.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Behaviour Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used the CIM <code>Web</code> data model. The multi-family burst rule is in the <a href="/blog/detect-redtail-cryptominer/">RedTail post</a>. These three add the other behaviours.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>B1. Canary calibration (T1595.003)</h3>
+<p><span class="org orgB">Org B</span> Tested: one hit, ReconX, with 10 canaries among 79 requests in ten minutes.</p>
+<pre><code>WebAccess
+| where Url matches regex @"/[a-z]{0,10}[-_]?[0-9a-f]{10,16}$" and Status == 404
+| summarize Canaries = count(), Sample = take_any(Url) by SrcIp, Window = bin(TimeGenerated, 10m)
+| join kind=inner (WebAccess | summarize Requests = count() by SrcIp, Window = bin(TimeGenerated, 10m)) on SrcIp, Window
+| where Requests &gt;= 20
+| project Window, SrcIp, Canaries, Requests, Sample
+| order by Window asc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web by _time span=10m Web.src Web.url Web.status
+| rename Web.* as *
+| eval canary=if(status=404 AND match(url, "/[a-z]{0,10}[-_]?[0-9a-f]{10,16}$"), count, 0)
+| stats sum(canary) as canaries sum(count) as requests values(eval(if(canary&gt;0,url,null()))) as sample by _time src
+| where canaries &gt; 0 AND requests &gt;= 20</code></pre>
+<p>Low volume and very precise. The only false positive I'd expect is cache-busting asset names (<code>app-3f9a…e1.js</code>), so exclude your static paths.</p>
+
+<h3>B2. Slow edge-device fingerprinting (T1592.002)</h3>
+<p><span class="org orgB">Org B</span> Tested: found the 14-second fingerprinter <code>67.205.160.10</code>, and a second address I hadn't spotted, <code>138.197.223.34</code>, with the same User-Agent and the same 16-product list. It also flagged my own authorised scanner, which is the false positive to allowlist.</p>
+<pre><code>let EdgeLogin = @"(?i)(\+CSCOE\+|/dana-na/|/remote/login|/global-protect/|/WebInterface/login|/api/v2/cmdb|/Orion/Login|/owa/auth|/vpn/index\.html|/cgi-bin/login|/logon/LogonPoint|/my\.policy|/ui/login|/manage/account/login)";
+WebAccess
+| where Url matches regex EdgeLogin
+| summarize Requests = count(), Products = dcount(Url), Start = min(TimeGenerated), End = max(TimeGenerated) by SrcIp, UserAgent
+| where Requests &gt;= 10
+| extend Minutes = round(datetime_diff("second", End, Start) / 60.0, 1),
+         PerMinute = round(Requests / (datetime_diff("second", End, Start) / 60.0 + 1), 1)
+| project SrcIp, UserAgent, Requests, Products, Minutes, PerMinute
+| order by Requests desc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count min(_time) as start max(_time) as end dc(Web.url) as products from datamodel=Web
+    where (Web.url="*+CSCOE+*" OR Web.url="*/dana-na/*" OR Web.url="*/remote/login*" OR Web.url="*/global-protect/*"
+        OR Web.url="*/WebInterface/login*" OR Web.url="*/api/v2/cmdb*" OR Web.url="*/Orion/Login*" OR Web.url="*/owa/auth*"
+        OR Web.url="*/logon/LogonPoint*" OR Web.url="*/my.policy*")
+    by Web.src Web.http_user_agent
+| rename Web.* as *
+| eval minutes=round((end-start)/60,1), per_minute=round(count/(minutes+1),1)
+| where count &gt;= 10</code></pre>
+<p>Run this one against your <em>VPN and edge appliances'</em> logs, not only your web servers. Someone listing your edge products at 0.8 requests a minute is doing homework on you.</p>
+
+<h3>B3. Same kit, many addresses</h3>
+<p><span class="org orgB">Org B</span> Tested: four kits ran from 3 or more addresses. RedTail (48 paths, 11 addresses), the phpMyAdmin hunter (128 paths, 7 addresses), and two smaller ones (3 addresses each).</p>
+<pre><code>WebAccess
+| where Status != 200 or Url != "/"
+| summarize Paths = make_set(Url, 1000), Requests = count() by SrcIp
+| where array_length(Paths) &gt;= 10
+| extend Kit = hash_sha256(strcat_array(array_sort_asc(Paths), "|"))
+| summarize Sources = dcount(SrcIp), SourceList = make_set(SrcIp, 20), PathCount = take_any(array_length(Paths)) by Kit
+| where Sources &gt;= 3
+| project Sources, PathCount, SourceList
+| order by Sources desc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats values(Web.url) as paths from datamodel=Web where NOT (Web.status=200 Web.url="/") by Web.src
+| rename Web.src as src
+| where mvcount(paths) &gt;= 10
+| eval kit=sha256(mvjoin(mvsort(paths), "|")), path_count=mvcount(paths)
+| stats dc(src) as sources values(src) as source_list first(path_count) as path_count by kit
+| where sources &gt;= 3</code></pre>
+<p>This is a threat-intel rule more than an alert. It turns 21 IPs into 4 named kits. When a kit shows up again from a new address, you already know what it does.</p>
+
+<h2 id="correlate">5. Correlation: Making Noise Useful</h2>
+<p>No single rule above should page a human. What should is a spray against a host <em>followed by</em> the host doing something a web server shouldn't do.</p>
+
+<h3><span class="org orgB">Org B</span> C1. Spray, then a web-server child process on the same host</h3>
+<pre><code>// WebAccess needs the web server's name for this join: add DestHost = Computer to its projection
+let Spray = WebAccess
+| extend Family = case(
+      Request has_any ("allow_url_include","auto_prepend_file"), "php-cgi",
+      Request has "eval-stdin.php", "phpunit", Request has "invokefunction", "thinkphp",
+      Request has "pearcmd", "pearcmd", Body has "constructor:constructor", "react2shell",
+      Body has "PHP_SESSION_UPLOAD_PROGRESS", "php2shell", Request has "/.env", "env", "")
+| where isnotempty(Family)
+| summarize Families = dcount(Family) by SrcIp, DestHost, bin(TimeGenerated, 5m)
+| where Families &gt;= 3
+| summarize SprayStart = min(TimeGenerated), Sprayers = make_set(SrcIp, 20) by DestHost;
+DeviceProcessEvents
+| where Timestamp &gt; ago(1d)
+| where InitiatingProcessFileName in~ ("apache2","httpd","nginx","php","php-fpm","node","java","w3wp.exe")
+     or InitiatingProcessParentFileName in~ ("apache2","httpd","nginx","php","php-fpm","node","java","w3wp.exe")
+| where FileName in~ ("sh","bash","dash","wget","curl","powershell.exe","cmd.exe")
+| join kind=inner Spray on $left.DeviceName == $right.DestHost
+| where Timestamp between (SprayStart .. SprayStart + 30m)
+| project Timestamp, DeviceName, FileName, ProcessCommandLine, SprayStart, Sprayers</code></pre>
+<p>Run it as a scheduled analytics rule every 15 minutes, with entity mapping on <code>DeviceName</code> and the sprayer IPs. Sentinel's Fusion engine does something similar automatically for some pairs, but an explicit rule is easier to explain to an auditor.</p>
+
+<h3><span class="org orgA">Org A</span> C1. Risk-based alerting in Enterprise Security</h3>
+<p>In ES, don't make the spray rules notable events. Give them a <strong>Risk Analysis</strong> action instead: risk object = the destination host, a score of 10 to 20, and the source IP as the threat object. Do the same for the Falcon process rules from the other posts, with a higher score (60 to 80). Then one risk-incident rule fires when a host collects enough risk from more than one detection:</p>
+<pre><code>| from datamodel:"Risk.All_Risk"
+| search risk_object_type=system
+| stats sum(risk_score) as total_risk dc(source) as detections values(source) as rules
+        values(threat_object) as threat_objects by risk_object
+| where total_risk &gt;= 100 AND detections &gt;= 2</code></pre>
+<p>A spray alone (20) never fires. A spray plus "web server spawned a shell" (20 + 80) does. The analyst gets one incident with the whole story attached.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>B1 to B3 alone:</strong> no action beyond enrichment. Tag the source with the kit name.</li>
+<li><strong>B2 against your edge devices:</strong> check those products are on the latest firmware this week. You've just been told someone is interested.</li>
+<li><strong>C1:</strong> the spray landed. <span class="org orgA">Org A</span> Network-contain the host in Falcon. <span class="org orgB">Org B</span> Isolate it in Defender. Then follow the response steps in whichever per-exploit post matches the payload.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Return real 404s. A server that answers 200 to everything confuses your own detections more than the attacker's.</li>
+<li>Remove version banners and default login pages from edge devices where the vendor allows it.</li>
+<li>Rate limiting won't stop slow fingerprinting. Put admin and VPN portals behind an allowlist or an identity-aware proxy instead.</li>
+<li>Keep an allowlist of your authorised scanners. It's the main false positive in every rule here.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>Canary scanner</td><td><code>181.215.186.252</code>, prefix <code>reconx-</code>, UA <code>ReconX-L2S/1.0</code></td><td>Calibration paths</td></tr>
+<tr><td>Slow fingerprint</td><td><code>67.205.160.10</code>, <code>138.197.223.34</code></td><td>Edge-device login pages, about 1 per 14 s</td></tr>
+<tr><td>Laravel kit</td><td><code>31.76.118.108</code>, marker <code>SNIPPER_OK_</code></td><td>Ignition, Livewire, PHPUnit, then <code>.env</code></td></tr>
+<tr><td>phpMyAdmin hunter</td><td>UA <code>Go Web Pentest Tool</code>, 128 paths, 7 addresses</td><td>Database admin panels</td></tr>
+<tr><td>Arithmetic check</td><td><code>152.236.14.113</code>, <code>63187*52324</code></td><td>ThinkPHP and PHPUnit</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
