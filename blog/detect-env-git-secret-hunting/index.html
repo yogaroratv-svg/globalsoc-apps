@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting .env, .git and Secret-File Scanning (and AndroxGh0st) in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-env-git-secret-hunting/">
+<meta name="description" content="3,307 requests to my honeypot were plain GETs for files that hold credentials: .env, .git/config, AWS keys, database dumps. I walk through the wordlists and the AndroxGh0st follow-up, map them to the kill chain and ATT&amp;CK, and give the Splunk and Sentinel detections, including the cloud-side rules that catch a leaked key being used.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-env-git-secret-hunting/">
+<meta property="og:title" content="Detecting .env, .git and Secret-File Scanning (and AndroxGh0st) in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="3,307 requests to my honeypot were plain GETs for files that hold credentials: .env, .git/config, AWS keys, database dumps. I walk through the wordlists and the AndroxGh0st follow-up, map them to the kill chain and ATT&amp;CK, and give the Splunk and Sentinel detections, including the cloud-side rules that catch a leaked key being used.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting .env, .git and Secret-File Scanning (and AndroxGh0st) in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="3,307 requests to my honeypot were plain GETs for files that hold credentials: .env, .git/config, AWS keys, database dumps. I walk through the wordlists and the AndroxGh0st follow-up, map them to the kill chain and ATT&amp;CK, and give the Splunk and Sentinel detections, including the cloud-side rules that catch a leaked key being used.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-env-git-secret-hunting/#article",
+      "url": "https://globalsoc.com.au/blog/detect-env-git-secret-hunting/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-env-git-secret-hunting/"
+      },
+      "headline": "A Third of All Attacks Needed No Exploit: Detecting .env, .git and Secret-File Hunting",
+      "description": "3,307 requests to my honeypot were plain GETs for files that hold credentials: .env, .git/config, AWS keys, database dumps. I walk through the wordlists and the AndroxGh0st follow-up, map them to the kill chain and ATT&CK, and give the Splunk and Sentinel detections, including the cloud-side rules that catch a leaked key being used.",
+      "datePublished": "2026-11-03",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "A Third of All Attacks Needed No Exploit: Detecting .env, .git and Secret-File Hunting",
+          "item": "https://globalsoc.com.au/blog/detect-env-git-secret-hunting/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-03">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 3 November 2026</p>
+<h1>A Third of All Attacks Needed No Exploit: Detecting .env, .git and Secret-File Hunting</h1>
+<p>3,307 requests to my honeypot were plain GETs for files that hold credentials: .env, .git/config, AWS keys, database dumps. I walk through the wordlists and the AndroxGh0st follow-up, map them to the kill chain and ATT&amp;CK, and give the Splunk and Sentinel detections, including the cloud-side rules that catch a leaked key being used.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Cloud and Endpoint Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. Both also run workloads in AWS. The web-layer KQL ran against the honeypot's real logs. The cloud and EDR queries are written from AndroxGh0st's published behaviour, so adapt the field names to your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>The biggest single category of attack traffic on my honeypot didn't use a vulnerability at all. 114 IPs sent 3,307 requests for 884 different paths. Every one of them was a file that would hand over credentials if it existed:</p>
+
+<svg viewBox="0 0 720 246" role="img" style="width:100%;max-width:720px;height:auto;font:13px system-ui,sans-serif">
+<text x="222" y="16" text-anchor="end" fill="#1d3344">.env files</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">2,000</text>
+<text x="222" y="40" text-anchor="end" fill="#1d3344">.git repository</text><rect class="bar" x="230" y="28" width="73" height="15" rx="2"/><text x="309" y="40" fill="#47687c">359</text>
+<text x="222" y="64" text-anchor="end" fill="#1d3344">Other config files</text><rect class="bar" x="230" y="52" width="71" height="15" rx="2"/><text x="307" y="64" fill="#47687c">347</text>
+<text x="222" y="88" text-anchor="end" fill="#1d3344">Database dumps and backups</text><rect class="bar" x="230" y="76" width="33" height="15" rx="2"/><text x="269" y="88" fill="#47687c">165</text>
+<text x="222" y="112" text-anchor="end" fill="#1d3344">Docker, Kubernetes, CI files</text><rect class="bar" x="230" y="100" width="22" height="15" rx="2"/><text x="258" y="112" fill="#47687c">110</text>
+<text x="222" y="136" text-anchor="end" fill="#1d3344">Cloud credentials (.aws, credentials)</text><rect class="bar" x="230" y="124" width="21" height="15" rx="2"/><text x="257" y="136" fill="#47687c">107</text>
+<text x="222" y="160" text-anchor="end" fill="#1d3344">wp-config.php copies</text><rect class="bar" x="230" y="148" width="18" height="15" rx="2"/><text x="254" y="160" fill="#47687c">90</text>
+<text x="222" y="184" text-anchor="end" fill="#1d3344">phpinfo / server-status</text><rect class="bar" x="230" y="172" width="17" height="15" rx="2"/><text x="253" y="184" fill="#47687c">84</text>
+<text x="222" y="208" text-anchor="end" fill="#1d3344">.svn / .hg</text><rect class="bar" x="230" y="196" width="5" height="15" rx="2"/><text x="241" y="208" fill="#47687c">29</text>
+<text x="222" y="232" text-anchor="end" fill="#1d3344">SSH and TLS private keys</text><rect class="bar" x="230" y="220" width="3" height="15" rx="2"/><text x="239" y="232" fill="#47687c">16</text>
+</svg>
+
+<p>That's one external request in three. Nothing leaked, because the honeypot's web root holds one file. But the path list is a good map of how developers actually leak secrets. Every path is on it because it has worked somewhere.</p>
+
+<p><code>/.env</code> alone was asked for 318 times, plus 479 variations. The variations are the clever part: <code>.env.bak</code>, <code>.env.save</code>, <code>.env~</code>, <code>.env.old</code>. A site can block <code>/.env</code> correctly and still serve the copy that <code>nano</code> left beside it. The scanners ask for the copy too.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Recon</span> Step 1: Calibrate, then run the wordlist</h3>
+<p>The most complete run came from <code>213.209.159.175</code>: 327 requests in about two minutes, using a Firefox 0.8 on Windows 2000 User-Agent. Its first requests show how a good scanner works:</p>
+<pre><code>22:31:21  GET /site.zip HTTP/1.1  -&gt; 404
+22:31:22  GET / HTTP/1.1  -&gt; 200
+22:31:22  GET /tqzjwpy3sm89ne HTTP/1.1  -&gt; 404
+22:31:23  GET /.env HTTP/1.1  -&gt; 404
+22:31:24  GET /../.env HTTP/1.1  -&gt; 400
+22:31:24  GET /settings.json HTTP/1.1  -&gt; 404
+22:31:25  GET /assets/.env HTTP/1.1  -&gt; 404
+22:31:25  GET /assets/config.json HTTP/1.1  -&gt; 404
+22:31:25  GET /api/.env HTTP/1.1  -&gt; 404
+22:31:26  GET /backend/.env HTTP/1.1  -&gt; 404
+22:31:26  GET /sendgrid.env HTTP/1.1  -&gt; 404
+22:31:27  GET /admin/.env HTTP/1.1  -&gt; 404
+22:31:27  GET /server/.env HTTP/1.1  -&gt; 404
+22:31:27  GET /laravel/.env HTTP/1.1  -&gt; 404
+22:31:28  GET /phpinfo/ HTTP/1.1  -&gt; 404
+22:31:28  GET /.env.example HTTP/1.1  -&gt; 404
+22:31:29  GET /phpinfo.php HTTP/1.1  -&gt; 404
+22:31:29  GET /?phpinfo=-1 HTTP/1.1  -&gt; 200
+22:31:29  GET /core/.env HTTP/1.1  -&gt; 404
+22:31:30  GET /wp-config.php HTTP/1.1  -&gt; 404
+22:31:30  GET /app/.env HTTP/1.1  -&gt; 404
+22:31:30  GET /app_dev.php/_profiler/open?file=app/config/parameters.yml HTTP/1.1  -&gt; 404
+22:31:31  GET /claude.env HTTP/1.1  -&gt; 404
+22:31:31  GET /.claude/.env HTTP/1.1  -&gt; 404
+22:31:32  GET /bedrock.env HTTP/1.1  -&gt; 404
+22:31:32  GET /.bedrock/.env HTTP/1.1  -&gt; 404
+22:31:33  GET /aws.env HTTP/1.1  -&gt; 404
+22:31:33  GET /.aws/.env HTTP/1.1  -&gt; 404
+22:31:33  GET /.env.save HTTP/1.1  -&gt; 404
+22:31:34  GET /?url=.env HTTP/1.1  -&gt; 200</code></pre>
+<p><code>/tqzjwpy3sm89ne</code> is a calibration request. A random path that can't exist shows the scanner what "not found" looks like on this server, so a site that answers 200 to everything doesn't flood it with false hits. Then it walks the list: <code>.env</code> in every likely directory, cloud key files, <code>.git/config</code>, backups, CI files (T1595.003 Wordlist Scanning).</p>
+
+<h3><span class="kc">Credential Access</span> Step 2: Read the file</h3>
+<p>If any path returns the real file, that's the whole attack: T1552.001 Credentials in Files. A <code>.env</code> typically holds the database password, SMTP login, payment keys, cloud keys and the framework's signing key. An exposed <code>.git/</code> lets the attacker rebuild the whole repository, including every secret that was ever committed and later "removed" (T1213 Data from Information Repositories).</p>
+
+<h3><span class="kc">Credential Access</span> Step 3: AndroxGh0st's debug-page trick</h3>
+<p>255 requests weren't GETs. Seven IPs, almost all in <code>78.153.140.0/24</code>, sent this pair, always within a second:</p>
+<pre><code>2026-10-24 00:58:32 UTC  78.153.140.149 (United Kingdom)  status 404  request 242 bytes  response 485 bytes
+GET /.env HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.140 Safari/537.36
+
+2026-10-24 00:58:33 UTC  78.153.140.149 (United Kingdom)  status 200  request 328 bytes  response 1941 bytes
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.140 Safari/537.36
+Content-Type: application/x-www-form-urlencoded
+
+0x%5B%5D=androxgh0st</code></pre>
+<p>The POST body URL-decodes to <code>0x[]=androxgh0st</code>. That's the published signature of AndroxGh0st (CISA/FBI advisory AA24-016A). If <code>/.env</code> isn't served, the tool POSTs junk to a Laravel app. With <code>APP_DEBUG=true</code>, Laravel answers with its debug page, and that page prints every environment variable. The <code>legion</code> marker in two of the bodies is a related harvester using the same trick.</p>
+<p><code>78.153.140.149</code> sent the same pair on ten different days. My server is on its list, and the list gets replayed on a schedule whether or not anything was found last time.</p>
+
+<h3><span class="kc">Actions on Objectives</span> Step 4: Use the keys</h3>
+<p>This is where most organisations would actually see it. With a leaked AWS key, AndroxGh0st checks the SES sending quota (<code>GetSendQuota</code>) to see whether the account can send spam. Then it creates a new IAM user, attaches an admin policy and gives it a console password (T1078.004 Cloud Accounts, T1136.003 Create Cloud Account, T1098). With a leaked Laravel <code>APP_KEY</code>, it can forge an encrypted cookie for remote code execution (CVE-2018-15133, T1190). SMTP and SendGrid/Twilio keys go straight to spam campaigns.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>114 sources; <code>78.153.140.0/24</code> for AndroxGh0st</td><td>Blocking the <code>/24</code> is reasonable, but it won't last. The wordlist runners never came back.</td></tr>
+<tr><td>Network artefacts</td><td>POST body <code>0x[]=androxgh0st</code>; User-Agents like <code>l9explore</code> or a 2004 Firefox</td><td>A free alert if you log POST bodies (most don't). User-Agents are trivial to change, and most of these sources sent normal browser strings.</td></tr>
+<tr><td>Tools</td><td>The wordlist: hundreds of secret paths in minutes, with a calibration request; GET <code>/.env</code> followed by POST <code>/</code> within seconds</td><td>Detect the shape. It doesn't matter which wordlist they use, only that they asked for many secret paths at once.</td></tr>
+<tr><td>TTPs</td><td>A secret file actually served (T1552.001); a leaked key used from a new IP to check SES quota or create IAM users</td><td>These are the alerts that matter, because they mean you lost something. They don't depend on the tool, the IP or the wordlist.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Web-Layer Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used the CIM <code>Web</code> data model.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. Secret-file wordlist (T1595.003)</h3>
+<p><span class="org orgB">Org B</span> Tested: 61 ten-minute windows from 28 sources. The busiest asked for 232 distinct secret paths in ten minutes.</p>
+<pre><code>let SecretPath = @"(?i)(/\.env|\.git/|/\.aws/|credentials|/\.ssh/|id_rsa|wp-config\.(php\.|bak|old|txt|zip|gz|swp|orig|save|dist)|\.sql$|\.sql\.gz|backup\.(zip|tar|tgz)|docker-compose|\.kube/config|\.npmrc|sftp(-config)?\.json|terraform\.tfstate|actuator/env|phpinfo|server-status|\.htpasswd)";
+WebAccess
+| where Url matches regex SecretPath
+| summarize SecretPaths = dcount(Url), Requests = count(), Start = min(TimeGenerated), End = max(TimeGenerated)
+          by SrcIp, UserAgent, Window = bin(TimeGenerated, 10m)
+| where SecretPaths &gt;= 10</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web by _time span=10m Web.src Web.dest Web.url Web.http_user_agent
+| rename Web.* as *
+| regex url="(?i)(/\.env|\.git/|/\.aws/|credentials|/\.ssh/|id_rsa|wp-config\.(php\.|bak|old|txt|zip|gz|swp|orig|save|dist)|\.sql$|\.sql\.gz|backup\.(zip|tar|tgz)|docker-compose|\.kube/config|\.npmrc|sftp(-config)?\.json|terraform\.tfstate|actuator/env|phpinfo|server-status|\.htpasswd)"
+| stats dc(url) as secret_paths sum(count) as requests by _time src dest http_user_agent
+| where secret_paths &gt;= 10</code></pre>
+<p>It's informational on its own, because every public server sees this daily. Use it to enrich W2, and to spot an internal IP doing it, which would mean a compromised host or a pentester you didn't know about.</p>
+
+<h3>W2. A secret file was actually served (T1552.001): the one that matters</h3>
+<p><span class="org orgB">Org B</span> Tested: 0 results, correctly. Sixteen secret-path requests got a 200, but every response was exactly the size of the home page, because they were query strings or <code>PATH_INFO</code> the page ignored.</p>
+<pre><code>let SecretPath = @"(?i)(/\.env|\.git/|/\.aws/|credentials|/\.ssh/|id_rsa|wp-config\.(php\.|bak|old|txt|zip|gz|swp|orig|save|dist)|\.sql$|\.sql\.gz|backup\.(zip|tar|tgz)|docker-compose|\.kube/config|\.npmrc|sftp(-config)?\.json|terraform\.tfstate|actuator/env|phpinfo|server-status|\.htpasswd)";
+let HomeSizes = WebAccess
+| where Url == "/" and Status == 200
+| summarize by BytesOut;
+WebAccess
+| where Url matches regex SecretPath and Status == 200
+| join kind=leftanti HomeSizes on BytesOut
+| project TimeGenerated, SrcIp, Url, Status, BytesOut, UserAgent</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web where Web.status=200 by Web.dest Web.src Web.url Web.bytes_out
+| rename Web.* as *
+| regex url="(?i)(/\.env|\.git/|/\.aws/|credentials|/\.ssh/|id_rsa|wp-config\.(php\.|bak|old|txt|zip|gz|swp|orig|save|dist)|\.sql$|\.sql\.gz|backup\.(zip|tar|tgz)|docker-compose|\.kube/config|\.npmrc|sftp(-config)?\.json|terraform\.tfstate|actuator/env|phpinfo|server-status|\.htpasswd)"
+| join type=left dest
+    [| tstats values(Web.bytes_out) as home_sizes from datamodel=Web where Web.url="/" Web.status=200 by Web.dest
+     | rename Web.dest as dest ]
+| where isnull(mvfind(home_sizes, "^".bytes_out."$"))
+| table dest src url bytes_out count</code></pre>
+<p>This is why I don't trust a bare "status 200" alert. It would have fired 16 times here, all false. Comparing the response size with the home page removes them. Anything left is a real file being served. High severity: rotate whatever was in it, now.</p>
+
+<h3>W3. GET /.env then POST / (AndroxGh0st and friends)</h3>
+<p><span class="org orgB">Org B</span> Tested: 258 pairs from 9 sources. Three body markers: <code>androxgh0st</code>, <code>legion</code>, and a third body neither string matched. That third one is why this rule keys on the sequence, not the string.</p>
+<pre><code>let EnvGets = WebAccess
+| where Method == "GET" and Url endswith "/.env"
+| project EnvTime = TimeGenerated, SrcIp;
+WebAccess
+| where Method == "POST" and Url == "/"
+| join kind=inner EnvGets on SrcIp
+| where TimeGenerated between (EnvTime .. EnvTime + 10s)
+| extend BodyMarker = case(Body has "androxgh0st", "androxgh0st", Body has "legion", "legion", "other")
+| summarize Pairs = count(), Days = dcount(bin(TimeGenerated, 1d)) by SrcIp, BodyMarker</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web
+    where (Web.http_method="GET" Web.url="*/.env") OR (Web.http_method="POST" Web.url="/")
+    by _time span=1s Web.src Web.dest Web.http_method
+| rename Web.* as *
+| sort 0 src _time
+| streamstats current=f last(http_method) as prev_method last(_time) as prev_time by src dest
+| where http_method="POST" AND prev_method="GET" AND _time - prev_time &lt;= 10
+| stats count as pairs dc(eval(strftime(_time,"%F"))) as days by src dest</code></pre>
+<p>Medium severity. Check the POST response size. If it's much bigger than your normal error page, you're probably serving a debug page, and that's a leak.</p>
+
+<h2 id="endpoint">5. Cloud and Endpoint Detections</h2>
+<p>If a secret did leak, you won't see it used on the web server. You'll see it used in your cloud account, from someone else's IP. Org A ingests CloudTrail through the Splunk Add-on for AWS. Org B uses the Sentinel AWS connector (<code>AWSCloudTrail</code>).</p>
+
+<h3>C1. AndroxGh0st's cloud playbook (T1078.004, T1136.003)</h3>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>AWSCloudTrail
+| where TimeGenerated &gt; ago(7d)
+| where EventName in ("GetSendQuota", "ListIdentities", "CreateUser", "CreateLoginProfile",
+                      "AttachUserPolicy", "CreateAccessKey", "RunInstances", "GetCallerIdentity")
+| where UserIdentityType == "IAMUser" and isnotempty(UserIdentityAccessKeyId)
+| summarize Calls = make_set(EventName), Regions = make_set(AWSRegion), SourceIps = make_set(SourceIpAddress)
+          by UserIdentityAccessKeyId, UserIdentityUserName, bin(TimeGenerated, 1h)
+| where Calls has "GetSendQuota" or (Calls has "CreateUser" and Calls has_any ("AttachUserPolicy", "CreateLoginProfile"))</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=aws sourcetype=aws:cloudtrail
+    eventName IN ("GetSendQuota","ListIdentities","CreateUser","CreateLoginProfile",
+                  "AttachUserPolicy","CreateAccessKey","RunInstances","GetCallerIdentity")
+    userIdentity.type=IAMUser
+| bin _time span=1h
+| stats values(eventName) as calls values(awsRegion) as regions values(sourceIPAddress) as source_ips
+        by _time userIdentity.accessKeyId userIdentity.userName
+| where mvfind(calls, "GetSendQuota") &gt;= 0
+    OR (mvfind(calls, "CreateUser") &gt;= 0 AND (mvfind(calls, "AttachUserPolicy") &gt;= 0 OR mvfind(calls, "CreateLoginProfile") &gt;= 0))</code></pre>
+<p>An IAM user key, as opposed to a role, calling <code>GetSendQuota</code> or creating a user and attaching a policy within the hour is the classic sequence. Applications rarely do either. High severity.</p>
+
+<h3>C2. A known key used from a new IP</h3>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let Known = AWSCloudTrail
+| where TimeGenerated between (ago(30d) .. ago(1d))
+| summarize by UserIdentityAccessKeyId, SourceIpAddress;
+AWSCloudTrail
+| where TimeGenerated &gt; ago(1d)
+| where UserIdentityType == "IAMUser" and isnotempty(UserIdentityAccessKeyId)
+| join kind=leftanti Known on UserIdentityAccessKeyId, SourceIpAddress
+| summarize FirstCall = min(TimeGenerated), Calls = make_set(EventName, 20) by UserIdentityAccessKeyId, UserIdentityUserName, SourceIpAddress</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=aws sourcetype=aws:cloudtrail userIdentity.type=IAMUser earliest=-30d
+| eval recent=if(_time &gt;= relative_time(now(), "-1d"), 1, 0)
+| stats max(recent) as seen_recently min(_time) as first_seen values(eventName) as calls
+        by userIdentity.accessKeyId userIdentity.userName sourceIPAddress
+| where seen_recently=1 AND first_seen &gt;= relative_time(now(), "-1d")</code></pre>
+<p>Long-lived access keys in <code>.env</code> files are usually used from a fixed set of servers. A first call from a new IP is worth a look, especially from a residential proxy or a hosting provider you don't use. Medium severity, raised to high if it pairs with C1.</p>
+
+<h3>E1. Laravel RCE after a leaked APP_KEY (T1190, T1059.004)</h3>
+<p>If the <code>APP_KEY</code> leaked, the next step is a forged cookie that makes PHP run a command. That looks the same as every other web RCE, so the <a href="/blog/detect-redtail-cryptominer/">web-server-spawns-a-shell rule from the RedTail post</a> covers it:</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    (ParentBaseFileName IN ("php","php-fpm*","apache2","httpd") OR GrandParentBaseFileName IN ("php","php-fpm*","apache2","httpd"))
+    FileName IN ("sh","bash","dash","curl","wget","python*","perl")
+| table _time ComputerName UserName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessFileName in~ ("php","php-fpm","apache2","httpd")
+     or InitiatingProcessParentFileName in~ ("php","php-fpm","apache2","httpd")
+| where FileName in~ ("sh","bash","dash","curl","wget","python3","perl")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine</code></pre>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>W1 or W3 only:</strong> recon. Run the W2 query for the same source to confirm nothing was served, then close it.</li>
+<li><strong>W2 fired:</strong> a real file left your server. Open it yourself and list every credential in it. Rotate them all, starting with cloud keys and database passwords. Block the path at the web server.</li>
+<li><strong>C1 or C2 fired:</strong> the key is in use. Disable the access key straight away, rather than deleting it, so the evidence is kept. Then look for anything it created: new IAM users and keys, login profiles, EC2 instances in unusual regions, SES identities. Org A and Org B do the same here, just through different SIEMs.</li>
+<li><strong>E1 fired:</strong> treat the server as compromised. <span class="org orgA">Org A</span> Network-contain it in Falcon. <span class="org orgB">Org B</span> Isolate it in Defender. Then rotate <code>APP_KEY</code>, which also invalidates every forged cookie.</li>
+<li><strong>Find the root cause.</strong> Work out how the file ended up in the web root: a deploy that copied the whole project directory, an editor backup, or a debug flag left on.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Put the project root one level above the web root, so <code>.env</code> is never under it.</li>
+<li>At the web server, deny every dot-file except <code>/.well-known/</code>, and deny <code>*.bak</code>, <code>*.old</code>, <code>*.save</code>, <code>*~</code>, <code>*.sql</code> and <code>*.zip</code>.</li>
+<li><code>APP_DEBUG=false</code> in production, always. Check it from outside the network: send a junk POST and look at what comes back.</li>
+<li>Don't put long-lived cloud keys in <code>.env</code>. Use instance roles or managed identities, and the keys disappear from the attack entirely.</li>
+<li>Scan your own sites with the same wordlist before someone else does. Running W1's paths against your own hosts is a ten-minute job.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th></tr></thead><tbody>
+<tr><td>AndroxGh0st sources</td><td><code>78.153.140.0/24</code> (<code>.149</code> alone on 10 days)</td></tr>
+<tr><td>POST bodies</td><td><code>0x%5B%5D=androxgh0st</code>, <code>0x01%5B%5D=legion</code></td></tr>
+<tr><td>Busiest wordlist runs</td><td><code>45.138.12.16</code>, <code>45.138.12.51</code> (<code>l9explore</code>), <code>213.209.159.175</code>, <code>137.23.38.53</code></td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
