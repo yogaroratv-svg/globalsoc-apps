@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>.env and .git Scanners: 3,291 Requests for Secrets on a PHP Honeypot | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/env-git-secret-hunters/">
+<meta name="description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/env-git-secret-hunters/">
+<meta property="og:title" content=".env and .git Scanners: 3,291 Requests for Secrets on a PHP Honeypot | Global SOC">
+<meta property="og:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content=".env and .git Scanners: 3,291 Requests for Secrets on a PHP Honeypot | Global SOC">
+<meta name="twitter:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/env-git-secret-hunters/#article",
+      "url": "https://globalsoc.com.au/blog/env-git-secret-hunters/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/env-git-secret-hunters/"
+      },
+      "headline": "3,291 Requests for Files That Should Never Be on a Web Server",
+      "description": "One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.",
+      "datePublished": "2026-11-15",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "3,291 Requests for Files That Should Never Be on a Web Server",
+          "item": "https://globalsoc.com.au/blog/env-git-secret-hunters/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-15">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
+<h1>3,291 Requests for Files That Should Never Be on a Web Server</h1>
+<p>One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.</p>
+<nav class="toc"><strong>Key Sections:</strong> Summary · What They Ask For · .env in 479 Places · Git, Cloud Keys, Backups · Who Is Asking · 283 Paths in Two Minutes · AndroxGh0st · Did Anything Leak? · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Every request on this page is shown as it was logged.</p>
+
+<h2>1. Summary</h2>
+<p>The largest single category of traffic to the honeypot needed no vulnerability. Between 2026-10-22 and 2026-11-09, 108 source IPs sent 3,291 requests for 882 different paths, each one a file that would hand over credentials if it existed: application environment files, Git metadata, cloud provider key files, database dumps, editor and CI configuration.</p>
+<p>That is one third of all external requests the honeypot logged. Responses: 404 x 3,263, 200 x 16, 403 x 11, 400 x 1. Nothing was leaked, because the honeypot's web root contains one file. Section 8 covers the 16 requests that got a <code>200</code>.</p>
+<p>These requests are worth studying because the path list is the attacker's model of how developers make mistakes. Every path below is on the list because it has paid off somewhere.</p>
+
+<h2>2. What They Ask For</h2>
+<svg viewBox="0 0 720 246" role="img" style="width:100%;max-width:720px;height:auto;font:13px system-ui,sans-serif">
+<text x="222" y="16" text-anchor="end" fill="#1d3344">.env files</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">1,997</text>
+<text x="222" y="40" text-anchor="end" fill="#1d3344">.git repository</text><rect class="bar" x="230" y="28" width="73" height="15" rx="2"/><text x="309" y="40" fill="#47687c">357</text>
+<text x="222" y="64" text-anchor="end" fill="#1d3344">Other config files</text><rect class="bar" x="230" y="52" width="69" height="15" rx="2"/><text x="305" y="64" fill="#47687c">340</text>
+<text x="222" y="88" text-anchor="end" fill="#1d3344">Database dumps and backups</text><rect class="bar" x="230" y="76" width="33" height="15" rx="2"/><text x="269" y="88" fill="#47687c">161</text>
+<text x="222" y="112" text-anchor="end" fill="#1d3344">Docker, Kubernetes, CI files</text><rect class="bar" x="230" y="100" width="22" height="15" rx="2"/><text x="258" y="112" fill="#47687c">110</text>
+<text x="222" y="136" text-anchor="end" fill="#1d3344">Cloud credentials (.aws, credentials)</text><rect class="bar" x="230" y="124" width="21" height="15" rx="2"/><text x="257" y="136" fill="#47687c">107</text>
+<text x="222" y="160" text-anchor="end" fill="#1d3344">wp-config.php copies</text><rect class="bar" x="230" y="148" width="18" height="15" rx="2"/><text x="254" y="160" fill="#47687c">90</text>
+<text x="222" y="184" text-anchor="end" fill="#1d3344">phpinfo / server-status</text><rect class="bar" x="230" y="172" width="17" height="15" rx="2"/><text x="253" y="184" fill="#47687c">84</text>
+<text x="222" y="208" text-anchor="end" fill="#1d3344">.svn / .hg</text><rect class="bar" x="230" y="196" width="5" height="15" rx="2"/><text x="241" y="208" fill="#47687c">29</text>
+<text x="222" y="232" text-anchor="end" fill="#1d3344">SSH and TLS private keys</text><rect class="bar" x="230" y="220" width="3" height="15" rx="2"/><text x="239" y="232" fill="#47687c">16</text>
+</svg>
+<table><thead><tr><th>Family</th><th>Requests</th><th>Source IPs</th><th>Distinct paths</th><th>Most requested</th></tr></thead><tbody>
+<tr><td>.env files</td><td>1,997</td><td>46</td><td>479</td><td><code>/.env</code></td></tr>
+<tr><td>.git repository</td><td>357</td><td>56</td><td>59</td><td><code>/.git/config</code></td></tr>
+<tr><td>Other config files</td><td>340</td><td>35</td><td>144</td><td><code>/config.json</code></td></tr>
+<tr><td>Database dumps and backups</td><td>161</td><td>11</td><td>60</td><td><code>/site.zip</code></td></tr>
+<tr><td>Docker, Kubernetes, CI files</td><td>110</td><td>16</td><td>34</td><td><code>/docker-compose.yml</code></td></tr>
+<tr><td>Cloud credentials (.aws, credentials)</td><td>107</td><td>16</td><td>55</td><td><code>/.aws/credentials</code></td></tr>
+<tr><td>wp-config.php copies</td><td>90</td><td>16</td><td>16</td><td><code>/wp-config.php</code></td></tr>
+<tr><td>phpinfo / server-status</td><td>84</td><td>27</td><td>18</td><td><code>/phpinfo.php</code></td></tr>
+<tr><td>.svn / .hg</td><td>29</td><td>8</td><td>7</td><td><code>/.svn/entries</code></td></tr>
+<tr><td>SSH and TLS private keys</td><td>16</td><td>4</td><td>10</td><td><code>/.ssh/id_rsa</code></td></tr>
+</tbody></table>
+
+<h2>3. .env in 479 Places</h2>
+<p>A <code>.env</code> file holds an application's settings as <code>KEY=value</code> lines: database password, mail server login, payment and cloud API keys, the framework's signing key. Laravel, Symfony, Node, Django and Rails projects all use one. It belongs one level above the web root. When the project root is the web root, <code>/.env</code> is a public URL.</p>
+<p>1,997 requests asked for 479 variations. The 40 most requested:</p>
+<pre><code> 316  /.env
+  40  /.env.local
+  36  /.env.backup
+  35  /.env.production
+  34  /.env.prod
+  33  /.env.dev
+  30  /api/.env
+  29  /.env.bak
+  28  /.env.save
+  28  /app/.env
+  28  /config/.env
+  25  /.env.old
+  24  /.env.example
+  22  /.env.test
+  22  /laravel/.env
+  21  /backend/.env
+  17  /.env.staging
+  17  /admin/.env
+  16  /public/.env
+  16  /.env.dist
+  15  /.env.production.local
+  15  /.env.stage
+  15  /frontend/.env
+  14  /storage/.env
+  13  /.env.development
+  11  /.env.live
+  11  /.env.ci
+  11  /core/.env
+  11  /web/.env
+  11  /prod/.env
+  11  /build/.env
+  10  /server/.env
+  10  /.env.development.local
+  10  /.env~
+  10  /.env.testing
+   9  /.env.orig
+   9  /.env.txt
+   9  /secrets.env
+   9  /site/.env
+   8  /var/www/.env</code></pre>
+<p>The variations come from two lists multiplied together. Directories where a project might sit:</p>
+<pre><code>/api, /config, /app, /laravel, /backend, /admin, /public, /frontend, /storage, /web, /server, /core, /www, /prod, /build, /v1, /v2, /secrets.env, /test, /src, /site, /var/www, /dashboard, /project, /tmp, /staging, /sendgrid, /backup, /settings, /wp-admin</code></pre>
+<p>And the names a developer or an editor gives to a copy:</p>
+<pre><code>.env, .env.local, .env.production, .env.backup, .env.dev, .env.prod, .env.example, .env.bak, .env.save, .env.old, .env.test, .env.php, .env.staging, .env.dist, .env.production.local, .env.development, .env.stage, .env.live, .env.ci, .env.development.local, .env~, .env.testing, .env.orig, .env.txt, .env.sample, .env.uat, .env_sample, .env.dev.local, .env.docker, .env_1</code></pre>
+<p><code>.env.bak</code>, <code>.env.save</code>, <code>.env~</code>, <code>.env.old</code> and <code>.env.orig</code> are the ones to think about. A site can block <code>/.env</code> correctly and still serve the copy that <code>nano</code> or a careful admin left beside it. The scanners know this and ask for the copy first.</p>
+
+<h2>4. Git, Cloud Keys, Backups</h2>
+<p><strong>Git.</strong> If <code>/.git/</code> is reachable, the whole repository can be rebuilt from it, including every secret ever committed and later "removed". <code>/.git/config</code> is the test request: it is small, has a fixed format, and often contains a remote URL with a token in it.</p>
+<pre><code>  72  /.git/config
+  24  /.git/HEAD
+  14  /.gitlab-ci.yml
+  13  /.git/logs/HEAD
+  11  /api/.git/config
+  11  /.git/index
+  10  /app/.git/config
+  10  /www/.git/config
+  10  /admin/.git/config
+  10  /server/.git/config
+   8  /.git-credentials
+   7  /public/.git/config
+   7  /backup/.git/config
+   7  /.git/</code></pre>
+<p><strong>Cloud credentials.</strong> Requests assume the web root is somebody's home directory, or that a key file was copied in for a deployment:</p>
+<pre><code>  21  /.aws/credentials
+  13  /.aws/config
+   9  /credentials.json
+   4  /gcp-credentials.json
+   3  /google-credentials.json
+   3  /.config/gcloud/credentials.db
+   2  /aws/credentials
+   2  /credentials
+   2  /application_default_credentials.json
+   2  /.config/gcloud/application_default_credentials.json
+   2  /gcloud-credentials.json
+   1  /.credentials.json</code></pre>
+<p><strong>Private keys.</strong></p>
+<pre><code>   3  /.ssh/id_rsa
+   3  /.ssh/id_ed25519
+   2  /.ssh/config
+   2  /.ssh/id_rsa.pub
+   1  /.ssh/id_ecdsa
+   1  /.ssh/authorized_keys
+   1  /id_rsa
+   1  /id_rsa.pub
+   1  /s3.key
+   1  /server.key</code></pre>
+<p><strong>Database dumps and site archives.</strong> Guessable names for a backup someone made "just for a minute":</p>
+<pre><code>   8  /site.zip
+   6  /backup.sql
+   6  /backup/
+   5  /backup.zip
+   5  /backup.tar.gz
+   5  /www.zip
+   5  /db.sql
+   5  /dump.sql
+   5  /database.sql
+   5  /backups/
+   5  /config.php.bak
+   4  /backup.tgz
+   4  /backup.tar
+   4  /site.sql
+   4  /www.tar.gz
+   4  /export.sql</code></pre>
+<p><strong>Docker, Kubernetes and CI.</strong></p>
+<pre><code>  13  /docker-compose.yml
+   9  /docker-compose.prod.yml
+   7  /.travis.yml
+   6  /parameters.yml
+   5  /config.yaml
+   5  /.docker/config.json
+   5  /docker-compose.yaml
+   4  /config.yml
+   4  /database.yml
+   4  /config/database.yml
+   4  /.kube/config
+   4  /secrets.yml
+   4  /config/secrets.yml
+   3  /.config.yaml
+   3  /.circleci/config.yml
+   3  /docker-compose.override.yml</code></pre>
+<p><strong>WordPress configuration copies.</strong> <code>wp-config.php</code> itself is executed by PHP and shows nothing. A copy with any other extension is served as text:</p>
+<pre><code>  16  /wp-config.php
+  16  /wp-config.php.bak
+  11  /wp-config.php.old
+   7  /wp-config.php~
+   6  /wp-config.php.save
+   5  /wp-config.php.orig
+   4  /wp-config.php.swp
+   4  /wp-config.bak
+   4  /wp-config.txt
+   4  /wp-config.php.zip
+   4  /wp-config.php.gz
+   4  /wp-config.php.dist</code></pre>
+<p><strong>Everything else.</strong> Spring Boot actuator, VS Code SFTP plugin settings (which store a server password in the project folder), Terraform state, npm tokens, framework debug panels:</p>
+<pre><code>  19  /config.json
+  12  /config.php
+  11  /admin/config.php
+   9  /.npmrc
+   9  /actuator/env
+   8  /appsettings.json
+   7  /config/database.php
+   7  /storage/logs/laravel.log
+   7  /.vscode/sftp.json
+   7  /settings.py
+   6  /config.inc.php
+   5  /.vscode/settings.json
+   5  /sftp.json
+   5  /config.js
+   5  /terraform.tfstate
+   5  /actuator/health
+   5  /.htaccess
+   5  /.htpasswd
+   4  /debug/default/view?panel=config
+   4  /sftp-config.json
+   4  /web.config
+   4  /actuator/ /env
+   4  /secrets.json
+   4  /wp-content/debug.log</code></pre>
+
+<h2>5. Who Is Asking</h2>
+<p>The twelve busiest sources:</p>
+<table><thead><tr><th>Source IP</th><th>Country</th><th>Secret requests</th><th>Distinct paths</th><th>All requests</th><th>Active (UTC)</th><th>User-Agent</th></tr></thead><tbody>
+<tr><td>45.138.12.16</td><td>Lithuania</td><td>332</td><td>114</td><td>436</td><td>10-23 to 11-01 (5 days)</td><td><code>Mozilla/5.0 (X11  Linux x86_64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
+<tr><td>45.138.12.51</td><td>Lithuania</td><td>324</td><td>81</td><td>360</td><td>10-24 to 11-04 (4 days)</td><td><code>l9explore/1.2.2</code></td></tr>
+<tr><td>213.209.159.175</td><td>Germany</td><td>283</td><td>283</td><td>327</td><td>11-03</td><td><code>Mozilla/5.0 (Windows  U  Windows NT 5.0  de-DE  rv:1.6) Geck</code></td></tr>
+<tr><td>137.23.38.53</td><td>India</td><td>267</td><td>89</td><td>300</td><td>10-22 to 10-24 (2 days)</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36</code></td></tr>
+<tr><td>102.220.160.173</td><td>Slovenia</td><td>220</td><td>110</td><td>296</td><td>10-30 to 11-04 (2 days)</td><td><code>Mozilla/5.0 (iPhone  CPU iPhone OS 17_4 like Mac OS X) Apple</code></td></tr>
+<tr><td>45.138.12.179</td><td>Lithuania</td><td>176</td><td>176</td><td>400</td><td>11-02</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36</code></td></tr>
+<tr><td>54.170.28.185</td><td>Ireland</td><td>158</td><td>158</td><td>302</td><td>10-30</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36</code></td></tr>
+<tr><td>78.153.140.149</td><td>United Kingdom</td><td>149</td><td>1</td><td>298</td><td>10-24 to 11-09 (10 days)</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36</code></td></tr>
+<tr><td>31.76.118.108</td><td>United States</td><td>144</td><td>144</td><td>164</td><td>10-25</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36</code></td></tr>
+<tr><td>77.90.185.243</td><td>Germany</td><td>117</td><td>117</td><td>126</td><td>10-23</td><td><code>Mozilla/5.0 (Windows NT 5.1) AppleWebKit/536.5 (KHTML, like </code></td></tr>
+<tr><td>77.90.185.244</td><td>Germany</td><td>117</td><td>117</td><td>126</td><td>10-23</td><td><code>Mozilla/4.0 (compatible  MSIE 8.0  Windows NT 6.1  Trident/4</code></td></tr>
+<tr><td>45.148.10.5</td><td>The Netherlands</td><td>104</td><td>52</td><td>116</td><td>10-26 to 11-01 (2 days)</td><td><code>Mozilla/5.0 (Macintosh  Intel Mac OS X 10_15_7) AppleWebKit/</code></td></tr>
+</tbody></table>
+<p>Three behaviours are visible in that table.</p>
+<ul>
+<li><strong>Wordlist runs.</strong> "Distinct paths" equals "Secret requests": one pass through a list, one request per path, finished in a few minutes, never seen again. <code>213.209.159.175</code>, <code>45.138.12.179</code>, <code>54.170.28.185</code>, <code>31.76.118.108</code> and the pair <code>77.90.185.243</code>/<code>.244</code>, which ran the same list under four hours apart (only the random calibration path differed).</li>
+<li><strong>Repeat visitors.</strong> A shorter list replayed on several days: <code>45.138.12.16</code>, <code>137.23.38.53</code>, <code>102.220.160.173</code>.</li>
+<li><strong>One path, forever.</strong> <code>78.153.140.149</code>: 298 requests on 10 days: GET /.env x 149, POST / x 149. Section 7.</li>
+</ul>
+<p>One source names itself. <code>45.138.12.51</code> sent 352 requests with the User-Agents <code>l9explore/1.2.2, l9tcpid/v1.1.0</code>, the tools published by the LeakIX project, which indexes exposed files and reports them. Its opening requests:</p>
+<pre><code>2026-10-24 03:47:20  GET / HTTP/1.1  -&gt; 200
+2026-10-24 03:47:21  GET /core/.git/config HTTP/1.1  -&gt; 404
+2026-10-24 03:47:21  GET /backend/.env HTTP/1.1  -&gt; 404
+2026-10-24 03:47:22  GET /site/.env HTTP/1.1  -&gt; 404
+2026-10-24 03:47:22  GET /.env HTTP/1.1  -&gt; 404
+2026-10-24 03:47:23  GET /.env.local HTTP/1.1  -&gt; 404
+2026-10-24 03:47:23  GET /cms/.git/config HTTP/1.1  -&gt; 404
+2026-10-24 03:47:24  GET /app/.git/config HTTP/1.1  -&gt; 404
+2026-10-24 03:47:25  GET /admin/.env HTTP/1.1  -&gt; 404
+2026-10-24 03:47:25  GET /v1/.env HTTP/1.1  -&gt; 404
+2026-10-24 03:47:26  GET /wp-config.php.bak HTTP/1.1  -&gt; 404
+2026-10-24 03:47:26  GET /config/database.php HTTP/1.1  -&gt; 404
+2026-10-24 03:47:27  GET /.env.preprod HTTP/1.1  -&gt; 404
+2026-10-24 03:47:28  GET /.env_sample HTTP/1.1  -&gt; 404</code></pre>
+<p>Every other source used a browser User-Agent. Most did not bother to make it plausible; see the next section.</p>
+
+<h2>6. 283 Paths in Two Minutes</h2>
+<p>The most complete wordlist came from <code>213.209.159.175</code> on 3 November: 327 requests between 2026-11-03 22:31:21 and 22:33:31 UTC, two to three per second, with this User-Agent:</p>
+<pre><code>Mozilla/5.0 (Windows  U  Windows NT 5.0  de-DE  rv:1.6) Gecko/20040206 Firefox/0.8</code></pre>
+<p>That is Firefox 0.8 on Windows 2000, released in February 2004. The first 30 requests, in order:</p>
+<pre><code>22:31:21  GET /site.zip HTTP/1.1  -&gt; 404
+22:31:22  GET / HTTP/1.1  -&gt; 200
+22:31:22  GET /tqzjwpy3sm89ne HTTP/1.1  -&gt; 404
+22:31:23  GET /.env HTTP/1.1  -&gt; 404
+22:31:24  GET /../.env HTTP/1.1  -&gt; 400
+22:31:24  GET /settings.json HTTP/1.1  -&gt; 404
+22:31:25  GET /assets/.env HTTP/1.1  -&gt; 404
+22:31:25  GET /assets/config.json HTTP/1.1  -&gt; 404
+22:31:25  GET /api/.env HTTP/1.1  -&gt; 404
+22:31:26  GET /backend/.env HTTP/1.1  -&gt; 404
+22:31:26  GET /sendgrid.env HTTP/1.1  -&gt; 404
+22:31:27  GET /admin/.env HTTP/1.1  -&gt; 404
+22:31:27  GET /server/.env HTTP/1.1  -&gt; 404
+22:31:27  GET /laravel/.env HTTP/1.1  -&gt; 404
+22:31:28  GET /phpinfo/ HTTP/1.1  -&gt; 404
+22:31:28  GET /.env.example HTTP/1.1  -&gt; 404
+22:31:29  GET /phpinfo.php HTTP/1.1  -&gt; 404
+22:31:29  GET /?phpinfo=-1 HTTP/1.1  -&gt; 200
+22:31:29  GET /core/.env HTTP/1.1  -&gt; 404
+22:31:30  GET /wp-config.php HTTP/1.1  -&gt; 404
+22:31:30  GET /app/.env HTTP/1.1  -&gt; 404
+22:31:30  GET /app_dev.php/_profiler/open?file=app/config/parameters.yml HTTP/1.1  -&gt; 404
+22:31:31  GET /claude.env HTTP/1.1  -&gt; 404
+22:31:31  GET /.claude/.env HTTP/1.1  -&gt; 404
+22:31:32  GET /bedrock.env HTTP/1.1  -&gt; 404
+22:31:32  GET /.bedrock/.env HTTP/1.1  -&gt; 404
+22:31:33  GET /aws.env HTTP/1.1  -&gt; 404
+22:31:33  GET /.aws/.env HTTP/1.1  -&gt; 404
+22:31:33  GET /.env.save HTTP/1.1  -&gt; 404
+22:31:34  GET /?url=.env HTTP/1.1  -&gt; 200</code></pre>
+<p>Reading it top to bottom:</p>
+<ul>
+<li><code>GET /tqzjwpy3sm89ne</code> is a calibration request. A random path that cannot exist shows the scanner what this server's "not found" looks like, so a site that answers <code>200</code> to everything does not flood it with false hits.</li>
+<li><code>GET /../.env</code> tries to step out of the web root. nginx answered <code>400</code>.</li>
+<li><code>/?phpinfo=-1</code> and <code>/app_dev.php/_profiler/open?file=app/config/parameters.yml</code> are not file guesses. The first triggers a debug page in some PHP applications; the second is the Symfony profiler's file viewer, which reads any project file when the development front controller is left on a production host.</li>
+<li><code>/sendgrid.env</code>, <code>/twilio.env</code>, <code>/aws.env</code>: service-specific names. A key for a mail or SMS provider is directly saleable for spam.</li>
+<li><code>/claude.env</code>, <code>/.claude/.env</code>, <code>/bedrock.env</code>, <code>/.bedrock/.env</code>: new entries. Keys for AI model APIs are billed by usage and resold. There is a <a href="/blog/ai-llm-credential-probing/">separate post</a> on the AI-related probing this honeypot saw.</li>
+</ul>
+
+<h2>7. AndroxGh0st: the POST That Travels With /.env</h2>
+<p>255 requests in the log were not GETs. From 2026-10-24 00:58:33 to 2026-11-09 02:33:46 UTC, 7 IPs sent a form POST to <code>/</code> with one of two bodies:</p>
+<pre><code> 253  0x%5B%5D=androxgh0st
+   2  0x01%5B%5D=legion</code></pre>
+<p>URL-decoded, that is <code>0x[]=androxgh0st</code>: an array parameter named <code>0x</code> with a single value. The first pair we received:</p>
+<pre><code>2026-10-24 00:58:32 UTC  78.153.140.149 (United Kingdom)  status 404  request 242 bytes  response 485 bytes
+GET /.env HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.140 Safari/537.36
+
+2026-10-24 00:58:33 UTC  78.153.140.149 (United Kingdom)  status 200  request 328 bytes  response 1941 bytes
+POST / HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.140 Safari/537.36
+Content-Type: application/x-www-form-urlencoded
+
+0x%5B%5D=androxgh0st</code></pre>
+<p>This pattern is the published signature of the AndroxGh0st malware (CISA/FBI advisory AA24-016A, January 2024). It is a Python tool that harvests Laravel <code>.env</code> files and then uses what it finds: SMTP logins and SendGrid/Twilio keys for spam, AWS keys to create users and instances. The scanner works in two steps:</p>
+<ol>
+<li><code>GET /.env</code>. If the file is served, parse it.</li>
+<li><code>POST /</code> with <code>0x[]=androxgh0st</code>. A Laravel application with <code>APP_DEBUG=true</code> responds to an unexpected POST with its debug error page, and that page prints every environment variable. The tool searches the response for <code>APP_KEY</code>, <code>DB_PASSWORD</code>, <code>MAIL_PASSWORD</code>, <code>AWS_ACCESS_KEY_ID</code> and similar names. The parameter value is only a marker.</li>
+</ol>
+<p>With a leaked <code>APP_KEY</code> the same toolset can forge an encrypted Laravel cookie carrying a serialised object (CVE-2018-15133) and get code execution. The request that would do that never came here, because step 1 and step 2 found nothing.</p>
+<p><code>legion</code> in place of <code>androxgh0st</code> is the marker of the Legion credential harvester, a related tool sold on Telegram with the same technique.</p>
+<p>The response to every one of these POSTs: 200 x 255 (1941 bytes). That is the compressed size of the honeypot's ordinary home page, which contains none of the strings the tool looks for.</p>
+<p>The sources are almost all one /24:</p>
+<table><thead><tr><th>Source IP</th><th>Country</th><th>Requests</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
+<tr><td>78.153.140.149</td><td>United Kingdom</td><td>149</td><td>2026-10-24 00:58</td><td>2026-11-09 02:33</td></tr>
+<tr><td>78.153.140.93</td><td>United Kingdom</td><td>32</td><td>2026-10-28 03:18</td><td>2026-11-08 20:56</td></tr>
+<tr><td>78.153.140.148</td><td>United Kingdom</td><td>32</td><td>2026-10-31 00:37</td><td>2026-11-08 22:01</td></tr>
+<tr><td>78.153.140.39</td><td>United Kingdom</td><td>25</td><td>2026-10-30 01:21</td><td>2026-11-06 21:30</td></tr>
+<tr><td>78.153.140.147</td><td>United Kingdom</td><td>14</td><td>2026-11-01 07:53</td><td>2026-11-04 00:29</td></tr>
+<tr><td>178.16.55.120</td><td>United States</td><td>2</td><td>2026-10-24 20:35</td><td>2026-10-24 20:35</td></tr>
+<tr><td>217.60.195.235</td><td>The Netherlands</td><td>1</td><td>2026-10-31 15:47</td><td>2026-10-31 15:47</td></tr>
+</tbody></table>
+<p><code>78.153.140.149</code> alone accounts for 298 requests on 10 days: GET /.env x 149, POST / x 149. It came back on ten separate days and sent the same pair each time. This is what a target list looks like from the receiving end: the honeypot's IP is on a list of hosts, and the list is replayed on a schedule whether or not anything was found the last time.</p>
+
+<h2>8. Did Anything Leak?</h2>
+<p>No. 16 requests in this category were answered <code>200</code>:</p>
+<pre><code>   3  GET /?phpinfo=-1 HTTP/1.1  (3689 bytes)
+   3  GET /?url=.env HTTP/1.1  (3689 bytes)
+   2  GET /index.php/info.php HTTP/1.1  (1941 bytes)
+   2  GET /index.php/.env.example HTTP/1.1  (1941 bytes)
+   2  GET /index.php/.env HTTP/1.1  (1941 bytes)
+   2  GET /index.php/phpinfo.php HTTP/1.1  (1941 bytes)
+   2  GET /index.php/phpinfo HTTP/1.1  (1941 bytes)</code></pre>
+<p>All of them are the home page. <code>/?phpinfo=-1</code> and <code>/?url=.env</code> are <code>/</code> with a query string the page ignores. <code>/index.php/.env</code> is <code>index.php</code> with extra path information: Apache runs the script and passes <code>/.env</code> to it as <code>PATH_INFO</code>. 3,689 bytes is the page uncompressed and 1,941 is the same page gzipped.</p>
+<p>A scanner that judges by status code alone would have recorded all 16 as hits. This is why the better tools send the calibration request shown in section 6, and why a <code>200</code> count in your own logs needs the response size beside it.</p>
+<p>The eleven <code>403</code> responses are Apache's built-in rule that denies any file starting with <code>.ht</code>, plus <code>mod_status</code> refusing a non-local client:</p>
+<pre><code>   5  GET /.htaccess HTTP/1.1
+   5  GET /.htpasswd HTTP/1.1
+   1  GET /server-status HTTP/1.1</code></pre>
+<p>A <code>403</code> tells the scanner the server is Apache and that the path is special. A <code>404</code> tells it nothing.</p>
+
+<h2>9. Packet Capture Note</h2>
+<p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for the requests in this post no longer exist. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Every payload on this page is from those two sources.</p>
+<p>For this category the capture would add little. These are header-only GET requests, and the nginx log has the request line, User-Agent, status and sizes for all 3,291 of them. The one thing nginx did not log is the request headers other than User-Agent.</p>
+
+<h2>10. IOCs</h2>
+<p>The 15 busiest sources of secret-file requests. An IP on this list is a scanner, not proof of compromise; block lists built from it go stale within weeks.</p>
+<table><thead><tr><th>Source IP</th><th>Country</th><th>Requests</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
+<tr><td>45.138.12.16</td><td>Lithuania</td><td>332</td><td>2026-10-23 13:16</td><td>2026-11-01 12:02</td></tr>
+<tr><td>45.138.12.51</td><td>Lithuania</td><td>324</td><td>2026-10-24 03:47</td><td>2026-11-04 23:25</td></tr>
+<tr><td>213.209.159.175</td><td>Germany</td><td>283</td><td>2026-11-03 22:31</td><td>2026-11-03 22:33</td></tr>
+<tr><td>137.23.38.53</td><td>India</td><td>267</td><td>2026-10-22 19:05</td><td>2026-10-24 07:23</td></tr>
+<tr><td>102.220.160.173</td><td>Slovenia</td><td>220</td><td>2026-10-30 15:10</td><td>2026-11-04 20:08</td></tr>
+<tr><td>45.138.12.179</td><td>Lithuania</td><td>176</td><td>2026-11-02 22:40</td><td>2026-11-02 22:43</td></tr>
+<tr><td>54.170.28.185</td><td>Ireland</td><td>158</td><td>2026-10-30 04:16</td><td>2026-10-30 04:20</td></tr>
+<tr><td>78.153.140.149</td><td>United Kingdom</td><td>149</td><td>2026-10-24 00:58</td><td>2026-11-09 02:33</td></tr>
+<tr><td>31.76.118.108</td><td>United States</td><td>144</td><td>2026-10-25 16:11</td><td>2026-10-25 16:12</td></tr>
+<tr><td>77.90.185.243</td><td>Germany</td><td>117</td><td>2026-10-23 04:29</td><td>2026-10-23 04:30</td></tr>
+<tr><td>77.90.185.244</td><td>Germany</td><td>117</td><td>2026-10-23 08:08</td><td>2026-10-23 08:09</td></tr>
+<tr><td>45.148.10.5</td><td>The Netherlands</td><td>104</td><td>2026-10-26 08:36</td><td>2026-11-01 19:39</td></tr>
+<tr><td>195.178.110.159</td><td>Bulgaria</td><td>73</td><td>2026-11-06 03:35</td><td>2026-11-06 03:36</td></tr>
+<tr><td>102.220.161.104</td><td>Slovenia</td><td>69</td><td>2026-10-25 14:54</td><td>2026-10-28 05:56</td></tr>
+<tr><td>93.123.109.214</td><td>Bulgaria</td><td>63</td><td>2026-10-22 21:30</td><td>2026-11-06 04:15</td></tr>
+</tbody></table>
+<table>
+<tr><th>Type</th><th>Value</th></tr>
+<tr><td>POST body</td><td><code>0x%5B%5D=androxgh0st</code>, <code>0x01%5B%5D=legion</code></td></tr>
+<tr><td>Network</td><td><code>78.153.140.0/24</code> (five AndroxGh0st sources), <code>45.138.12.0/24</code> (three of the top six scanners)</td></tr>
+<tr><td>User-Agent</td><td><code>l9explore/1.2.2</code>, <code>l9tcpid/v1.1.0</code> (LeakIX); <code>Mozilla/5.0 (Windows; U; Windows NT 5.0; de-DE; rv:1.6) Gecko/20040206 Firefox/0.8</code></td></tr>
+</table>
+
+<h2>11. Detection (KQL)</h2>
+<p>Secret-file requests by source, with the two numbers that matter: how many were not refused, and how large the answers were.</p>
+<pre><code class="language-kusto">Syslog
+| where TimeGenerated &gt; ago(7d)
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| extend Client = tostring(j.client), Uri = tolower(tostring(j.uri)), Status = toint(j.status), BytesOut = tolong(j.bytes_out)
+| where Uri matches regex @"(\.env|/\.git|/\.svn|/\.aws|/\.ssh|id_rsa|wp-config\.|credentials|\.sql$|\.bak$|docker-compose|\.npmrc|tfstate|sftp.*\.json)"
+| summarize Requests = count(), Paths = dcount(Uri), Served = countif(Status == 200), MaxBytes = max(BytesOut), SamplePaths = make_set(Uri, 5) by Client
+| order by Served desc, Requests desc</code></pre>
+<p>On a production site, alert on <code>Served &gt; 0</code>, then confirm by size. AndroxGh0st and Legion by body:</p>
+<pre><code class="language-kusto">Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| where tostring(j.method) == "POST" and tostring(j.body) matches regex @"^0x[0-9a-f]*(%5B%5D|\[\])=(androxgh0st|legion)"
+| summarize Posts = count(), Days = dcount(bin(TimeGenerated, 1d)), First = min(TimeGenerated), Last = max(TimeGenerated) by Client = tostring(j.client)</code></pre>
+<p>Most access logs do not record POST bodies. Without the body, the same actor shows as <code>GET /.env</code> followed within a second or two by <code>POST /</code> from the same IP.</p>
+
+<h2>12. Mitigation</h2>
+<ul>
+<li><strong>Serve a sub-directory, not the project.</strong> The web root should be <code>public/</code> (Laravel, Symfony) or a build output folder. Then <code>.env</code>, <code>.git</code>, <code>vendor/</code> and <code>storage/</code> have no URL at all. This one change removes most of this page.</li>
+<li><strong>Deny dotfiles at the web server</strong> as a second layer. nginx: <code>location ~ /\.(?!well-known) { return 404; }</code>. Apache: <code>RedirectMatch 404 "/\.(?!well-known)"</code>. Return <code>404</code>, not <code>403</code>.</li>
+<li><strong>Deploy artefacts, not checkouts.</strong> <code>git archive</code>, a CI build, or a container image without <code>.git</code>. Add <code>.git</code> and <code>.env*</code> to <code>.dockerignore</code>.</li>
+<li><strong>Never edit or back up in place.</strong> <code>cp wp-config.php wp-config.php.bak</code> inside the web root publishes the database password. Editors do this silently (<code>~</code>, <code>.swp</code>, <code>.save</code>).</li>
+<li><strong><code>APP_DEBUG=false</code></strong> in production. It is the whole of AndroxGh0st's second step.</li>
+<li><strong>Test yourself.</strong> From outside: <code>curl -s -o /dev/null -w '%{http_code} %{size_download}\n' https://your-site/.env</code>, and the same for <code>/.git/config</code> and <code>/.env.bak</code>. Anything other than a <code>404</code> needs a look.</li>
+<li><strong>If one was exposed, rotate.</strong> Assume it was read. Change every credential in the file; check cloud audit logs for new users, keys and instances; check mail provider logs for sending you did not do.</li>
+</ul>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
