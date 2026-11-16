@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Honeypot Detection Playbook: Splunk + CrowdStrike and Sentinel + Defender Rules From Real Attacks | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/honeypot-detection-playbook/">
+<meta name="description" content="I ran a deliberately vulnerable PHP server on the internet and turned everything that hit it into detections. This is the hub: the kill-chain and ATT&amp;CK coverage map, the data sources you need, and links to twelve posts with tested queries for Splunk + CrowdStrike Falcon and Microsoft Sentinel + Defender for Endpoint.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/honeypot-detection-playbook/">
+<meta property="og:title" content="Honeypot Detection Playbook: Splunk + CrowdStrike and Sentinel + Defender Rules From Real Attacks | Global SOC">
+<meta property="og:description" content="I ran a deliberately vulnerable PHP server on the internet and turned everything that hit it into detections. This is the hub: the kill-chain and ATT&amp;CK coverage map, the data sources you need, and links to twelve posts with tested queries for Splunk + CrowdStrike Falcon and Microsoft Sentinel + Defender for Endpoint.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Honeypot Detection Playbook: Splunk + CrowdStrike and Sentinel + Defender Rules From Real Attacks | Global SOC">
+<meta name="twitter:description" content="I ran a deliberately vulnerable PHP server on the internet and turned everything that hit it into detections. This is the hub: the kill-chain and ATT&amp;CK coverage map, the data sources you need, and links to twelve posts with tested queries for Splunk + CrowdStrike Falcon and Microsoft Sentinel + Defender for Endpoint.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/honeypot-detection-playbook/#article",
+      "url": "https://globalsoc.com.au/blog/honeypot-detection-playbook/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/honeypot-detection-playbook/"
+      },
+      "headline": "The Honeypot Detection Playbook: What Attacked My Server, and the Splunk and Sentinel Rules to Catch It",
+      "description": "I ran a deliberately vulnerable PHP server on the internet and turned everything that hit it into detections. This is the hub: the kill-chain and ATT&CK coverage map, the data sources you need, and links to twelve posts with tested queries for Splunk + CrowdStrike Falcon and Microsoft Sentinel + Defender for Endpoint.",
+      "datePublished": "2026-11-15",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "The Honeypot Detection Playbook: What Attacked My Server, and the Splunk and Sentinel Rules to Catch It",
+          "item": "https://globalsoc.com.au/blog/honeypot-detection-playbook/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-15">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
+<h1>The Honeypot Detection Playbook: What Attacked My Server, and the Splunk and Sentinel Rules to Catch It</h1>
+<p>I ran a deliberately vulnerable PHP server on the internet and turned everything that hit it into detections. This is the hub: the kill-chain and ATT&amp;CK coverage map, the data sources you need, and links to twelve posts with tested queries for Splunk + CrowdStrike Falcon and Microsoft Sentinel + Defender for Endpoint.</p>
+<nav class="toc"><strong>Key Sections:</strong> Why I Built This · How to Read the Series · Coverage Map · The Five Rules to Build First · Data You Need · The Posts</nav>
+<h2 id="why">1. Why I Built This</h2>
+
+<p>I put a vulnerable PHP container on a public IP the day after a new PHP bug was disclosed, logged everything into Microsoft Sentinel, and watched. The first request arrived after 33 minutes. Over the next three and a half weeks it took 135,442 SSH password guesses, about 10,500 web requests from more than 1,100 addresses, and every flavour of exploit, credential hunt and scanner you'd expect, plus a few I didn't.</p>
+
+<p>The traffic itself isn't the interesting part. What matters is what a defender should do about it. So each post in this series takes one kind of attack and walks through it the same way:</p>
+<ul>
+<li>the attack step by step, with each step mapped to the kill chain and MITRE ATT&amp;CK</li>
+<li>a Pyramid of Pain table: which indicators are worth your time, and which ones the attacker changes overnight</li>
+<li>detections for two organisations, from cheap web-layer rules up to behavioural endpoint rules</li>
+<li>what to do when each rule fires, and the hardening that makes it not matter</li>
+</ul>
+
+<h2 id="read">2. How to Read the Series</h2>
+<p>Every detection is written twice:</p>
+<ul>
+<li><span class="org orgA">Org A</span> <strong>Splunk + CrowdStrike Falcon.</strong> Web logs come through the CIM <code>Web</code> data model or raw nginx, and endpoint data comes from Falcon Data Replicator events (<code>ProcessRollup2</code>, <code>NetworkConnectIP4</code>, <code>DnsRequest</code>). Correlation uses Enterprise Security risk-based alerting.</li>
+<li><span class="org orgB">Org B</span> <strong>Microsoft Sentinel + Defender for Endpoint.</strong> Web logs come through a <code>WebAccess</code> parser, and endpoint data comes from Defender XDR's Advanced Hunting tables (<code>DeviceProcessEvents</code>, <code>DeviceNetworkEvents</code>, <code>DeviceFileEvents</code>). Correlation uses scheduled analytics rules.</li>
+</ul>
+<p>Every web-layer KQL query was run against the honeypot's real logs, and the counts in each post are what came back. The honeypot had no EDR on it, so the endpoint queries are written from the payloads the attackers sent, which tell you exactly what would have run. Treat their field names as a starting point for your environment.</p>
+
+<h2 id="coverage">3. Coverage Map</h2>
+<p>Each row is an ATT&amp;CK technique I saw used against the honeypot. The cells show which post covers it and which layer detects it.</p>
+<table><thead><tr><th>Kill chain</th><th>ATT&amp;CK technique</th><th>Seen in</th><th>Web / log layer</th><th>Endpoint / network layer</th></tr></thead><tbody>
+<tr><td>Recon</td><td>T1595.001 Scanning IP Blocks</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a>, <a href="/blog/detect-non-http-traffic-port-80/">Non-HTTP</a></td><td>Protocol classification on web ports</td><td>New listening port on internet-facing host</td></tr>
+<tr><td>Recon</td><td>T1595.002 Vulnerability Scanning</td><td><a href="/blog/detect-spray-scanners/">Spray</a>, <a href="/blog/detect-redtail-cryptominer/">RedTail</a></td><td>Multi-family exploit burst; kit fingerprint</td><td>Correlated with web-server child process</td></tr>
+<tr><td>Recon</td><td>T1595.003 Wordlist Scanning</td><td><a href="/blog/detect-env-git-secret-hunting/">.env/.git</a>, <a href="/blog/detect-ai-credential-mcp-probing/">AI/MCP</a></td><td>Secret-path wordlist; canary calibration</td><td>n/a</td></tr>
+<tr><td>Recon</td><td>T1592.002 Gather Host Software</td><td><a href="/blog/detect-spray-scanners/">Spray</a></td><td>Slow edge-device fingerprinting</td><td>n/a</td></tr>
+<tr><td>Credential Access</td><td>T1110.001 / .003 Guessing, Spraying</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a></td><td>Per-source volume; many-sources-one-username</td><td>Success after failures (<code>UserLogon</code>, <code>DeviceLogonEvents</code>)</td></tr>
+<tr><td>Credential Access</td><td>T1552.001 Credentials in Files</td><td><a href="/blog/detect-env-git-secret-hunting/">.env/.git</a>, <a href="/blog/detect-ai-credential-mcp-probing/">AI/MCP</a>, <a href="/blog/detect-react2shell/">React2Shell</a></td><td>Secret file actually served (size check)</td><td>Agent token files read by other processes; <code>env; cat .env</code> from an app runtime</td></tr>
+<tr><td>Initial Access</td><td>T1190 Exploit Public-Facing App</td><td>All web posts</td><td>Code in request; per-CVE rules; execution canaries</td><td>n/a</td></tr>
+<tr><td>Initial Access</td><td>T1078 Valid Accounts (incl. .004 Cloud)</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a>, <a href="/blog/detect-env-git-secret-hunting/">.env/.git</a></td><td>CloudTrail: <code>GetSendQuota</code>, <code>CreateUser</code>; key from new IP</td><td>AI API calls from unapproved processes</td></tr>
+<tr><td>Execution</td><td>T1059.004 Unix Shell</td><td><a href="/blog/detect-redtail-cryptominer/">RedTail</a>, <a href="/blog/detect-php2shell/">PHP2Shell</a>, <a href="/blog/detect-react2shell/">React2Shell</a>, <a href="/blog/detect-legacy-php-rce/">Legacy PHP</a></td><td>n/a</td><td><strong>Web server / app runtime spawns a shell</strong></td></tr>
+<tr><td>Persistence</td><td>T1505.003 Web Shell</td><td><a href="/blog/detect-legacy-php-rce/">Legacy PHP</a>, <a href="/blog/detect-php2shell/">PHP2Shell</a></td><td><code>pearcmd</code> writes; session-file include</td><td>PHP file written to <code>/tmp</code> or web root</td></tr>
+<tr><td>Persistence</td><td>T1098.004 SSH Authorized Keys</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a></td><td>n/a</td><td><code>authorized_keys</code> written; <code>chattr +i</code></td></tr>
+<tr><td>Defence Evasion</td><td>T1564.001 Hidden Files</td><td><a href="/blog/detect-redtail-cryptominer/">RedTail</a>, <a href="/blog/detect-legacy-php-rce/">Legacy PHP</a></td><td>n/a</td><td>Dot-file or temp-path executable run by the web user</td></tr>
+<tr><td>Defence Evasion</td><td>T1562.001 Impair Defences (kill competitors)</td><td><a href="/blog/detect-iot-botnet-droppers/">IoT</a></td><td>n/a</td><td>Mirai-style <code>killall</code> by architecture names</td></tr>
+<tr><td>Discovery</td><td>T1083 File and Directory Discovery</td><td><a href="/blog/detect-redtail-cryptominer/">RedTail</a></td><td>n/a</td><td>"Where can I execute?" (<code>findmnt noexec</code>, <code>find -perm</code>, <code>dd</code> test)</td></tr>
+<tr><td>Discovery</td><td>T1082 System Information Discovery</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a>, <a href="/blog/detect-iot-botnet-droppers/">IoT</a></td><td>n/a</td><td>Post-login fingerprinting burst</td></tr>
+<tr><td>Delivery</td><td>T1105 Ingress Tool Transfer</td><td>All dropper posts</td><td>Download-and-run command to a raw IP</td><td>Web tier SSH egress; hostname-beacon pipelines; IoT raw-IP downloads</td></tr>
+<tr><td>C2</td><td>T1071 / T1095 / T1571 App Protocol, Non-App, Non-Standard Port</td><td><a href="/blog/detect-non-http-traffic-port-80/">Non-HTTP</a>, <a href="/blog/detect-react2shell/">React2Shell</a>, <a href="/blog/detect-iot-botnet-droppers/">IoT</a></td><td>RAT check-in classification</td><td>RAT protocol on the wire; raw-IP beaconing; Node reverse shell; Mozi DHT</td></tr>
+<tr><td>Impact</td><td>T1496 Resource Hijacking</td><td><a href="/blog/detect-redtail-cryptominer/">RedTail</a></td><td>n/a</td><td>Mining-pool connections (hunt)</td></tr>
+<tr><td>Impact</td><td>T1565.003 / T1491.002 Runtime Manipulation, Defacement</td><td><a href="/blog/detect-react2shell/">React2Shell</a></td><td>Redirect-rate anomaly per site</td><td>(Invisible to EDR: in-memory patch)</td></tr>
+</tbody></table>
+
+<h2 id="first">4. The Five Rules to Build First</h2>
+<p>If you only build five rules from the whole series, build these. Each one sits near the top of the Pyramid of Pain, so it outlives any particular CVE:</p>
+<ol>
+<li><strong>Web server or app runtime spawns a shell or downloader</strong> (<a href="/blog/detect-redtail-cryptominer/">RedTail E1</a>). It catches almost every successful web RCE in the series, whatever the bug.</li>
+<li><strong>SSH success after failures</strong> (<a href="/blog/detect-ssh-brute-force/">SSH L3</a>). It tested at zero results on the honeypot, and that's what you want: when it fires, it matters.</li>
+<li><strong>A secret file was actually served</strong> (<a href="/blog/detect-env-git-secret-hunting/">.env W2</a>). It compares response size with the home page, which removed all 16 false positives a status-only rule would have raised.</li>
+<li><strong>Exploit burst against a host, correlated with an endpoint hit</strong> (<a href="/blog/detect-spray-scanners/">Spray C1</a>). This turns daily noise into one incident with the story attached.</li>
+<li><strong>Web tier egress on SSH, or to a raw IP on a high port</strong> (<a href="/blog/detect-redtail-cryptominer/">RedTail E2</a>, <a href="/blog/detect-react2shell/">React2Shell E2</a>). Droppers and reverse shells both have to leave the box.</li>
+</ol>
+
+<h2 id="data">5. Data You Need</h2>
+<table><thead><tr><th>Data</th><th><span class="org orgA">Org A</span> Splunk</th><th><span class="org orgB">Org B</span> Sentinel</th><th>Why</th></tr></thead><tbody>
+<tr><td>Web access logs, with POST bodies or a WAF</td><td>CIM <code>Web</code>; raw nginx/Apache</td><td><code>W3CIISLog</code>, <code>AzureDiagnostics</code> (WAF), Syslog</td><td>Every web-layer rule. Check that large records aren't truncated (see <a href="/blog/detect-php2shell/">PHP2Shell W4</a>).</td></tr>
+<tr><td>PHP / app error logs</td><td><code>apache:error</code>, <code>php:error</code></td><td>Syslog / custom table</td><td>PHP2Shell's startup memory errors only show here.</td></tr>
+<tr><td>sshd logs</td><td><code>linux_secure</code></td><td>Syslog (auth)</td><td>Brute force and success-after-failure.</td></tr>
+<tr><td>EDR process, network and file events</td><td>Falcon FDR</td><td>Defender XDR connector</td><td>Every endpoint rule.</td></tr>
+<tr><td>Network metadata</td><td>Zeek, Palo Alto</td><td><code>CommonSecurityLog</code>, ASim DNS</td><td>IoT devices and RATs, where there's no EDR.</td></tr>
+<tr><td>Cloud audit</td><td>AWS CloudTrail add-on</td><td><code>AWSCloudTrail</code></td><td>Leaked keys being used.</td></tr>
+</tbody></table>
+
+<p>The Org B web parser used throughout the series. Swap the source for your own and keep the column names:</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h2 id="posts">6. The Posts</h2>
+<table><thead><tr><th>Post</th><th>What you'll build</th></tr></thead><tbody>
+<tr><td><a href="/blog/detect-ssh-brute-force/">SSH brute force</a></td><td>Spraying detection that sees the 789 quiet sources; success-after-failure; post-login fingerprinting; <code>authorized_keys</code> writes</td></tr>
+<tr><td><a href="/blog/detect-non-http-traffic-port-80/">Non-HTTP on port 80</a></td><td>Protocol-mismatch classification; RAT check-in signatures turned outward; open-proxy and odd-method posture</td></tr>
+<tr><td><a href="/blog/detect-env-git-secret-hunting/">.env and .git hunting</a></td><td>Wordlist detection; "secret actually served"; AndroxGh0st sequence; CloudTrail rules for leaked keys</td></tr>
+<tr><td><a href="/blog/detect-legacy-php-rce/">Legacy PHP RCE</a></td><td>Code-in-request; execution canaries; hostname-beacon droppers; hidden scripts in <code>/tmp</code></td></tr>
+<tr><td><a href="/blog/detect-redtail-cryptominer/">RedTail cryptominer</a></td><td>Exploit-burst behaviour; web-server-spawns-shell; SSH egress; exec-directory discovery; hidden miner</td></tr>
+<tr><td><a href="/blog/detect-iot-botnet-droppers/">IoT botnets and Mozi</a></td><td>Network detections for devices with no EDR; Mozi DHT; Mirai loader on servers; n8n abuse</td></tr>
+<tr><td><a href="/blog/detect-react2shell/">React2Shell</a></td><td>Wrapper detection; PoC boundary; Node reverse shell; fileless redirect-hijack via traffic anomaly</td></tr>
+<tr><td><a href="/blog/detect-php2shell/">PHP2Shell</a></td><td>Upload-progress abuse; session-file include; startup OOM bursts; SIEM truncation check</td></tr>
+<tr><td><a href="/blog/detect-ai-credential-mcp-probing/">AI keys and MCP</a></td><td>AI-path wordlists; distributed MCP discovery; agent-token theft on endpoints; unapproved AI API use</td></tr>
+<tr><td><a href="/blog/detect-spray-scanners/">Spray scanners</a></td><td>Canary calibration; slow fingerprinting; kit fingerprints; risk-based correlation</td></tr>
+<tr><td><a href="/blog/detect-scanner-vs-attackers/">Scanner vs attackers</a></td><td>Safe scanner allowlisting; coverage-gap query; using your scan to test your SOC</td></tr>
+<tr><td><a href="/blog/detect-internet-scanner-triage/">Internet scanner triage</a></td><td>Behaviour-based trust; benign-list abuse detection; new exposure before Censys finds it</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
