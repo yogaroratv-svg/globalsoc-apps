@@ -113,7 +113,7 @@ td code{overflow-wrap:anywhere}
 <h1>RedTail on a PHP Honeypot: One Bot, 49 Requests, and a Dropper That Ships Its Own SSH Key</h1>
 <p>Twelve IPs running the libredtail-http bot hit our PHP honeypot with the same 49-request run. We decode the PHP-CGI payload in full, including the embedded SSH key it uses to pull the next stage over scp, and walk through the dropper script and miner binary served by the staging host.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · The 49-Request Run · Stage One in Full · Decoded and Explained · The Shorter Variant · The Dropper Script · The Miner Binary · Did Anything Run? · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log and Apache container log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). URLs are defanged. Nothing on this page was executed.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log and Apache container log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). URLs are defanged. Nothing on this page was executed.</p>
 
 <h2>1. Summary</h2>
 <p>RedTail is a Monero-mining botnet that spreads by exploiting web servers. Its scanner announces itself with the User-Agent <code>libredtail-http</code>. Between 2026-10-23 14:21:13 and 2026-11-05 14:14:57 UTC, 12 IPs running that scanner sent 545 requests to the honeypot (521 of them carrying the User-Agent). Every full run was the same 49 requests in the same order.</p>

@@ -113,7 +113,7 @@ td code{overflow-wrap:anywhere}
 <h1>The Newest Entries in the Scanner Wordlist: AI Keys, Coding-Agent Tokens and MCP Servers</h1>
 <p>A PHP honeypot with nothing to do with AI received 178 requests for Claude, OpenAI, Bedrock and Gemini key files, coding-agent credential stores, and MCP server endpoints. The first arrived three and a half hours after the server went online. Here is every path and the one MCP handshake we captured.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · Coding-Agent Credential Files · Model API Key Files · A Directory Census · MCP Endpoint Scanning · The MCP Handshake · Open Model APIs · Who Is Asking · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Every request on this page is shown as it was logged.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). Every request on this page is shown as it was logged.</p>
 
 <h2>1. Summary</h2>
 <p>The honeypot is an Apache/PHP server with one page. It runs no model, no agent and no MCP server, and nothing on it suggests otherwise. Between 2026-10-22 and 2026-11-15 it still received 178 requests from 73 IPs for 101 AI-related paths. All were answered <code>404</code>.</p>
@@ -159,7 +159,7 @@ td code{overflow-wrap:anywhere}
 <tr><td><code>/.grok/auth.json</code>, <code>/.hermes/.env</code>, <code>/.openclaw/openclaw.json</code>, <code>/.openclaw/.env</code></td><td>Credential or settings files of other agent tools, by name</td></tr>
 </table>
 <p>Every one of these paths is relative to a home directory. The request only pays off when a web server's document root <em>is</em> somebody's home directory, or a project folder that an agent has been run inside. That happens: <code>python3 -m http.server</code> started in <code>~</code> to share one file, a file-browser container mounted on <code>/home/user</code>, a cloud dev box with a preview port open, a user-dir web server. The scanner's name, "opendir", says the same thing: it is looking for open directories.</p>
-<p>The full set of tool configuration paths requested over the 24 days:</p>
+<p>The full set of tool configuration paths requested over the 18 days the honeypot was online:</p>
 <pre><code>  2  /.claude/.credentials.json
   1  /.aider
   1  /.amazonq

@@ -113,7 +113,7 @@ td code{overflow-wrap:anywhere}
 <h1>React2Shell on a Server With No React: Seven Payloads, Decoded</h1>
 <p>Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 51 times.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · How the Exploit Request Works · Scanner Checks · Dropper · Environment Theft · Redirect Hijack · Reverse Shell x 47 · What the Honeypot Answered · Reverse Shell on the Wire · IOCs · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Payloads are shown as captured; URLs are defanged.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). Payloads are shown as captured; URLs are defanged.</p>
 
 <h2>1. Summary</h2>
 <p>React2Shell is CVE-2025-55182, a remote code execution flaw in React Server Components disclosed in December 2025 with a CVSS score of 10.0. One unauthenticated POST to any page of a vulnerable Next.js App Router application runs JavaScript inside the Node.js server process.</p>
@@ -359,7 +359,7 @@ try{
 2026-11-02 18:07:17  GET /  -&gt; 200  (root_probe)
 2026-11-02 18:07:18  POST /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php  -&gt; 404  (phpunit_rce)
 2026-11-02 18:07:18  POST /  -&gt; 200  (react2shell)</code></pre>
-<p>Compare this with the <a href="/blog/env-git-secret-hunters/">3,291 requests for <code>/.env</code> over HTTP</a>. Blocking dotfiles at the web server stops those. It does nothing here, because this payload reads the file from inside the application.</p>
+<p>Compare this with the <a href="/blog/env-git-secret-hunters/">3,307 requests for <code>/.env</code> over HTTP</a>. Blocking dotfiles at the web server stops those. It does nothing here, because this payload reads the file from inside the application.</p>
 
 <h2>6. Redirect Hijack (D)</h2>
 <pre><code>2026-10-22 10:38:12 UTC  45.198.224.169 (United States)  status 200  request 1492 bytes  response 1936 bytes

@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <title>Who Scans the Internet? A Census of the Scanners That Found Our Honeypot | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/internet-scanner-census/">
-<meta name="description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
+<meta name="description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 86 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/internet-scanner-census/">
 <meta property="og:title" content="Who Scans the Internet? A Census of the Scanners That Found Our Honeypot | Global SOC">
-<meta property="og:description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
+<meta property="og:description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 86 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Who Scans the Internet? A Census of the Scanners That Found Our Honeypot | Global SOC">
-<meta name="twitter:description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
+<meta name="twitter:description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 86 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -27,7 +27,7 @@
         "@id": "https://globalsoc.com.au/blog/internet-scanner-census/"
       },
       "headline": "Who Found Our Honeypot First? A Census of 24 Named Internet Scanners",
-      "description": "The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which \"research\" scanners went straight for .env files.",
+      "description": "The first stranger reached our new honeypot 33 minutes after it started. Within a day 86 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which \"research\" scanners went straight for .env files.",
       "datePublished": "2026-11-15",
       "author": {
         "@type": "Person",
@@ -111,15 +111,15 @@ td code{overflow-wrap:anywhere}
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
 <h1>Who Found Our Honeypot First? A Census of 24 Named Internet Scanners</h1>
-<p>The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.</p>
+<p>The first stranger reached our new honeypot 33 minutes after it started. Within a day 86 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · The First Day · Named Scanners · What They Ask For · Names That Claim Research · Tools, Not Organisations · Should You Block Them? · Detection (KQL)</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Scanner names are as the scanners gave them; we did not verify ownership of the addresses.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). Scanner names are as the scanners gave them; we did not verify ownership of the addresses.</p>
 
 <h2>1. Summary</h2>
 <ul>
 <li>The vulnerable container started at 2026-10-22 05:01:27 UTC. The first request from the internet arrived 33 minutes later.</li>
-<li>In the first hour 2 addresses sent 3 requests. In the first 24 hours, 80 addresses sent 656.</li>
-<li>24 scanners named themselves in their User-Agent, usually with a link that explains the scan. Together they sent 824 requests from 414 addresses: 8.4% of the 9,829 external requests. Everything else came from clients that did not say who they were.</li>
+<li>In the first hour 2 addresses sent 3 requests. In the first 24 hours, 86 addresses sent 666.</li>
+<li>24 scanners named themselves in their User-Agent, usually with a link that explains the scan. Together they sent 831 requests from 417 addresses: 7.9% of the 10,509 external requests. Everything else came from clients that did not say who they were.</li>
 <li>Several clients call themselves "research" or "authorized" and then request <code>.env</code>, <code>.git</code> and cloud credential files. A name in a User-Agent is a claim, not an identity.</li>
 </ul>
 
@@ -143,7 +143,7 @@ td code{overflow-wrap:anywhere}
 <tr><td>ForestEngine</td><td>internet search engine</td><td>74</td><td>36</td><td>19</td><td>2026-10-22 14:12</td><td>9.2 h</td><td><code>/, /favicon.ico</code></td></tr>
 <tr><td>Modat</td><td>internet search engine</td><td>20</td><td>9</td><td>10</td><td>2026-10-23 03:30</td><td>22.5 h</td><td><code>/, /favicon.ico</code></td></tr>
 <tr><td>Odin</td><td>internet search engine</td><td>17</td><td>7</td><td>5</td><td>2026-10-23 05:15</td><td>24.2 h</td><td><code>/, /sdk, /HNAP1</code></td></tr>
-<tr><td>mrtscan</td><td>unknown, names a cloud region</td><td>30</td><td>10</td><td>10</td><td>2026-10-23 21:10</td><td>40.1 h</td><td><code>/</code></td></tr>
+<tr><td>mrtscan</td><td>unknown, names a cloud region</td><td>33</td><td>11</td><td>11</td><td>2026-10-23 21:10</td><td>40.1 h</td><td><code>/</code></td></tr>
 <tr><td>visionheight.com</td><td>attack-surface scanning</td><td>26</td><td>4</td><td>13</td><td>2026-10-22 19:47</td><td>14.8 h</td><td><code>/, /robots.txt</code></td></tr>
 <tr><td>CyberConvoy Scout</td><td>attack-surface scanning</td><td>11</td><td>3</td><td>11</td><td>2026-10-23 13:15</td><td>32.2 h</td><td><code>/</code></td></tr>
 <tr><td>Apcosys</td><td>internet scanning</td><td>11</td><td>5</td><td>7</td><td>2026-10-23 14:14</td><td>33.2 h</td><td><code>/robots.txt, /, /favicon.ico</code></td></tr>
@@ -154,7 +154,7 @@ td code{overflow-wrap:anywhere}
 <tr><td>Netcraft</td><td>internet survey</td><td>1</td><td>1</td><td>1</td><td>2026-11-05 20:52</td><td>14.7 days</td><td><code>/</code></td></tr>
 <tr><td>ipip.net</td><td>internet scanning</td><td>2</td><td>2</td><td>2</td><td>2026-10-22 16:02</td><td>11.0 h</td><td><code>/</code></td></tr>
 <tr><td>FlowIQ Labs</td><td>internet scanning</td><td>2</td><td>2</td><td>2</td><td>2026-10-24 19:18</td><td>2.6 days</td><td><code>/</code></td></tr>
-<tr><td>Keydrop.io / onlyscans</td><td>internet scanning</td><td>2</td><td>1</td><td>1</td><td>2026-10-27 17:34</td><td>5.5 days</td><td><code>/.env, /.git/config</code></td></tr>
+<tr><td>Keydrop.io / onlyscans</td><td>internet scanning</td><td>6</td><td>3</td><td>3</td><td>2026-10-27 17:34</td><td>5.5 days</td><td><code>/.env, /.git/config</code></td></tr>
 <tr><td>tchelebi</td><td>internet scanning</td><td>2</td><td>1</td><td>2</td><td>2026-10-28 19:52</td><td>6.6 days</td><td><code>/</code></td></tr>
 <tr><td>ipbase</td><td>internet scanning</td><td>1</td><td>1</td><td>1</td><td>2026-11-03 09:02</td><td>12.2 days</td><td><code>/</code></td></tr>
 <tr><td>InternetData.io</td><td>internet scanning</td><td>1</td><td>1</td><td>1</td><td>2026-11-05 07:26</td><td>14.1 days</td><td><code>/</code></td></tr>
@@ -167,7 +167,7 @@ td code{overflow-wrap:anywhere}
 <text x="222" y="64" text-anchor="end" fill="#1d3344">Palo Alto Networks Cortex Xpan</text><rect class="bar" x="230" y="52" width="193" height="15" rx="2"/><text x="429" y="64" fill="#47687c">109</text>
 <text x="222" y="88" text-anchor="end" fill="#1d3344">Nokia (GenomeCrawler)</text><rect class="bar" x="230" y="76" width="193" height="15" rx="2"/><text x="429" y="88" fill="#47687c">109</text>
 <text x="222" y="112" text-anchor="end" fill="#1d3344">ForestEngine</text><rect class="bar" x="230" y="100" width="131" height="15" rx="2"/><text x="367" y="112" fill="#47687c">74</text>
-<text x="222" y="136" text-anchor="end" fill="#1d3344">mrtscan</text><rect class="bar" x="230" y="124" width="53" height="15" rx="2"/><text x="289" y="136" fill="#47687c">30</text>
+<text x="222" y="136" text-anchor="end" fill="#1d3344">mrtscan</text><rect class="bar" x="230" y="124" width="58" height="15" rx="2"/><text x="294" y="136" fill="#47687c">33</text>
 <text x="222" y="160" text-anchor="end" fill="#1d3344">visionheight.com</text><rect class="bar" x="230" y="148" width="46" height="15" rx="2"/><text x="282" y="160" fill="#47687c">26</text>
 <text x="222" y="184" text-anchor="end" fill="#1d3344">Modat</text><rect class="bar" x="230" y="172" width="35" height="15" rx="2"/><text x="271" y="184" fill="#47687c">20</text>
 <text x="222" y="208" text-anchor="end" fill="#1d3344">Odin</text><rect class="bar" x="230" y="196" width="30" height="15" rx="2"/><text x="266" y="208" fill="#47687c">17</text>
@@ -276,7 +276,7 @@ td code{overflow-wrap:anywhere}
 <h2>6. Tools, Not Organisations</h2>
 <p>Some User-Agents name software that anyone can run:</p>
 <ul>
-<li><strong>zgrab</strong>, the scanner behind several research projects and many private ones: 109 requests from 86 addresses. Most just fetched <code>/</code>; others asked for SAP NetWeaver's <code>/developmentserver/metadatauploader</code> (the CVE-2025-31324 upload endpoint), Apache Druid's console and Red Lion industrial devices. The tool tells you nothing about who ran it: / (55), /developmentserver/metadatauploader (17), /druid/index.html (6), /portal/redlion (5), /.svn/entries (4).</li>
+<li><strong>zgrab</strong>, the scanner behind several research projects and many private ones: 114 requests from 91 addresses. Most just fetched <code>/</code>; others asked for SAP NetWeaver's <code>/developmentserver/metadatauploader</code> (the CVE-2025-31324 upload endpoint), Apache Druid's console and Red Lion industrial devices. The tool tells you nothing about who ran it: / (55), /developmentserver/metadatauploader (18), /druid/index.html (6), /portal/redlion (6), /actuator/health (6).</li>
 <li><strong>IVRE</strong> with masscan, an open-source network recon framework.</li>
 <li><strong>mrtscan/1.0</strong>, which names a cloud region (<code>westus</code>) and nothing else.</li>
 </ul>

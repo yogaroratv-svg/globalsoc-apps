@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <title>Qualys Scan vs. Real Attackers: What a Vulnerability Scanner Tests and What Attackers Send | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/qualys-scan-vs-real-attackers/">
-<meta name="description" content="A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 9,829 in 24 days. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.">
+<meta name="description" content="A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 10,509 in the 18 days the honeypot was online. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/qualys-scan-vs-real-attackers/">
 <meta property="og:title" content="Qualys Scan vs. Real Attackers: What a Vulnerability Scanner Tests and What Attackers Send | Global SOC">
-<meta property="og:description" content="A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 9,829 in 24 days. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.">
+<meta property="og:description" content="A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 10,509 in the 18 days the honeypot was online. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Qualys Scan vs. Real Attackers: What a Vulnerability Scanner Tests and What Attackers Send | Global SOC">
-<meta name="twitter:description" content="A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 9,829 in 24 days. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.">
+<meta name="twitter:description" content="A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 10,509 in the 18 days the honeypot was online. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -26,8 +26,8 @@
         "@type": "WebPage",
         "@id": "https://globalsoc.com.au/blog/qualys-scan-vs-real-attackers/"
       },
-      "headline": "31 Minutes of Qualys vs. 24 Days of Attackers: Same Server, Different Questions",
-      "description": "A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 9,829 in 24 days. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.",
+      "headline": "31 Minutes of Qualys vs. 18 Days of Attackers: Same Server, Different Questions",
+      "description": "A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 10,509 in the 18 days the honeypot was online. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.",
       "datePublished": "2026-11-15",
       "author": {
         "@type": "Person",
@@ -63,7 +63,7 @@
         {
           "@type": "ListItem",
           "position": 3,
-          "name": "31 Minutes of Qualys vs. 24 Days of Attackers: Same Server, Different Questions",
+          "name": "31 Minutes of Qualys vs. 18 Days of Attackers: Same Server, Different Questions",
           "item": "https://globalsoc.com.au/blog/qualys-scan-vs-real-attackers/"
         }
       ]
@@ -110,18 +110,18 @@ td code{overflow-wrap:anywhere}
 </header>
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
-<h1>31 Minutes of Qualys vs. 24 Days of Attackers: Same Server, Different Questions</h1>
-<p>A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 9,829 in 24 days. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.</p>
+<h1>31 Minutes of Qualys vs. 18 Days of Attackers: Same Server, Different Questions</h1>
+<p>A Qualys vulnerability scan sent 11,262 requests to our PHP honeypot in 31 minutes. Real attackers sent 10,509 in the 18 days the honeypot was online. We compare them category by category: the scanner never asked for /.env and never tested PHP2Shell, while attackers never tried Log4Shell. What that means for how you read your own scan reports.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · The Scan · Side by Side · What the Scanner Skipped · What Attackers Skipped · How Qualys Tests · Telling Scans From Attacks · What to Take From This</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). The Qualys requests are quoted from our Microsoft Sentinel copy of the log, which replaced every <code>;</code> with a space; the attacker numbers use the exact log.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). The Qualys requests are quoted from our Microsoft Sentinel copy of the log, which replaced every <code>;</code> with a space; the attacker numbers use the exact log.</p>
 
 <h2>1. Summary</h2>
-<p>On 23 October, the day after the honeypot went live, a Qualys vulnerability scan ran against it from 52.176.19.239: 11,262 requests between 2026-10-23 02:18:49 and 02:49:34 UTC. In the 24 days of the experiment, 1,113 other addresses sent 9,829 requests. Same server, same software, so a fair comparison of what a commercial scanner checks against what attackers actually try:</p>
+<p>On 23 October, the day after the honeypot went live, a Qualys vulnerability scan ran against it from 52.176.19.239: 11,262 requests between 2026-10-23 02:18:49 and 02:49:34 UTC. In the 18 days the honeypot was online, 1,148 other addresses sent 10,509 requests. Same server, same software, so a fair comparison of what a commercial scanner checks against what attackers actually try:</p>
 <ul>
-<li>The scanner requested 6,078 different paths; attackers 1,782. Only 144 paths appear in both.</li>
-<li>Attackers' favourite target was secrets: 3,291 requests for <code>.env</code>, <code>.git</code> and config files. The scanner sent 170, and not one of them was for <code>.env</code>.</li>
+<li>The scanner requested 6,078 different paths; attackers 2,050. Only 212 paths appear in both.</li>
+<li>Attackers' favourite target was secrets: 3,307 requests for <code>.env</code>, <code>.git</code> and config files. The scanner sent 170, and not one of them was for <code>.env</code>.</li>
 <li>Two days after PHP2Shell was disclosed, the scan contained no PHP2Shell test. Attackers sent the first one five minutes after the scan finished.</li>
-<li>The scanner spent 45 requests on Log4Shell and 807 on Java enterprise software. Attackers sent 0 Log4Shell requests in 24 days.</li>
+<li>The scanner spent 45 requests on Log4Shell and 807 on Java enterprise software. Attackers sent 0 Log4Shell requests in 18 days.</li>
 </ul>
 
 <h2>2. The Scan</h2>
@@ -139,24 +139,24 @@ td code{overflow-wrap:anywhere}
 
 <h2>3. Side by Side</h2>
 <p>Every request from both sources, sorted into the same categories:</p>
-<table><thead><tr><th>Category</th><th>Qualys (31 min)</th><th>Attackers (24 days)</th></tr></thead><tbody>
-<tr><td>Other path probes</td><td>6,200</td><td>1,125</td></tr>
-<tr><td>.env, .git and config files</td><td>170</td><td>3,291</td></tr>
-<tr><td>Home page only</td><td>837</td><td>1,838</td></tr>
-<tr><td>PHP file probes</td><td>1,015</td><td>550</td></tr>
-<tr><td>Other CMS</td><td>517</td><td>632</td></tr>
-<tr><td>Not HTTP / malformed</td><td>148</td><td>738</td></tr>
-<tr><td>Java enterprise (Struts, WebLogic, Spring...)</td><td>807</td><td>58</td></tr>
+<table><thead><tr><th>Category</th><th>Qualys (31 min)</th><th>Attackers (18 days)</th></tr></thead><tbody>
+<tr><td>Other path probes</td><td>6,200</td><td>1,510</td></tr>
+<tr><td>.env, .git and config files</td><td>170</td><td>3,307</td></tr>
+<tr><td>Home page only</td><td>837</td><td>1,908</td></tr>
+<tr><td>PHP file probes</td><td>1,015</td><td>590</td></tr>
+<tr><td>Other CMS</td><td>517</td><td>638</td></tr>
+<tr><td>Java enterprise (Struts, WebLogic, Spring...)</td><td>807</td><td>112</td></tr>
+<tr><td>Not HTTP / malformed</td><td>148</td><td>748</td></tr>
 <tr><td>PHPUnit eval-stdin</td><td>18</td><td>430</td></tr>
-<tr><td>WordPress</td><td>158</td><td>268</td></tr>
-<tr><td>VPN and edge appliances</td><td>343</td><td>54</td></tr>
-<tr><td>Other POST/PUT</td><td>119</td><td>278</td></tr>
+<tr><td>WordPress</td><td>158</td><td>270</td></tr>
+<tr><td>VPN and edge appliances</td><td>343</td><td>74</td></tr>
+<tr><td>Other POST/PUT</td><td>119</td><td>279</td></tr>
 <tr><td>Path traversal / LFI</td><td>279</td><td>45</td></tr>
-<tr><td>Microsoft (Exchange, SharePoint, IIS)</td><td>241</td><td>15</td></tr>
-<tr><td>IoT and routers</td><td>55</td><td>112</td></tr>
+<tr><td>Microsoft (Exchange, SharePoint, IIS)</td><td>241</td><td>73</td></tr>
+<tr><td>IoT and routers</td><td>55</td><td>126</td></tr>
 <tr><td>AI / LLM infrastructure</td><td>27</td><td>105</td></tr>
 <tr><td>PHP2Shell category (multipart POST)</td><td>33</td><td>83</td></tr>
-<tr><td>PHP code injection</td><td>104</td><td>0</td></tr>
+<tr><td>PHP code injection</td><td>104</td><td>4</td></tr>
 <tr><td>Shell command injection</td><td>85</td><td>11</td></tr>
 <tr><td>PHP-CGI argument injection</td><td>11</td><td>59</td></tr>
 <tr><td>React2Shell</td><td>10</td><td>58</td></tr>
@@ -175,27 +175,27 @@ td code{overflow-wrap:anywhere}
 <text x="222" y="64" text-anchor="end" fill="#1d3344">Home page only</text><rect class="bar" x="230" y="52" width="55" height="15" rx="2"/><text x="291" y="64" fill="#47687c">837</text>
 <text x="222" y="88" text-anchor="end" fill="#1d3344">PHP file probes</text><rect class="bar" x="230" y="76" width="67" height="15" rx="2"/><text x="303" y="88" fill="#47687c">1,015</text>
 <text x="222" y="112" text-anchor="end" fill="#1d3344">Other CMS</text><rect class="bar" x="230" y="100" width="34" height="15" rx="2"/><text x="270" y="112" fill="#47687c">517</text>
-<text x="222" y="136" text-anchor="end" fill="#1d3344">Not HTTP / malformed</text><rect class="bar" x="230" y="124" width="9" height="15" rx="2"/><text x="245" y="136" fill="#47687c">148</text>
-<text x="222" y="160" text-anchor="end" fill="#1d3344">Java enterprise (Struts, WebLo</text><rect class="bar" x="230" y="148" width="53" height="15" rx="2"/><text x="289" y="160" fill="#47687c">807</text>
+<text x="222" y="136" text-anchor="end" fill="#1d3344">Java enterprise (Struts, WebLo</text><rect class="bar" x="230" y="124" width="53" height="15" rx="2"/><text x="289" y="136" fill="#47687c">807</text>
+<text x="222" y="160" text-anchor="end" fill="#1d3344">Not HTTP / malformed</text><rect class="bar" x="230" y="148" width="9" height="15" rx="2"/><text x="245" y="160" fill="#47687c">148</text>
 <text x="222" y="184" text-anchor="end" fill="#1d3344">PHPUnit eval-stdin</text><rect class="bar" x="230" y="172" width="1" height="15" rx="2"/><text x="237" y="184" fill="#47687c">18</text>
 <text x="222" y="208" text-anchor="end" fill="#1d3344">WordPress</text><rect class="bar" x="230" y="196" width="10" height="15" rx="2"/><text x="246" y="208" fill="#47687c">158</text>
 <text x="222" y="232" text-anchor="end" fill="#1d3344">VPN and edge appliances</text><rect class="bar" x="230" y="220" width="22" height="15" rx="2"/><text x="258" y="232" fill="#47687c">343</text>
 <text x="222" y="256" text-anchor="end" fill="#1d3344">Other POST/PUT</text><rect class="bar" x="230" y="244" width="7" height="15" rx="2"/><text x="243" y="256" fill="#47687c">119</text>
 <text x="222" y="280" text-anchor="end" fill="#1d3344">Path traversal / LFI</text><rect class="bar" x="230" y="268" width="18" height="15" rx="2"/><text x="254" y="280" fill="#47687c">279</text>
 </svg>
-<p>Attackers, 24 days:</p>
+<p>Attackers, 18 days:</p>
 <svg viewBox="0 0 720 294" role="img" style="width:100%;max-width:720px;height:auto;font:13px system-ui,sans-serif">
-<text x="222" y="16" text-anchor="end" fill="#1d3344">Other path probes</text><rect class="bar" x="230" y="4" width="140" height="15" rx="2"/><text x="376" y="16" fill="#47687c">1,125</text>
-<text x="222" y="40" text-anchor="end" fill="#1d3344">.env, .git and config files</text><rect class="bar" x="230" y="28" width="410" height="15" rx="2"/><text x="646" y="40" fill="#47687c">3,291</text>
-<text x="222" y="64" text-anchor="end" fill="#1d3344">Home page only</text><rect class="bar" x="230" y="52" width="228" height="15" rx="2"/><text x="464" y="64" fill="#47687c">1,838</text>
-<text x="222" y="88" text-anchor="end" fill="#1d3344">PHP file probes</text><rect class="bar" x="230" y="76" width="68" height="15" rx="2"/><text x="304" y="88" fill="#47687c">550</text>
-<text x="222" y="112" text-anchor="end" fill="#1d3344">Other CMS</text><rect class="bar" x="230" y="100" width="78" height="15" rx="2"/><text x="314" y="112" fill="#47687c">632</text>
-<text x="222" y="136" text-anchor="end" fill="#1d3344">Not HTTP / malformed</text><rect class="bar" x="230" y="124" width="91" height="15" rx="2"/><text x="327" y="136" fill="#47687c">738</text>
-<text x="222" y="160" text-anchor="end" fill="#1d3344">Java enterprise (Struts, WebLo</text><rect class="bar" x="230" y="148" width="7" height="15" rx="2"/><text x="243" y="160" fill="#47687c">58</text>
+<text x="222" y="16" text-anchor="end" fill="#1d3344">Other path probes</text><rect class="bar" x="230" y="4" width="187" height="15" rx="2"/><text x="423" y="16" fill="#47687c">1,510</text>
+<text x="222" y="40" text-anchor="end" fill="#1d3344">.env, .git and config files</text><rect class="bar" x="230" y="28" width="410" height="15" rx="2"/><text x="646" y="40" fill="#47687c">3,307</text>
+<text x="222" y="64" text-anchor="end" fill="#1d3344">Home page only</text><rect class="bar" x="230" y="52" width="236" height="15" rx="2"/><text x="472" y="64" fill="#47687c">1,908</text>
+<text x="222" y="88" text-anchor="end" fill="#1d3344">PHP file probes</text><rect class="bar" x="230" y="76" width="73" height="15" rx="2"/><text x="309" y="88" fill="#47687c">590</text>
+<text x="222" y="112" text-anchor="end" fill="#1d3344">Other CMS</text><rect class="bar" x="230" y="100" width="79" height="15" rx="2"/><text x="315" y="112" fill="#47687c">638</text>
+<text x="222" y="136" text-anchor="end" fill="#1d3344">Java enterprise (Struts, WebLo</text><rect class="bar" x="230" y="124" width="13" height="15" rx="2"/><text x="249" y="136" fill="#47687c">112</text>
+<text x="222" y="160" text-anchor="end" fill="#1d3344">Not HTTP / malformed</text><rect class="bar" x="230" y="148" width="92" height="15" rx="2"/><text x="328" y="160" fill="#47687c">748</text>
 <text x="222" y="184" text-anchor="end" fill="#1d3344">PHPUnit eval-stdin</text><rect class="bar" x="230" y="172" width="53" height="15" rx="2"/><text x="289" y="184" fill="#47687c">430</text>
-<text x="222" y="208" text-anchor="end" fill="#1d3344">WordPress</text><rect class="bar" x="230" y="196" width="33" height="15" rx="2"/><text x="269" y="208" fill="#47687c">268</text>
-<text x="222" y="232" text-anchor="end" fill="#1d3344">VPN and edge appliances</text><rect class="bar" x="230" y="220" width="6" height="15" rx="2"/><text x="242" y="232" fill="#47687c">54</text>
-<text x="222" y="256" text-anchor="end" fill="#1d3344">Other POST/PUT</text><rect class="bar" x="230" y="244" width="34" height="15" rx="2"/><text x="270" y="256" fill="#47687c">278</text>
+<text x="222" y="208" text-anchor="end" fill="#1d3344">WordPress</text><rect class="bar" x="230" y="196" width="33" height="15" rx="2"/><text x="269" y="208" fill="#47687c">270</text>
+<text x="222" y="232" text-anchor="end" fill="#1d3344">VPN and edge appliances</text><rect class="bar" x="230" y="220" width="9" height="15" rx="2"/><text x="245" y="232" fill="#47687c">74</text>
+<text x="222" y="256" text-anchor="end" fill="#1d3344">Other POST/PUT</text><rect class="bar" x="230" y="244" width="34" height="15" rx="2"/><text x="270" y="256" fill="#47687c">279</text>
 <text x="222" y="280" text-anchor="end" fill="#1d3344">Path traversal / LFI</text><rect class="bar" x="230" y="268" width="5" height="15" rx="2"/><text x="241" y="280" fill="#47687c">45</text>
 </svg>
 <p>The shapes are different. More than half of the scan is "other path probes": thousands of product-specific URLs, each asking "is product X installed here?". Attackers ask far fewer questions, and a third of everything they sent is one question: "do you have a secrets file I can download?"</p>
@@ -203,8 +203,8 @@ td code{overflow-wrap:anywhere}
 
 <h2>4. What the Scanner Skipped</h2>
 <p>The 25 most-requested attacker paths that the scan never requested at all:</p>
-<pre><code> 316  /.env
- 252  /favicon.ico
+<pre><code> 318  /.env
+ 259  /favicon.ico
  112  /wp-includes/version.php
  106  /readme.html
  104  /license.txt
@@ -228,7 +228,7 @@ td code{overflow-wrap:anywhere}
   22  /laravel/.env
   21  /backend/.env
   21  /.aws/credentials</code></pre>
-<p>The scan requested 0 paths containing <code>.env</code>. Attackers requested such paths 2008 times. <code>.env</code> files hold database passwords, API keys and cloud credentials for Laravel, Node and many other frameworks, and a web server that serves one is giving away the keys to everything behind it. The <a href="/blog/env-git-secret-hunters/">secrets post</a> shows what those requests look like.</p>
+<p>The scan requested 0 paths containing <code>.env</code>. Attackers requested such paths 2010 times. <code>.env</code> files hold database passwords, API keys and cloud credentials for Laravel, Node and many other frameworks, and a web server that serves one is giving away the keys to everything behind it. The <a href="/blog/env-git-secret-hunters/">secrets post</a> shows what those requests look like.</p>
 <p>The scan may cover this in a different way. Scanners often check for exposed files through a separate "sensitive content" module or a crawl, and our scan profile may simply not have had it enabled. We do not have the scan configuration or report, only what arrived at the server. But the result is the same: had this server exposed <code>/.env</code>, this scan would not have found it, and the first attacker to ask would have.</p>
 <p>The others in the list tell the same story at smaller scale. <code>/.git/HEAD</code> and <code>/.aws/credentials</code> are credential leaks. <code>/wp-includes/version.php</code>, <code>/readme.html</code> and <code>/license.txt</code> are WordPress version fingerprints that one attacker tool repeated over a hundred times. <code>/nope.php</code> is a deliberately missing page, used to learn what the server's "not found" looks like.</p>
 <p>PHPUnit shows the difference in depth. The scan tried the PHPUnit <code>eval-stdin.php</code> exploit 18 times on 17 paths. Attackers tried it 430 times on 41 paths: they keep a much longer list of the places frameworks bury their <code>vendor</code> folder. Details are in the <a href="/blog/legacy-php-rce-still-scanned/">legacy PHP RCE post</a>.</p>
@@ -244,10 +244,10 @@ ${jndi:ldaps://172.27.44.249:&amp;lt;port&amp;gt;/QUALYSTEST}
 ${jndi:nds://172.27.44.249:&amp;lt;port&amp;gt;/QUALYSTEST}
 ${jndi:nis://172.27.44.249:&amp;lt;port&amp;gt;/QUALYSTEST}
 ${jndi:rmi://172.27.44.249:&amp;lt;port&amp;gt;/QUALYSTEST}</code></pre>
-<p>Attackers sent none in 24 days. Log4Shell is still exploited, but against Java applications, and the scanners that look for it pick targets that look like Java. A server that answers with <code>X-Powered-By: PHP</code> is not on their list. The commercial scanner, which tests everything on every target, does not make that choice.</p>
+<p>Attackers sent none in 18 days. Log4Shell is still exploited, but against Java applications, and the scanners that look for it pick targets that look like Java. A server that answers with <code>X-Powered-By: PHP</code> is not on their list. The commercial scanner, which tests everything on every target, does not make that choice.</p>
 <p>The callback address in these lookups is <code>172.27.44.249</code>, a private address. A vulnerable server would try to connect to it and fail, unless it were on the same private network as the scanner. For an internet-facing target such as ours, this check could not have produced a finding even if the target were vulnerable, unless the scanner also had another way to detect it. Again, we cannot see the scanner's side.</p>
-<p><strong>Java, VPNs and Microsoft.</strong> The scan sent 807 requests for Java enterprise software, 343 for VPN and edge appliances and 241 for Exchange, SharePoint and IIS. Attackers sent 58, 54 and 15. Same reason: attackers who go after Citrix or Fortinet scan for Citrix and Fortinet first, and this server is neither.</p>
-<p><strong>SQL injection and code injection.</strong> The scan sent 30 SQL injection and 104 PHP code-injection tests against the site's own pages. Attackers sent none. Generic injection testing needs a real application with parameters; mass attackers prefer exploits that work on a known product with one request.</p>
+<p><strong>Java, VPNs and Microsoft.</strong> The scan sent 807 requests for Java enterprise software, 343 for VPN and edge appliances and 241 for Exchange, SharePoint and IIS. Attackers sent 112, 74 and 73, many of them from two addresses that ran the same broad Nmap-based product fingerprint two weeks apart. Same reason: attackers who go after Citrix or Fortinet scan for Citrix and Fortinet first, and this server is neither.</p>
+<p><strong>SQL injection and code injection.</strong> The scan sent 30 SQL injection and 104 PHP code-injection tests against the site's own pages. Attackers sent no SQL injection, and the only four requests our rules filed as code injection were product probes with a <code>cmd=</code> parameter. Generic injection testing needs a real application with parameters; mass attackers prefer exploits that work on a known product with one request.</p>
 
 <h2>6. How Qualys Tests</h2>
 <p>For React2Shell the scanner used the same public exploit structure as attackers (see the <a href="/blog/react2shell-payloads-on-a-php-server/">React2Shell post</a>), but with harmless commands. One of its 10 requests (spaces after <code>trim()</code> and inside the template are semicolons in the original):</p>

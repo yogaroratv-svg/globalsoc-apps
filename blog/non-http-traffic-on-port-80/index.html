@@ -26,7 +26,7 @@
         "@type": "WebPage",
         "@id": "https://globalsoc.com.au/blog/non-http-traffic-on-port-80/"
       },
-      "headline": "Not Everything on Port 80 Is HTTP: 738 Strange Requests and a 17-Protocol Census",
+      "headline": "Not Everything on Port 80 Is HTTP: 748 Strange Requests and a 17-Protocol Census",
       "description": "Our honeypot's web port received TLS handshakes, HTTP/2 prefaces, fake Gh0st and njRAT victims hunting for malware controllers, and in 15 hours of packet capture probes for 17 other protocols, from RDP and MongoDB to Siemens S7 and DNP3. Most of them never reached nginx at all. Every probe decoded.",
       "datePublished": "2026-11-15",
       "author": {
@@ -63,7 +63,7 @@
         {
           "@type": "ListItem",
           "position": 3,
-          "name": "Not Everything on Port 80 Is HTTP: 738 Strange Requests and a 17-Protocol Census",
+          "name": "Not Everything on Port 80 Is HTTP: 748 Strange Requests and a 17-Protocol Census",
           "item": "https://globalsoc.com.au/blog/non-http-traffic-on-port-80/"
         }
       ]
@@ -110,15 +110,15 @@ td code{overflow-wrap:anywhere}
 </header>
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
-<h1>Not Everything on Port 80 Is HTTP: 738 Strange Requests and a 17-Protocol Census</h1>
+<h1>Not Everything on Port 80 Is HTTP: 748 Strange Requests and a 17-Protocol Census</h1>
 <p>Our honeypot&#x27;s web port received TLS handshakes, HTTP/2 prefaces, fake Gh0st and njRAT victims hunting for malware controllers, and in 15 hours of packet capture probes for 17 other protocols, from RDP and MongoDB to Siemens S7 and DNP3. Most of them never reached nginx at all. Every probe decoded.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · What nginx Writes Down · TLS on Port 80 · HTTP/2 Prefaces · Hunting for RAT Controllers · A 17-Protocol Census · Why nginx Never Saw It · Proxy Checks · Odds and Ends · IOCs · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC), and a packet capture from 15 Nov 09:06 to 16 Nov 00:10 UTC. Byte dumps are from the capture.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November), and a packet capture from 15 Nov 09:06 to 16 Nov 00:10 UTC. Byte dumps are from the capture.</p>
 
 <h2>1. Summary</h2>
-<p>Port 80 is the web port, but nothing forces a client to speak HTTP to it. In 24 days nginx logged 738 requests from 286 addresses that were not valid HTTP at all (400 x735, 200 x3). And 15 hours of packet capture showed that most non-HTTP probing never shows up in the web log.</p>
+<p>Port 80 is the web port, but nothing forces a client to speak HTTP to it. In the 18 days the honeypot was online, nginx logged 748 requests from 293 addresses that were not valid HTTP at all (400 x745, 200 x3). And 15 hours of packet capture showed that most non-HTTP probing never shows up in the web log.</p>
 <ul>
-<li>520 were TLS handshakes from 250 addresses: clients trying HTTPS on the plain HTTP port.</li>
+<li>528 were TLS handshakes from 257 addresses: clients trying HTTPS on the plain HTTP port.</li>
 <li>94 were HTTP/2 connection prefaces, checking for unencrypted HTTP/2.</li>
 <li>13 came from two addresses pretending to be computers infected with the Gh0st and njRAT remote access trojans. A real controller would answer them, and so give itself away.</li>
 <li>In 15 hours the capture recorded 125 probes for 17 other protocols (RDP, SQL Server, Oracle, MongoDB, Redis, memcached, PostgreSQL, SMB, MQTT, Siemens S7, DNP3, IPMI, PPTP, X11, Niagara Fox, DNS and one we could not identify) from nine addresses. Not one of them reached nginx: the scanner's own operating system reset each connection before the probe was sent.</li>
@@ -127,7 +127,7 @@ td code{overflow-wrap:anywhere}
 <h2>2. What nginx Writes Down</h2>
 <p>nginx expects a request line ending in a line break. When the bytes are not HTTP, it answers <code>400 Bad Request</code> and logs whatever came before the first line break as the "request", with no method, no path and a request size of 0. For binary protocols that is a fragment, sometimes a few bytes, sometimes nothing. That fragment is still enough to tell most protocols apart:</p>
 <table><thead><tr><th>What the first bytes are</th><th>Lines</th><th>Source IPs</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
-<tr><td>TLS handshake (ClientHello)</td><td>520</td><td>250</td><td>2026-10-22 08:39</td><td>2026-11-15 08:19</td></tr>
+<tr><td>TLS handshake (ClientHello)</td><td>528</td><td>257</td><td>2026-10-22 06:32</td><td>2026-11-15 08:19</td></tr>
 <tr><td>HTTP/2 connection preface</td><td>94</td><td>87</td><td>2026-10-23 22:07</td><td>2026-11-09 01:32</td></tr>
 <tr><td>TPKT (RDP / Siemens S7)</td><td>41</td><td>10</td><td>2026-10-22 19:53</td><td>2026-11-08 17:37</td></tr>
 <tr><td>Other binary</td><td>24</td><td>11</td><td>2026-10-22 17:39</td><td>2026-11-05 09:39</td></tr>
@@ -137,15 +137,15 @@ td code{overflow-wrap:anywhere}
 <tr><td>njRAT / RAT C2 probes</td><td>7</td><td>2</td><td>2026-10-24 12:39</td><td>2026-11-07 12:53</td></tr>
 <tr><td>Gh0st RAT login</td><td>6</td><td>2</td><td>2026-10-24 12:39</td><td>2026-11-08 07:41</td></tr>
 <tr><td>SOCKS4/5 greeting</td><td>5</td><td>3</td><td>2026-10-25 14:22</td><td>2026-11-05 07:24</td></tr>
+<tr><td>Other text</td><td>3</td><td>3</td><td>2026-10-24 23:09</td><td>2026-11-08 10:27</td></tr>
 <tr><td>Random 4-letter method</td><td>3</td><td>3</td><td>2026-10-28 03:02</td><td>2026-11-05 07:35</td></tr>
 <tr><td>WebLogic T3 handshake</td><td>2</td><td>2</td><td>2026-10-31 17:05</td><td>2026-11-04 23:46</td></tr>
 <tr><td>SSH banner</td><td>2</td><td>2</td><td>2026-11-03 04:28</td><td>2026-11-03 05:03</td></tr>
-<tr><td>Other text</td><td>1</td><td>1</td><td>2026-11-08 10:27</td><td>2026-11-08 10:27</td></tr>
 </tbody></table>
 <p>The rest of this post goes through them, using the full bytes from the packet capture where we have them.</p>
 
 <h2>3. TLS on Port 80</h2>
-<p>520 connections from 250 addresses opened with a TLS ClientHello, the first message of an HTTPS connection. Internet-wide scanners try TLS on every open port, because services run HTTPS on all sorts of ports and the only way to find out is to try. nginx answers in plain text:</p>
+<p>528 connections from 257 addresses opened with a TLS ClientHello, the first message of an HTTPS connection. Internet-wide scanners try TLS on every open port, because services run HTTPS on all sorts of ports and the only way to find out is to try. nginx answers in plain text:</p>
 <pre><code>HTTP/1.1 400 Bad Request
 Server: nginx/1.18.0 (Ubuntu)
 Date: Sun, 15 Nov 2026 09:33:36 GMT

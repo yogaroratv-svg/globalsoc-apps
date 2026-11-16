@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>.env and .git Scanners: 3,291 Requests for Secrets on a PHP Honeypot | Global SOC</title>
+<title>.env and .git Scanners: 3,307 Requests for Secrets on a PHP Honeypot | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/env-git-secret-hunters/">
 <meta name="description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/env-git-secret-hunters/">
-<meta property="og:title" content=".env and .git Scanners: 3,291 Requests for Secrets on a PHP Honeypot | Global SOC">
+<meta property="og:title" content=".env and .git Scanners: 3,307 Requests for Secrets on a PHP Honeypot | Global SOC">
 <meta property="og:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content=".env and .git Scanners: 3,291 Requests for Secrets on a PHP Honeypot | Global SOC">
+<meta name="twitter:title" content=".env and .git Scanners: 3,307 Requests for Secrets on a PHP Honeypot | Global SOC">
 <meta name="twitter:description" content="One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.">
 <script type="application/ld+json">
 {
@@ -26,7 +26,7 @@
         "@type": "WebPage",
         "@id": "https://globalsoc.com.au/blog/env-git-secret-hunters/"
       },
-      "headline": "3,291 Requests for Files That Should Never Be on a Web Server",
+      "headline": "3,307 Requests for Files That Should Never Be on a Web Server",
       "description": "One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.",
       "datePublished": "2026-11-15",
       "author": {
@@ -63,7 +63,7 @@
         {
           "@type": "ListItem",
           "position": 3,
-          "name": "3,291 Requests for Files That Should Never Be on a Web Server",
+          "name": "3,307 Requests for Files That Should Never Be on a Web Server",
           "item": "https://globalsoc.com.au/blog/env-git-secret-hunters/"
         }
       ]
@@ -110,22 +110,22 @@ td code{overflow-wrap:anywhere}
 </header>
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
-<h1>3,291 Requests for Files That Should Never Be on a Web Server</h1>
+<h1>3,307 Requests for Files That Should Never Be on a Web Server</h1>
 <p>One request in three to our PHP honeypot was not an exploit at all. It was a plain GET for a file that holds credentials: .env, .git/config, AWS keys, database dumps. Here are the 882 paths they asked for, who asked, and the AndroxGh0st check that came with them.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · What They Ask For · .env in 479 Places · Git, Cloud Keys, Backups · Who Is Asking · 283 Paths in Two Minutes · AndroxGh0st · Did Anything Leak? · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Every request on this page is shown as it was logged.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). Every request on this page is shown as it was logged.</p>
 
 <h2>1. Summary</h2>
-<p>The largest single category of traffic to the honeypot needed no vulnerability. Between 2026-10-22 and 2026-11-09, 108 source IPs sent 3,291 requests for 882 different paths, each one a file that would hand over credentials if it existed: application environment files, Git metadata, cloud provider key files, database dumps, editor and CI configuration.</p>
-<p>That is one third of all external requests the honeypot logged. Responses: 404 x 3,263, 200 x 16, 403 x 11, 400 x 1. Nothing was leaked, because the honeypot's web root contains one file. Section 8 covers the 16 requests that got a <code>200</code>.</p>
+<p>The largest single category of traffic to the honeypot needed no vulnerability. Between 2026-10-22 and 2026-11-09, 114 source IPs sent 3,307 requests for 884 different paths, each one a file that would hand over credentials if it existed: application environment files, Git metadata, cloud provider key files, database dumps, editor and CI configuration.</p>
+<p>That is one third of all external requests the honeypot logged. Responses: 404 x 3,279, 200 x 16, 403 x 11, 400 x 1. Nothing was leaked, because the honeypot's web root contains one file. Section 8 covers the 16 requests that got a <code>200</code>.</p>
 <p>These requests are worth studying because the path list is the attacker's model of how developers make mistakes. Every path below is on the list because it has paid off somewhere.</p>
 
 <h2>2. What They Ask For</h2>
 <svg viewBox="0 0 720 246" role="img" style="width:100%;max-width:720px;height:auto;font:13px system-ui,sans-serif">
-<text x="222" y="16" text-anchor="end" fill="#1d3344">.env files</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">1,998</text>
-<text x="222" y="40" text-anchor="end" fill="#1d3344">.git repository</text><rect class="bar" x="230" y="28" width="73" height="15" rx="2"/><text x="309" y="40" fill="#47687c">357</text>
-<text x="222" y="64" text-anchor="end" fill="#1d3344">Other config files</text><rect class="bar" x="230" y="52" width="69" height="15" rx="2"/><text x="305" y="64" fill="#47687c">339</text>
-<text x="222" y="88" text-anchor="end" fill="#1d3344">Database dumps and backups</text><rect class="bar" x="230" y="76" width="33" height="15" rx="2"/><text x="269" y="88" fill="#47687c">161</text>
+<text x="222" y="16" text-anchor="end" fill="#1d3344">.env files</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">2,000</text>
+<text x="222" y="40" text-anchor="end" fill="#1d3344">.git repository</text><rect class="bar" x="230" y="28" width="73" height="15" rx="2"/><text x="309" y="40" fill="#47687c">359</text>
+<text x="222" y="64" text-anchor="end" fill="#1d3344">Other config files</text><rect class="bar" x="230" y="52" width="71" height="15" rx="2"/><text x="307" y="64" fill="#47687c">347</text>
+<text x="222" y="88" text-anchor="end" fill="#1d3344">Database dumps and backups</text><rect class="bar" x="230" y="76" width="33" height="15" rx="2"/><text x="269" y="88" fill="#47687c">165</text>
 <text x="222" y="112" text-anchor="end" fill="#1d3344">Docker, Kubernetes, CI files</text><rect class="bar" x="230" y="100" width="22" height="15" rx="2"/><text x="258" y="112" fill="#47687c">110</text>
 <text x="222" y="136" text-anchor="end" fill="#1d3344">Cloud credentials (.aws, credentials)</text><rect class="bar" x="230" y="124" width="21" height="15" rx="2"/><text x="257" y="136" fill="#47687c">107</text>
 <text x="222" y="160" text-anchor="end" fill="#1d3344">wp-config.php copies</text><rect class="bar" x="230" y="148" width="18" height="15" rx="2"/><text x="254" y="160" fill="#47687c">90</text>
@@ -134,10 +134,10 @@ td code{overflow-wrap:anywhere}
 <text x="222" y="232" text-anchor="end" fill="#1d3344">SSH and TLS private keys</text><rect class="bar" x="230" y="220" width="3" height="15" rx="2"/><text x="239" y="232" fill="#47687c">16</text>
 </svg>
 <table><thead><tr><th>Family</th><th>Requests</th><th>Source IPs</th><th>Distinct paths</th><th>Most requested</th></tr></thead><tbody>
-<tr><td>.env files</td><td>1,998</td><td>46</td><td>480</td><td><code>/.env</code></td></tr>
-<tr><td>.git repository</td><td>357</td><td>56</td><td>59</td><td><code>/.git/config</code></td></tr>
-<tr><td>Other config files</td><td>339</td><td>35</td><td>143</td><td><code>/config.json</code></td></tr>
-<tr><td>Database dumps and backups</td><td>161</td><td>11</td><td>60</td><td><code>/site.zip</code></td></tr>
+<tr><td>.env files</td><td>2,000</td><td>48</td><td>480</td><td><code>/.env</code></td></tr>
+<tr><td>.git repository</td><td>359</td><td>58</td><td>59</td><td><code>/.git/config</code></td></tr>
+<tr><td>Other config files</td><td>347</td><td>39</td><td>144</td><td><code>/config.json</code></td></tr>
+<tr><td>Database dumps and backups</td><td>165</td><td>13</td><td>61</td><td><code>/site.zip</code></td></tr>
 <tr><td>Docker, Kubernetes, CI files</td><td>110</td><td>16</td><td>34</td><td><code>/docker-compose.yml</code></td></tr>
 <tr><td>Cloud credentials (.aws, credentials)</td><td>107</td><td>16</td><td>55</td><td><code>/.aws/credentials</code></td></tr>
 <tr><td>wp-config.php copies</td><td>90</td><td>16</td><td>16</td><td><code>/wp-config.php</code></td></tr>
@@ -148,8 +148,8 @@ td code{overflow-wrap:anywhere}
 
 <h2>3. .env in 479 Places</h2>
 <p>A <code>.env</code> file holds an application's settings as <code>KEY=value</code> lines: database password, mail server login, payment and cloud API keys, the framework's signing key. Laravel, Symfony, Node, Django and Rails projects all use one. It belongs one level above the web root. When the project root is the web root, <code>/.env</code> is a public URL.</p>
-<p>1,998 requests asked for 480 variations. The 40 most requested:</p>
-<pre><code> 316  /.env
+<p>2,000 requests asked for 480 variations. The 40 most requested:</p>
+<pre><code> 318  /.env
   40  /.env.local
   36  /.env.backup
   35  /.env.production
@@ -197,7 +197,7 @@ td code{overflow-wrap:anywhere}
 
 <h2>4. Git, Cloud Keys, Backups</h2>
 <p><strong>Git.</strong> If <code>/.git/</code> is reachable, the whole repository can be rebuilt from it, including every secret ever committed and later "removed". <code>/.git/config</code> is the test request: it is small, has a fixed format, and often contains a remote URL with a token in it.</p>
-<pre><code>  72  /.git/config
+<pre><code>  74  /.git/config
   24  /.git/HEAD
   14  /.gitlab-ci.yml
   13  /.git/logs/HEAD
@@ -284,21 +284,21 @@ td code{overflow-wrap:anywhere}
    4  /wp-config.php.dist</code></pre>
 <p><strong>Everything else.</strong> Spring Boot actuator, VS Code SFTP plugin settings (which store a server password in the project folder), Terraform state, npm tokens, framework debug panels:</p>
 <pre><code>  19  /config.json
+  13  /admin/config.php
   12  /config.php
-  11  /admin/config.php
    9  /.npmrc
    9  /actuator/env
    8  /appsettings.json
    7  /config/database.php
    7  /storage/logs/laravel.log
    7  /.vscode/sftp.json
+   7  /actuator/health
    7  /settings.py
    6  /config.inc.php
    5  /.vscode/settings.json
    5  /sftp.json
    5  /config.js
    5  /terraform.tfstate
-   5  /actuator/health
    5  /.htaccess
    5  /.htpasswd
    4  /debug/default/view?panel=config
@@ -444,7 +444,7 @@ Content-Type: application/x-www-form-urlencoded
 
 <h2>9. Packet Capture Note</h2>
 <p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for the requests in this post no longer exist. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Every payload on this page is from those two sources.</p>
-<p>For this category the capture would add little. These are header-only GET requests, and the nginx log has the request line, User-Agent, status and sizes for all 3,291 of them. The one thing nginx did not log is the request headers other than User-Agent.</p>
+<p>For this category the capture would add little. These are header-only GET requests, and the nginx log has the request line, User-Agent, status and sizes for all 3,307 of them. The one thing nginx did not log is the request headers other than User-Agent.</p>
 
 <h2>10. IOCs</h2>
 <p>The 15 busiest sources of secret-file requests. An IP on this list is a scanner, not proof of compromise; block lists built from it go stale within weeks.</p>

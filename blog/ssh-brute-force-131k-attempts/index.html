@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>131,113 SSH Logins in 24 Days: What the Honeypot Password Logger Really Captured | Global SOC</title>
+<title>131,113 SSH Logins in 18 Days: What the Honeypot Password Logger Really Captured | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/ssh-brute-force-131k-attempts/">
 <meta name="description" content="Port 22 on our PHP honeypot took 131,113 password guesses from 1,227 IPs using 3,181 usernames. The PAM password logger recorded none of the real passwords — only OpenSSH&#x27;s decoy string — but that decoy still leaked the length of every guess.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/ssh-brute-force-131k-attempts/">
-<meta property="og:title" content="131,113 SSH Logins in 24 Days: What the Honeypot Password Logger Really Captured | Global SOC">
+<meta property="og:title" content="131,113 SSH Logins in 18 Days: What the Honeypot Password Logger Really Captured | Global SOC">
 <meta property="og:description" content="Port 22 on our PHP honeypot took 131,113 password guesses from 1,227 IPs using 3,181 usernames. The PAM password logger recorded none of the real passwords — only OpenSSH&#x27;s decoy string — but that decoy still leaked the length of every guess.">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="131,113 SSH Logins in 24 Days: What the Honeypot Password Logger Really Captured | Global SOC">
+<meta name="twitter:title" content="131,113 SSH Logins in 18 Days: What the Honeypot Password Logger Really Captured | Global SOC">
 <meta name="twitter:description" content="Port 22 on our PHP honeypot took 131,113 password guesses from 1,227 IPs using 3,181 usernames. The PAM password logger recorded none of the real passwords — only OpenSSH&#x27;s decoy string — but that decoy still leaked the length of every guess.">
 <script type="application/ld+json">
 {
@@ -26,7 +26,7 @@
         "@type": "WebPage",
         "@id": "https://globalsoc.com.au/blog/ssh-brute-force-131k-attempts/"
       },
-      "headline": "131,113 SSH Brute-Force Attempts in 24 Days — and Why Our Password Logger Captured Zero Passwords",
+      "headline": "131,113 SSH Brute-Force Attempts in 18 Days — and Why Our Password Logger Captured Zero Passwords",
       "description": "Port 22 on our PHP honeypot took 131,113 password guesses from 1,227 IPs using 3,181 usernames. The PAM password logger recorded none of the real passwords — only OpenSSH's decoy string — but that decoy still leaked the length of every guess.",
       "datePublished": "2026-11-15",
       "author": {
@@ -63,7 +63,7 @@
         {
           "@type": "ListItem",
           "position": 3,
-          "name": "131,113 SSH Brute-Force Attempts in 24 Days — and Why Our Password Logger Captured Zero Passwords",
+          "name": "131,113 SSH Brute-Force Attempts in 18 Days — and Why Our Password Logger Captured Zero Passwords",
           "item": "https://globalsoc.com.au/blog/ssh-brute-force-131k-attempts/"
         }
       ]
@@ -110,10 +110,10 @@ td code{overflow-wrap:anywhere}
 </header>
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
-<h1>131,113 SSH Brute-Force Attempts in 24 Days — and Why Our Password Logger Captured Zero Passwords</h1>
+<h1>131,113 SSH Brute-Force Attempts in 18 Days — and Why Our Password Logger Captured Zero Passwords</h1>
 <p>Port 22 on our PHP honeypot took 131,113 password guesses from 1,227 IPs using 3,181 usernames. The PAM password logger recorded none of the real passwords — only OpenSSH&#x27;s decoy string — but that decoy still leaked the length of every guess.</p>
 <nav class="toc"><strong>Key Sections:</strong> The Numbers · Usernames Tried · The Logger That Caught Nothing · Password Lengths · Who Was Guessing · Packet Capture Note · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: <code>/var/log/auth.log</code> and the PAM logger output on <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC).</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: <code>/var/log/auth.log</code> and the PAM logger output on <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November).</p>
 
 <h2>1. The Numbers</h2>
 <p>The honeypot was built to study PHP exploitation on port 80, but port 22 was open too. SSH took more traffic than HTTP by a factor of thirteen:</p>

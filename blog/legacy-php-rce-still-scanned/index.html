@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <title>Old PHP RCEs Still Being Scanned in 2026: PHPUnit, PHP-CGI, ThinkPHP, pearcmd, Ignition | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/legacy-php-rce-still-scanned/">
-<meta name="description" content="In 24 days a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.">
+<meta name="description" content="In 18 days online, a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/legacy-php-rce-still-scanned/">
 <meta property="og:title" content="Old PHP RCEs Still Being Scanned in 2026: PHPUnit, PHP-CGI, ThinkPHP, pearcmd, Ignition | Global SOC">
-<meta property="og:description" content="In 24 days a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.">
+<meta property="og:description" content="In 18 days online, a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Old PHP RCEs Still Being Scanned in 2026: PHPUnit, PHP-CGI, ThinkPHP, pearcmd, Ignition | Global SOC">
-<meta name="twitter:description" content="In 24 days a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.">
+<meta name="twitter:description" content="In 18 days online, a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -27,7 +27,7 @@
         "@id": "https://globalsoc.com.au/blog/legacy-php-rce-still-scanned/"
       },
       "headline": "Six Old PHP-Stack RCEs That Still Arrive Every Day, With the Payloads",
-      "description": "In 24 days a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.",
+      "description": "In 18 days online, a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.",
       "datePublished": "2026-11-15",
       "author": {
         "@type": "Person",
@@ -111,9 +111,9 @@ td code{overflow-wrap:anywhere}
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
 <h1>Six Old PHP-Stack RCEs That Still Arrive Every Day, With the Payloads</h1>
-<p>In 24 days a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.</p>
+<p>In 18 days online, a PHP honeypot received 557 requests for six remote code execution bugs disclosed between 2012 and 2024. Here is each one as it arrived: the request, the payload, what it would do on a vulnerable server, and why it failed on this one.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · PHPUnit eval-stdin · A Dropper Without a Check · PHP-CGI · ThinkPHP 5 · pearcmd · Apache Traversal · Laravel Ignition · Did Anything Work? · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log and Apache container log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). URLs are defanged. Nothing on this page was executed.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log and Apache container log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November). URLs are defanged. Nothing on this page was executed.</p>
 
 <h2>1. Summary</h2>
 <p>The honeypot was built to attract exploits for two PHP bugs disclosed in October 2026. Most of the code-execution attempts it received were for much older ones. Between 2026-10-22 and 2026-11-08, 26 source IPs sent 557 requests for these six:</p>
@@ -313,7 +313,7 @@ Content-Type: application/json
 <tr><td>pearcmd.php through a file-include parameter</td><td>11</td><td>3689 x 11</td></tr>
 <tr><td>Laravel Ignition execute-solution</td><td>0</td><td>-</td></tr>
 </tbody></table>
-<p>For comparison, the sizes nginx sent for a plain <code>GET /</code> over the same period: 1941 x 577, 3684 x 361, 3689 x 207 (1,941 is the gzip-compressed page; the other two differ only in response headers, and Apache logged the same 3,685-byte body for both). Every "successful" exploit request received the ordinary home page and nothing else. Each check in this post would have added output: 32 bytes for an MD5, 10 for the multiplication.</p>
+<p>For comparison, the sizes nginx sent for a plain <code>GET /</code> over the same period: 1941 x 611, 3684 x 367, 3689 x 211 (1,941 is the gzip-compressed page; the other two differ only in response headers, and Apache logged the same 3,685-byte body for both). Every "successful" exploit request received the ordinary home page and nothing else. Each check in this post would have added output: 32 bytes for an MD5, 10 for the multiplication.</p>
 
 <h2>10. Packet Capture Note</h2>
 <p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for the requests in this post no longer exist. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Every payload on this page is from those two sources.</p>

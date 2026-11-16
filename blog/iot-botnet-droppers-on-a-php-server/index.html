@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <title>Router and Camera Exploits on a PHP Honeypot: IoT Botnet Droppers, Decoded | Global SOC</title>
 <link rel="canonical" href="https://globalsoc.com.au/blog/iot-botnet-droppers-on-a-php-server/">
-<meta name="description" content="Our PHP honeypot is not a router, but 50 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.">
+<meta name="description" content="Our PHP honeypot is not a router, but 52 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.">
 <meta property="og:site_name" content="Global SOC">
 <meta property="og:locale" content="en_AU">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://globalsoc.com.au/blog/iot-botnet-droppers-on-a-php-server/">
 <meta property="og:title" content="Router and Camera Exploits on a PHP Honeypot: IoT Botnet Droppers, Decoded | Global SOC">
-<meta property="og:description" content="Our PHP honeypot is not a router, but 50 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.">
+<meta property="og:description" content="Our PHP honeypot is not a router, but 52 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Router and Camera Exploits on a PHP Honeypot: IoT Botnet Droppers, Decoded | Global SOC">
-<meta name="twitter:description" content="Our PHP honeypot is not a router, but 50 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.">
+<meta name="twitter:description" content="Our PHP honeypot is not a router, but 52 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -26,8 +26,8 @@
         "@type": "WebPage",
         "@id": "https://globalsoc.com.au/blog/iot-botnet-droppers-on-a-php-server/"
       },
-      "headline": "Router Botnets Knocking on a PHP Server: 123 IoT Exploits, Decoded",
-      "description": "Our PHP honeypot is not a router, but 50 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.",
+      "headline": "Router Botnets Knocking on a PHP Server: 137 IoT Exploits, Decoded",
+      "description": "Our PHP honeypot is not a router, but 52 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.",
       "datePublished": "2026-11-15",
       "author": {
         "@type": "Person",
@@ -63,7 +63,7 @@
         {
           "@type": "ListItem",
           "position": 3,
-          "name": "Router Botnets Knocking on a PHP Server: 123 IoT Exploits, Decoded",
+          "name": "Router Botnets Knocking on a PHP Server: 137 IoT Exploits, Decoded",
           "item": "https://globalsoc.com.au/blog/iot-botnet-droppers-on-a-php-server/"
         }
       ]
@@ -110,13 +110,13 @@ td code{overflow-wrap:anywhere}
 </header>
 <main>
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
-<h1>Router Botnets Knocking on a PHP Server: 123 IoT Exploits, Decoded</h1>
-<p>Our PHP honeypot is not a router, but 50 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.</p>
+<h1>Router Botnets Knocking on a PHP Server: 137 IoT Exploits, Decoded</h1>
+<p>Our PHP honeypot is not a router, but 52 IP addresses tried more than 20 different router, camera and NAS exploits on it. We show the payloads in full: a 19-exploit loader with a four-stage beacon, an out-of-band scanner with a callback token per request, Mozi bots that are still spreading, and a Mozi payload hidden in a header that nginx never logged but our packet capture did.</p>
 <nav class="toc"><strong>Key Sections:</strong> Summary · Why a PHP Server Gets Router Exploits · The 19-Exploit Loader · The Callback Scanner · Mozi, Still Spreading · Mozi in a Header: the Packet Capture · A Bot With No Server · akbarniga · Default Passwords and One-Offs · What the Honeypot Answered · IOCs · Detection (KQL) · Mitigation</nav>
-<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC), plus a packet capture from 15–16 November. Payloads are shown as captured; URLs and domains are defanged.</p>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC; the VM was switched off from 9 to 15 November), plus a packet capture from 15–16 November. Payloads are shown as captured; URLs and domains are defanged.</p>
 
 <h2>1. Summary</h2>
-<p>123 requests from 50 IP addresses tried to exploit routers, cameras, DVRs, NAS boxes and firewalls on a server that is none of those things. Every one of them failed (400, 404, 405, or a connection the sender abandoned), because the paths do not exist on a PHP site. They are still worth reading, because they show how the botnets that do infect such devices work:</p>
+<p>137 requests from 52 IP addresses tried to exploit routers, cameras, DVRs, NAS boxes and firewalls on a server that is none of those things. Every one of them failed (400, 404, 405, or a connection the sender abandoned), because the paths do not exist on a PHP site. They are still worth reading, because they show how the botnets that do infect such devices work:</p>
 <ul>
 <li>One loader fired the same 19 exploits in the same second, twice in one day. Its shell payload reports back at four points (started, downloaded, ran, failed) and names each victim by its hostname.</li>
 <li>Another sender put a unique 24-character callback token in each of 37 exploits, so its server knows exactly which exploit worked on which target. That is how out-of-band vulnerability scanners work, legitimate or not.</li>
@@ -131,26 +131,26 @@ td code{overflow-wrap:anywhere}
 <table><thead><tr><th>Target</th><th>Reference</th><th>Requests</th><th>Source IPs</th></tr></thead><tbody>
 <tr><td>TP-Link Archer AX21</td><td>CVE-2023-1389</td><td>16</td><td>2</td></tr>
 <tr><td>Fiber ONT routers (Boa web server)</td><td>default-password login</td><td>12</td><td>12</td></tr>
+<tr><td>D-Link routers (HNAP)</td><td>CVE-2015-2051 and later</td><td>11</td><td>10</td></tr>
 <tr><td>Dasan/Nokia GPON home routers</td><td>CVE-2018-10561 / CVE-2018-10562</td><td>11</td><td>7</td></tr>
-<tr><td>D-Link routers (HNAP)</td><td>CVE-2015-2051 and later</td><td>9</td><td>8</td></tr>
 <tr><td>Tenda-style goform handlers</td><td>various</td><td>8</td><td>2</td></tr>
 <tr><td>Hikvision IP cameras</td><td>CVE-2021-36260</td><td>7</td><td>3</td></tr>
 <tr><td>Netgear DGN1000/DGN2200</td><td>unauthenticated syscmd, 2013</td><td>6</td><td>6</td></tr>
 <tr><td>MVPower DVR (JAWS web server)</td><td>unauthenticated shell, 2016</td><td>5</td><td>4</td></tr>
 <tr><td>Realtek SDK / D-Link UPnP SOAP</td><td>CVE-2014-8361 family</td><td>4</td><td>2</td></tr>
-<tr><td>Realtek SDK UPnP (miniigd)</td><td>CVE-2014-8361</td><td>3</td><td>2</td></tr>
 <tr><td>Tenda AC routers</td><td>CVE-2020-10987</td><td>3</td><td>2</td></tr>
-<tr><td>DrayTek Vigor</td><td>CVE-2020-8515</td><td>2</td><td>1</td></tr>
-<tr><td>Zyxel firewalls (ZTP)</td><td>CVE-2022-30525</td><td>2</td><td>1</td></tr>
-<tr><td>AVTECH cameras/DVRs</td><td>unauthenticated command injection, 2016</td><td>2</td><td>1</td></tr>
-<tr><td>Zeroshell</td><td>CVE-2019-12725</td><td>2</td><td>1</td></tr>
-<tr><td>Huawei HG532</td><td>CVE-2017-17215</td><td>2</td><td>1</td></tr>
+<tr><td>Realtek SDK UPnP (miniigd)</td><td>CVE-2014-8361</td><td>3</td><td>2</td></tr>
 <tr><td>TOTOLINK routers</td><td>several 2022-2024 CVEs</td><td>2</td><td>1</td></tr>
 <tr><td>D-Link NAS (DNS-320 family)</td><td>CVE-2024-3273</td><td>2</td><td>1</td></tr>
+<tr><td>DrayTek Vigor</td><td>CVE-2020-8515</td><td>2</td><td>1</td></tr>
+<tr><td>AVTECH cameras/DVRs</td><td>unauthenticated command injection, 2016</td><td>2</td><td>1</td></tr>
+<tr><td>Zeroshell</td><td>CVE-2019-12725</td><td>2</td><td>1</td></tr>
+<tr><td>Zyxel firewalls (ZTP)</td><td>CVE-2022-30525</td><td>2</td><td>1</td></tr>
+<tr><td>Huawei HG532</td><td>CVE-2017-17215</td><td>2</td><td>1</td></tr>
+<tr><td>TBK DVR</td><td>CVE-2024-3721</td><td>1</td><td>1</td></tr>
 <tr><td>Linksys E-series</td><td>&quot;TheMoon&quot; worm, 2014</td><td>1</td><td>1</td></tr>
 <tr><td>n8n workflow API</td><td>Code node abuse</td><td>1</td><td>1</td></tr>
-<tr><td>TBK DVR</td><td>CVE-2024-3721</td><td>1</td><td>1</td></tr>
-<tr><td>unattributed</td><td></td><td>22</td><td>14</td></tr>
+<tr><td>unattributed</td><td></td><td>34</td><td>16</td></tr>
 </tbody></table>
 <p>"Unattributed" covers requests whose target we cannot name with confidence: generic <code>/cgi-bin/</code> injections, login page probes and a few rare paths.</p>
 
@@ -471,7 +471,7 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 <p>The last one asks a device to start a root shell on TCP port 30009 with <code>telnetd -l /bin/sh</code>: no download, just a back door to log in to later.</p>
 
 <h2>10. What the Honeypot Answered</h2>
-<p>Status codes across all 123 requests: 400 x19, 404 x83, 405 x6, 499 x15. None of these paths exist on the honeypot. nginx passed the requests through; Apache inside the container answered the URL-borne commands that contain raw spaces with 400 (a malformed request line), the rest with 404, and the Hikvision <code>PUT</code> with 405. 499 means the client hung up before the answer came. No request in this post reached code that could run it, and the container's filesystem shows no downloaded file (the list is in the <a href="/blog/redtail-cryptominer-dropper-analysis/">RedTail post</a>).</p>
+<p>Status codes across all 137 requests: 400 x19, 404 x97, 405 x6, 499 x15. None of these paths exist on the honeypot. nginx passed the requests through; Apache inside the container answered the URL-borne commands that contain raw spaces with 400 (a malformed request line), the rest with 404, and the Hikvision <code>PUT</code> with 405. 499 means the client hung up before the answer came. No request in this post reached code that could run it, and the container's filesystem shows no downloaded file (the list is in the <a href="/blog/redtail-cryptominer-dropper-analysis/">RedTail post</a>).</p>
 <p>So the risk is not to a server like ours. It is to the devices these exploits were written for, which sit on home and office networks with no logging at all.</p>
 
 <h2>11. IOCs</h2>
@@ -479,6 +479,8 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 <tr><td>195.178.110.78</td><td>Bulgaria</td><td>34</td><td>2026-11-08 14:02</td><td>2026-11-08 22:06</td></tr>
 <tr><td>92.118.39.92</td><td>United States</td><td>25</td><td>2026-11-05 23:31</td><td>2026-11-05 23:31</td></tr>
 <tr><td>221.159.119.6</td><td>South Korea</td><td>14</td><td>2026-10-24 15:33</td><td>2026-11-05 04:20</td></tr>
+<tr><td>172.236.35.120</td><td>Australia</td><td>7</td><td>2026-10-24 23:09</td><td>2026-10-24 23:09</td></tr>
+<tr><td>172.105.177.106</td><td>Australia</td><td>7</td><td>2026-11-06 22:56</td><td>2026-11-06 22:56</td></tr>
 <tr><td>94.154.43.99</td><td>The Netherlands</td><td>3</td><td>2026-10-23 20:22</td><td>2026-10-24 10:35</td></tr>
 <tr><td>216.180.246.2</td><td>United States</td><td>2</td><td>2026-10-25 03:41</td><td>2026-10-28 03:31</td></tr>
 <tr><td>153.117.56.31</td><td>Pakistan</td><td>1</td><td>2026-10-22 09:24</td><td>2026-10-22 09:24</td></tr>
@@ -489,8 +491,6 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 <tr><td>216.180.246.130</td><td>United States</td><td>1</td><td>2026-10-24 03:34</td><td>2026-10-24 03:34</td></tr>
 <tr><td>153.117.29.16</td><td>Pakistan</td><td>1</td><td>2026-10-24 16:39</td><td>2026-10-24 16:39</td></tr>
 <tr><td>94.154.43.12</td><td>The Netherlands</td><td>1</td><td>2026-10-24 17:04</td><td>2026-10-24 17:04</td></tr>
-<tr><td>139.135.45.156</td><td>Pakistan</td><td>1</td><td>2026-10-25 00:28</td><td>2026-10-25 00:28</td></tr>
-<tr><td>144.48.130.200</td><td>Pakistan</td><td>1</td><td>2026-10-25 13:45</td><td>2026-10-25 13:45</td></tr>
 </tbody></table>
 <table>
 <tr><th>Type</th><th>Value</th><th>Context</th></tr>
