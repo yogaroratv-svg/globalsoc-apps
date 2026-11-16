@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your Vulnerability Scanner vs Real Attackers: Coverage Gaps and Scanner Noise in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-scanner-vs-attackers/">
+<meta name="description" content="An authorised Qualys scan sent 11,262 requests to my honeypot in 31 minutes. Over three and a half weeks, attackers sent 3,307 requests for secret files, and the scan asked for .env zero times. I compare the two, then show how to handle scanner noise properly in Splunk and Sentinel, find the coverage gaps, and use the scan to test your own detections.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-scanner-vs-attackers/">
+<meta property="og:title" content="Your Vulnerability Scanner vs Real Attackers: Coverage Gaps and Scanner Noise in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="An authorised Qualys scan sent 11,262 requests to my honeypot in 31 minutes. Over three and a half weeks, attackers sent 3,307 requests for secret files, and the scan asked for .env zero times. I compare the two, then show how to handle scanner noise properly in Splunk and Sentinel, find the coverage gaps, and use the scan to test your own detections.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Your Vulnerability Scanner vs Real Attackers: Coverage Gaps and Scanner Noise in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="An authorised Qualys scan sent 11,262 requests to my honeypot in 31 minutes. Over three and a half weeks, attackers sent 3,307 requests for secret files, and the scan asked for .env zero times. I compare the two, then show how to handle scanner noise properly in Splunk and Sentinel, find the coverage gaps, and use the scan to test your own detections.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-scanner-vs-attackers/#article",
+      "url": "https://globalsoc.com.au/blog/detect-scanner-vs-attackers/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-scanner-vs-attackers/"
+      },
+      "headline": "Qualys vs Real Attackers: What Your Scanner Misses, and How to Stop It Drowning Your SOC",
+      "description": "An authorised Qualys scan sent 11,262 requests to my honeypot in 31 minutes. Over three and a half weeks, attackers sent 3,307 requests for secret files, and the scan asked for .env zero times. I compare the two, then show how to handle scanner noise properly in Splunk and Sentinel, find the coverage gaps, and use the scan to test your own detections.",
+      "datePublished": "2026-11-13",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Qualys vs Real Attackers: What Your Scanner Misses, and How to Stop It Drowning Your SOC",
+          "item": "https://globalsoc.com.au/blog/detect-scanner-vs-attackers/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-13">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 13 November 2026</p>
+<h1>Qualys vs Real Attackers: What Your Scanner Misses, and How to Stop It Drowning Your SOC</h1>
+<p>An authorised Qualys scan sent 11,262 requests to my honeypot in 31 minutes. Over three and a half weeks, attackers sent 3,307 requests for secret files, and the scan asked for .env zero times. I compare the two, then show how to handle scanner noise properly in Splunk and Sentinel, find the coverage gaps, and use the scan to test your own detections.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · Side by Side · Pyramid of Pain · Detections · Using the Scan to Test Your SOC · When It Fires · Hardening</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The validation queries are templates for your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>The day after the honeypot went live, I pointed a Qualys scan at it: 11,262 requests from <code>52.176.19.239</code> in 31 minutes. That's more than everything every attacker sent in the following three and a half weeks put together. In my logs, the authorised scan was more than half of all web traffic.</p>
+
+<p>That's the first problem for a SOC. A vulnerability scan looks exactly like an attack, lands in the same tables, and fires the same rules. The second problem is subtler. The scan and the attackers barely asked the same questions:</p>
+<ul>
+<li>The scanner requested 6,078 different paths. Attackers requested 2,050. Only 212 appear in both lists.</li>
+<li>Attackers' favourite target was secret files: 3,307 requests for <code>.env</code>, <code>.git</code> and config files. The scan sent 170, and not one was for <code>.env</code>.</li>
+<li>The scan spent 45 requests on Log4Shell and 807 on Java enterprise software. Attackers sent zero Log4Shell requests to a server that announces it runs PHP.</li>
+<li>The scan tried PHPUnit's <code>eval-stdin.php</code> on 17 paths. Attackers tried 41.</li>
+</ul>
+
+<p>The scan may have a separate module for exposed files that my profile didn't have enabled. I don't have the scan configuration to check. But that's the point: a clean scan report tells you what <em>the scan</em> checked, not what attackers check.</p>
+
+<h2 id="side">2. Side by Side</h2>
+<table><thead><tr><th>Category</th><th>Qualys (31 min)</th><th>Attackers (18 days)</th></tr></thead><tbody>
+<tr><td>Other path probes</td><td>6,200</td><td>1,510</td></tr>
+<tr><td>.env, .git and config files</td><td>170</td><td>3,307</td></tr>
+<tr><td>Home page only</td><td>837</td><td>1,908</td></tr>
+<tr><td>PHP file probes</td><td>1,015</td><td>590</td></tr>
+<tr><td>Other CMS</td><td>517</td><td>638</td></tr>
+<tr><td>Java enterprise (Struts, WebLogic, Spring...)</td><td>807</td><td>112</td></tr>
+<tr><td>Not HTTP / malformed</td><td>148</td><td>748</td></tr>
+<tr><td>PHPUnit eval-stdin</td><td>18</td><td>430</td></tr>
+<tr><td>WordPress</td><td>158</td><td>270</td></tr>
+<tr><td>VPN and edge appliances</td><td>343</td><td>74</td></tr>
+<tr><td>Other POST/PUT</td><td>119</td><td>279</td></tr>
+<tr><td>Path traversal / LFI</td><td>279</td><td>45</td></tr>
+<tr><td>Microsoft (Exchange, SharePoint, IIS)</td><td>241</td><td>73</td></tr>
+<tr><td>IoT and routers</td><td>55</td><td>126</td></tr>
+<tr><td>AI / LLM infrastructure</td><td>27</td><td>105</td></tr>
+<tr><td>PHP2Shell category (multipart POST)</td><td>33</td><td>83</td></tr>
+<tr><td>PHP code injection</td><td>104</td><td>4</td></tr>
+<tr><td>Shell command injection</td><td>85</td><td>11</td></tr>
+<tr><td>PHP-CGI argument injection</td><td>11</td><td>59</td></tr>
+<tr><td>React2Shell</td><td>10</td><td>58</td></tr>
+<tr><td>Log4Shell</td><td>45</td><td>0</td></tr>
+<tr><td>ThinkPHP</td><td>6</td><td>25</td></tr>
+<tr><td>SQL injection</td><td>30</td><td>0</td></tr>
+<tr><td>Apache path traversal RCE</td><td>0</td><td>29</td></tr>
+<tr><td>Open proxy test</td><td>4</td><td>11</td></tr>
+<tr><td>pearcmd LFI</td><td>0</td><td>11</td></tr>
+<tr><td>Laravel Ignition</td><td>0</td><td>3</td></tr>
+</tbody></table>
+
+<p>The top attacker paths the scan never requested:</p>
+<pre><code> 318  /.env
+ 259  /favicon.ico
+ 112  /wp-includes/version.php
+ 106  /readme.html
+ 104  /license.txt
+ 104  /nope.php
+  44  /.well-known/security.txt
+  40  /.env.local
+  36  /.env.backup
+  35  /.env.production
+  34  /.env.prod
+  33  /.env.dev
+  30  /api/.env
+  29  /.env.bak
+  28  /.env.save
+  28  /app/.env
+  28  /config/.env
+  28  /security.txt
+  25  /.env.old
+  24  /.env.example
+  24  /.git/HEAD
+  22  /.env.test
+  22  /laravel/.env
+  21  /backend/.env
+  21  /.aws/credentials</code></pre>
+
+<p>And here's how the scanner proves a React2Shell finding without doing harm. It uses the same exploit wrapper the attackers use (see the <a href="/blog/detect-react2shell/">React2Shell post</a>), with harmless commands:</p>
+<pre><code>echo $((191*7))
+echo QUALYS_TEST_733480
+id
+powershell -c "echo QUALYS_TEST_733480"
+powershell -c 191*7</code></pre>
+<p>A marker, or <code>191*7</code> = 1337. The attackers' versions of the same request opened reverse shells and stole environment variables.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain, Applied to Your Own Scanner</h2>
+<p>The pyramid works in reverse here. How you <em>recognise</em> your scanner decides how easily an attacker can hide behind it:</p>
+<table><thead><tr><th>How you allowlist the scanner</th><th>How easy it is for an attacker to abuse</th></tr></thead><tbody>
+<tr><td>By marker string (<code>QUALYS</code> in the payload)</td><td>Trivial. Anyone can type QUALYS into a request.</td></tr>
+<tr><td>By User-Agent</td><td>Trivial. Most of this scan had no User-Agent anyway.</td></tr>
+<tr><td>By source IP, for web-layer rules only</td><td>Hard. They'd need to come from your scanner's address. This is the right level.</td></tr>
+<tr><td>By source IP, at the EDR layer too</td><td>Dangerous. If the scanner ever causes a real shell, you won't see it. Never suppress endpoint rules for scanner traffic.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. For Org A I've used the CIM <code>Web</code> data model and a lookup of authorised scanners.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. Recognise the authorised scan</h3>
+<p><span class="org orgB">Org B</span> Tested: 648 requests carried a QUALYS marker, all from the scanner's address, within its 31-minute window.</p>
+<pre><code>WebAccess
+| extend Hay = strcat(Request, " ", Body, " ", UserAgent)
+| where Hay contains "QUALYS"
+| summarize Requests = count(), First = min(TimeGenerated), Last = max(TimeGenerated) by SrcIp</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access "QUALYS"
+| stats count min(_time) as first max(_time) as last by clientip
+| convert ctime(first) ctime(last)</code></pre>
+<p>Use this once, to confirm the scanner's addresses. Then put those addresses in a Sentinel watchlist (<code>AuthorisedScanners</code>) or a Splunk lookup (<code>authorised_scanners.csv</code>), and exclude them from web-layer rules only.</p>
+
+<h3>W2. Scanner markers from the wrong address (T1036)</h3>
+<p><span class="org orgB">Org B</span> Tested: zero, correctly. Every marker came from the real scanner.</p>
+<pre><code>// Sentinel watchlist "AuthorisedScanners" with columns SearchKey (IP) and Owner
+let Scanners = _GetWatchlist("AuthorisedScanners") | project SrcIp = SearchKey;
+WebAccess
+| extend Hay = strcat(Request, " ", Body, " ", UserAgent)
+| where Hay matches regex @"(?i)QUALYS|NESSUS|TENABLE|RAPID7|INSIGHTVM|ACUNETIX|BURP|NUCLEI"
+| join kind=leftanti Scanners on SrcIp
+| summarize Requests = count(), Markers = make_set(extract(@"(?i)(QUALYS\w*|NESSUS\w*|TENABLE\w*|RAPID7\w*|ACUNETIX\w*|BURP\w*|NUCLEI\w*)", 1, Hay), 10) by SrcIp</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access
+| regex _raw="(?i)QUALYS|NESSUS|TENABLE|RAPID7|INSIGHTVM|ACUNETIX|BURP|NUCLEI"
+| lookup authorised_scanners.csv src AS clientip OUTPUT owner
+| where isnull(owner)
+| rex "(?i)(?&lt;marker&gt;QUALYS\w*|NESSUS\w*|TENABLE\w*|RAPID7\w*|ACUNETIX\w*|BURP\w*|NUCLEI\w*)"
+| stats count values(marker) as markers by clientip</code></pre>
+<p>Someone sending scanner markers from an address that isn't your scanner is either a rogue scan, a pentester nobody told you about, or an attacker hoping you suppress on markers. All three are worth a conversation. Medium severity.</p>
+
+<h3>W3. The coverage gap: what attackers ask that your scanner doesn't</h3>
+<p><span class="org orgB">Org B</span> Tested: the top gap was <code>/.env</code> (325 attacker requests from 50 sources), followed by WordPress version files, <code>security.txt</code>, and ten more <code>.env</code> variants.</p>
+<pre><code>let Scanner = dynamic(["52.176.19.239"]);
+let ScannerPaths = WebAccess | where SrcIp in (Scanner) | distinct Url;
+WebAccess
+| where SrcIp !in (Scanner) and Status != 200
+| summarize AttackerRequests = count(), Sources = dcount(SrcIp) by Url
+| join kind=leftanti ScannerPaths on Url
+| top 15 by AttackerRequests</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count dc(Web.src) as sources from datamodel=Web where NOT Web.status=200 by Web.url Web.src
+| rename Web.* as *
+| lookup authorised_scanners.csv src OUTPUT owner
+| eval who=if(isnotnull(owner), "scanner", "attacker")
+| stats sum(eval(if(who="attacker",count,0))) as attacker_requests dc(eval(if(who="attacker",src,null()))) as sources
+        max(eval(if(who="scanner",1,0))) as scanner_tested by url
+| where scanner_tested=0
+| sort - attacker_requests | head 15</code></pre>
+<p>Run it monthly against your own web logs and send the result to whoever owns the scan profile. It's the cheapest purple-team exercise there is, because the attackers write the test cases for you.</p>
+
+<h2 id="validate">5. Using the Scan to Test Your SOC</h2>
+<p>An authorised scan is a free, scheduled attack simulation. Use it.</p>
+
+<h3>V1. Which rules fired during the scan?</h3>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>// Which of your rules fired during the authorised scan window? Silence is the finding.
+let ScanStart = datetime(2026-10-23 02:18); let ScanEnd = datetime(2026-10-23 02:50);
+SecurityAlert
+| where TimeGenerated between (ScanStart .. ScanEnd + 15m)
+| summarize Alerts = count() by AlertName, ProviderName
+| order by Alerts desc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=notable earliest="10/23/2026:02:18:00" latest="10/23/2026:03:05:00"
+| stats count by search_name urgency
+| sort - count</code></pre>
+<p>Compare the list against what the scan sent. It tried React2Shell, PHPUnit, Log4Shell, Struts and SQL injection. If your web-exploit rules didn't fire for those (before suppression), they won't fire for an attacker either. Silence is the finding.</p>
+
+<h3>E1. Did the scan cause anything on the endpoint?</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_simpleName=ProcessRollup2 earliest="10/23/2026:02:18:00" latest="10/23/2026:03:05:00"
+    ParentBaseFileName IN ("apache2","httpd","nginx","php","php-fpm*","node","java","w3wp.exe")
+    NOT FileName IN ("php","php-fpm*","apache2","httpd")
+| table _time ComputerName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>// During a scan window, any web-server child process means the scan found something real
+let ScanStart = datetime(2026-10-23 02:18); let ScanEnd = datetime(2026-10-23 02:50);
+DeviceProcessEvents
+| where Timestamp between (ScanStart .. ScanEnd + 15m)
+| where InitiatingProcessFileName in~ ("apache2","httpd","nginx","php","php-fpm","node","java","w3wp.exe")
+| where FileName !in~ ("php","php-fpm","apache2","httpd")
+| project Timestamp, DeviceName, InitiatingProcessFileName, FileName, ProcessCommandLine</code></pre>
+<p>A scanner's proof-of-concept commands are harmless, but they still run. If <code>echo QUALYS_TEST_733480</code> appears as a child of your web server, the vulnerability is real and exploitable today, whatever the scan report's severity says. It's also proof that your EDR rule from the <a href="/blog/detect-redtail-cryptominer/">RedTail post</a> works.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>W2 (markers from the wrong IP):</strong> check with your vulnerability-management team and any pentest vendors. If nobody owns it, treat it as hostile recon.</li>
+<li><strong>W3 gaps:</strong> raise them with the scan owner. Turn on file-exposure checks, or add custom checks for the top gap paths.</li>
+<li><strong>V1 silence:</strong> fix the rule before the next scan, then confirm it fires next time.</li>
+<li><strong>E1 hits:</strong> patch that host now. <span class="org orgA">Org A</span> and <span class="org orgB">Org B</span> both: raise it as an incident, not a scan finding. An attacker can reach the same code path.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Run authenticated scans plus a file-exposure check, not just the default external profile.</li>
+<li>Scan on a fixed schedule from fixed addresses, and publish both to the SOC.</li>
+<li>Suppress scanner traffic by source IP, at the web layer only. Never suppress at the EDR layer.</li>
+<li>Feed W3's top attacker paths back into the scan profile every month.</li>
+</ul>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
