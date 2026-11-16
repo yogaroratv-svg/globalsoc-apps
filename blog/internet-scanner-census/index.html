@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Who Scans the Internet? A Census of the Scanners That Found Our Honeypot | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/internet-scanner-census/">
+<meta name="description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/internet-scanner-census/">
+<meta property="og:title" content="Who Scans the Internet? A Census of the Scanners That Found Our Honeypot | Global SOC">
+<meta property="og:description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Who Scans the Internet? A Census of the Scanners That Found Our Honeypot | Global SOC">
+<meta name="twitter:description" content="The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/internet-scanner-census/#article",
+      "url": "https://globalsoc.com.au/blog/internet-scanner-census/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/internet-scanner-census/"
+      },
+      "headline": "Who Found Our Honeypot First? A Census of 24 Named Internet Scanners",
+      "description": "The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which \"research\" scanners went straight for .env files.",
+      "datePublished": "2026-11-15",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Who Found Our Honeypot First? A Census of 24 Named Internet Scanners",
+          "item": "https://globalsoc.com.au/blog/internet-scanner-census/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-15">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
+<h1>Who Found Our Honeypot First? A Census of 24 Named Internet Scanners</h1>
+<p>The first stranger reached our new honeypot 33 minutes after it started. Within a day 80 addresses had visited. We list every scanner that named itself in its User-Agent (Censys, Palo Alto Xpanse, Infrawatch, Nokia, Odin, universities and more), when each arrived, what it asked for, and which &quot;research&quot; scanners went straight for .env files.</p>
+<nav class="toc"><strong>Key Sections:</strong> Summary · The First Day · Named Scanners · What They Ask For · Names That Claim Research · Tools, Not Organisations · Should You Block Them? · Detection (KQL)</nav>
+<p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Scanner names are as the scanners gave them; we did not verify ownership of the addresses.</p>
+
+<h2>1. Summary</h2>
+<ul>
+<li>The vulnerable container started at 2026-10-22 05:01:27 UTC. The first request from the internet arrived 33 minutes later.</li>
+<li>In the first hour 2 addresses sent 3 requests. In the first 24 hours, 80 addresses sent 656.</li>
+<li>24 scanners named themselves in their User-Agent, usually with a link that explains the scan. Together they sent 824 requests from 414 addresses: 8.4% of the 9,829 external requests. Everything else came from clients that did not say who they were.</li>
+<li>Several clients call themselves "research" or "authorized" and then request <code>.env</code>, <code>.git</code> and cloud credential files. A name in a User-Agent is a claim, not an identity.</li>
+</ul>
+
+<h2>2. The First Day</h2>
+<p>The first six external requests:</p>
+<pre><code>2026-10-22 05:35:24  198.147.191.15  United States   GET / HTTP/1.1  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36
+2026-10-22 05:35:25  198.147.191.15  United States   GET /favicon.ico HTTP/1.1  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36
+2026-10-22 05:35:42  104.197.69.115  United States   GET / HTTP/1.1  User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.60 Safari/537.36 Edge/12.246
+2026-10-22 06:08:29  87.236.176.48   United Kingdom  GET / HTTP/1.1  User-Agent: Mozilla/5.0 (compatible; InternetMeasurement/1.0; +https://internet-measurement.com/)
+2026-10-22 06:08:57  47.254.74.59    United States   GET / HTTP/1.1  User-Agent: Mozilla/5.0 (Linux; Android 10; LIO-AN00 Build/HUAWEILIO-AN00; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Mobile Safari/537.36
+2026-10-22 06:08:57  47.251.11.3     United States   GET /Public/home/js/check.js HTTP/1.1  User-Agent: Mozilla/5.0 (Linux; Android 10; LIO-AN00 Build/HUAWEILIO-AN00; wv) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Mobile Safari/537.36</code></pre>
+<p>The first visitors did not name themselves; their User-Agents claim to be ordinary browsers. The first named scanner was InternetMeasurement, 67 minutes after start-up. By then the address had been found, and it was never quiet again. A new server on a cloud address is not "unknown until someone looks": addresses are scanned continuously, and a new service shows up in the next pass.</p>
+
+<h2>3. Named Scanners</h2>
+<p>Every client whose User-Agent identified an organisation or tool, sorted by volume:</p>
+<table><thead><tr><th>Scanner</th><th>What it is</th><th>Requests</th><th>IPs</th><th>Days seen</th><th>First seen (UTC)</th><th>After container start</th><th>Top paths</th></tr></thead><tbody>
+<tr><td>Censys</td><td>internet search engine</td><td>231</td><td>89</td><td>18</td><td>2026-10-23 16:08</td><td>35.1 h</td><td><code>/, /favicon.ico, /info.php</code></td></tr>
+<tr><td>Infrawatch</td><td>internet search engine</td><td>144</td><td>119</td><td>18</td><td>2026-10-22 23:11</td><td>18.2 h</td><td><code>/, /favicon.ico, /mcp/</code></td></tr>
+<tr><td>Palo Alto Networks Cortex Xpanse</td><td>attack-surface management</td><td>109</td><td>98</td><td>19</td><td>2026-10-22 23:18</td><td>18.3 h</td><td><code>/, /.well-known/security.txt, /yawhpsiabsent</code></td></tr>
+<tr><td>Nokia (GenomeCrawler)</td><td>internet mapping</td><td>109</td><td>10</td><td>11</td><td>2026-10-23 05:27</td><td>24.4 h</td><td><code>/, /manage/account/login, /admin/index.html</code></td></tr>
+<tr><td>ForestEngine</td><td>internet search engine</td><td>74</td><td>36</td><td>19</td><td>2026-10-22 14:12</td><td>9.2 h</td><td><code>/, /favicon.ico</code></td></tr>
+<tr><td>Modat</td><td>internet search engine</td><td>20</td><td>9</td><td>10</td><td>2026-10-23 03:30</td><td>22.5 h</td><td><code>/, /favicon.ico</code></td></tr>
+<tr><td>Odin</td><td>internet search engine</td><td>17</td><td>7</td><td>5</td><td>2026-10-23 05:15</td><td>24.2 h</td><td><code>/, /sdk, /HNAP1</code></td></tr>
+<tr><td>mrtscan</td><td>unknown, names a cloud region</td><td>30</td><td>10</td><td>10</td><td>2026-10-23 21:10</td><td>40.1 h</td><td><code>/</code></td></tr>
+<tr><td>visionheight.com</td><td>attack-surface scanning</td><td>26</td><td>4</td><td>13</td><td>2026-10-22 19:47</td><td>14.8 h</td><td><code>/, /robots.txt</code></td></tr>
+<tr><td>CyberConvoy Scout</td><td>attack-surface scanning</td><td>11</td><td>3</td><td>11</td><td>2026-10-23 13:15</td><td>32.2 h</td><td><code>/</code></td></tr>
+<tr><td>Apcosys</td><td>internet scanning</td><td>11</td><td>5</td><td>7</td><td>2026-10-23 14:14</td><td>33.2 h</td><td><code>/robots.txt, /, /favicon.ico</code></td></tr>
+<tr><td>IVRE (masscan)</td><td>open-source tool</td><td>8</td><td>5</td><td>8</td><td>2026-10-23 13:20</td><td>32.3 h</td><td><code>/admin/config.php, /</code></td></tr>
+<tr><td>Ruhr-Universität Bochum</td><td>academic research</td><td>7</td><td>1</td><td>1</td><td>2026-10-22 15:29</td><td>10.5 h</td><td><code>/</code></td></tr>
+<tr><td>InternetMeasurement</td><td>internet measurement</td><td>6</td><td>6</td><td>6</td><td>2026-10-22 06:08</td><td>1.1 h</td><td><code>/</code></td></tr>
+<tr><td>FH Münster</td><td>academic research</td><td>6</td><td>1</td><td>2</td><td>2026-10-28 18:41</td><td>6.6 days</td><td><code>/, /app-config.js, /dicom-web/studies?0020000D=2.25.83961957171485309472578960013521734519&amp;00080020=30000101</code></td></tr>
+<tr><td>Netcraft</td><td>internet survey</td><td>1</td><td>1</td><td>1</td><td>2026-11-05 20:52</td><td>14.7 days</td><td><code>/</code></td></tr>
+<tr><td>ipip.net</td><td>internet scanning</td><td>2</td><td>2</td><td>2</td><td>2026-10-22 16:02</td><td>11.0 h</td><td><code>/</code></td></tr>
+<tr><td>FlowIQ Labs</td><td>internet scanning</td><td>2</td><td>2</td><td>2</td><td>2026-10-24 19:18</td><td>2.6 days</td><td><code>/</code></td></tr>
+<tr><td>Keydrop.io / onlyscans</td><td>internet scanning</td><td>2</td><td>1</td><td>1</td><td>2026-10-27 17:34</td><td>5.5 days</td><td><code>/.env, /.git/config</code></td></tr>
+<tr><td>tchelebi</td><td>internet scanning</td><td>2</td><td>1</td><td>2</td><td>2026-10-28 19:52</td><td>6.6 days</td><td><code>/</code></td></tr>
+<tr><td>ipbase</td><td>internet scanning</td><td>1</td><td>1</td><td>1</td><td>2026-11-03 09:02</td><td>12.2 days</td><td><code>/</code></td></tr>
+<tr><td>InternetData.io</td><td>internet scanning</td><td>1</td><td>1</td><td>1</td><td>2026-11-05 07:26</td><td>14.1 days</td><td><code>/</code></td></tr>
+<tr><td>URSA</td><td>unknown</td><td>3</td><td>1</td><td>1</td><td>2026-10-22 23:10</td><td>18.1 h</td><td><code>/, /api/export-auth</code></td></tr>
+<tr><td>Synthient</td><td>research claim</td><td>1</td><td>1</td><td>1</td><td>2026-11-01 22:09</td><td>10.7 days</td><td><code>hxxp://probe.invalid/</code></td></tr>
+</tbody></table>
+<svg viewBox="0 0 720 294" role="img" style="width:100%;max-width:720px;height:auto;font:13px system-ui,sans-serif">
+<text x="222" y="16" text-anchor="end" fill="#1d3344">Censys</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">231</text>
+<text x="222" y="40" text-anchor="end" fill="#1d3344">Infrawatch</text><rect class="bar" x="230" y="28" width="255" height="15" rx="2"/><text x="491" y="40" fill="#47687c">144</text>
+<text x="222" y="64" text-anchor="end" fill="#1d3344">Palo Alto Networks Cortex Xpan</text><rect class="bar" x="230" y="52" width="193" height="15" rx="2"/><text x="429" y="64" fill="#47687c">109</text>
+<text x="222" y="88" text-anchor="end" fill="#1d3344">Nokia (GenomeCrawler)</text><rect class="bar" x="230" y="76" width="193" height="15" rx="2"/><text x="429" y="88" fill="#47687c">109</text>
+<text x="222" y="112" text-anchor="end" fill="#1d3344">ForestEngine</text><rect class="bar" x="230" y="100" width="131" height="15" rx="2"/><text x="367" y="112" fill="#47687c">74</text>
+<text x="222" y="136" text-anchor="end" fill="#1d3344">mrtscan</text><rect class="bar" x="230" y="124" width="53" height="15" rx="2"/><text x="289" y="136" fill="#47687c">30</text>
+<text x="222" y="160" text-anchor="end" fill="#1d3344">visionheight.com</text><rect class="bar" x="230" y="148" width="46" height="15" rx="2"/><text x="282" y="160" fill="#47687c">26</text>
+<text x="222" y="184" text-anchor="end" fill="#1d3344">Modat</text><rect class="bar" x="230" y="172" width="35" height="15" rx="2"/><text x="271" y="184" fill="#47687c">20</text>
+<text x="222" y="208" text-anchor="end" fill="#1d3344">Odin</text><rect class="bar" x="230" y="196" width="30" height="15" rx="2"/><text x="266" y="208" fill="#47687c">17</text>
+<text x="222" y="232" text-anchor="end" fill="#1d3344">CyberConvoy Scout</text><rect class="bar" x="230" y="220" width="19" height="15" rx="2"/><text x="255" y="232" fill="#47687c">11</text>
+<text x="222" y="256" text-anchor="end" fill="#1d3344">Apcosys</text><rect class="bar" x="230" y="244" width="19" height="15" rx="2"/><text x="255" y="256" fill="#47687c">11</text>
+<text x="222" y="280" text-anchor="end" fill="#1d3344">IVRE (masscan)</text><rect class="bar" x="230" y="268" width="14" height="15" rx="2"/><text x="250" y="280" fill="#47687c">8</text>
+</svg>
+<p>"After container start" is how long each took to reach us for the first time. The big search engines arrived within a day or two, then came back almost daily: Censys on 18 days, Palo Alto's Xpanse on 19, ForestEngine on 19. They re-check every address constantly so that their indexes show what is online now, not what was online last month.</p>
+<p>Two others did not name themselves in the User-Agent but in the request. BitSight's internet census sent 16 requests from 15 addresses to a path that names it (<code>/bitsight/internet_census/probe</code>), covered in the <a href="/blog/php2shell-exploitation-in-the-wild/">PHP2Shell post</a>. And a university proxy study named its own host in a <code>CONNECT</code> request, covered in the <a href="/blog/non-http-traffic-on-port-80/">non-HTTP post</a>.</p>
+
+<h2>4. What They Ask For</h2>
+<p><strong>Censys</strong> sent 231 requests from 89 addresses in 66.132.0.0/16 and 167.94.0.0/16 (busiest: 66.132.195.0/24 (40), 66.132.159.0/24 (17), 66.132.172.0/24 (16), 66.132.186.0/24 (7), 66.132.224.0/24 (5)). Mostly the home page and favicon, which is what its index shows (page title, headers, favicon hash), plus a few checks for <code>phpinfo</code> pages that reveal configuration:</p>
+<pre><code> 124  /
+  82  /favicon.ico
+   8  /info.php
+   3  /wiki
+   3  /.well-known/security.txt
+   3  /phpinfo
+   2  /sitemap.xml
+   2  /phpinfo.php
+   2  /security.txt
+   1  /app-ads.txt
+   1  /sellers.json</code></pre>
+<p><strong>Infrawatch</strong> visited 18 times from 119 addresses and asked the same six paths each time, four of them for AI agent endpoints:</p>
+<pre><code>  54  /
+  18  /favicon.ico
+  18  /mcp/
+  18  /mcp
+  18  /api/mcp
+  18  /sse</code></pre>
+<p><code>/mcp</code>, <code>/api/mcp</code> and <code>/sse</code> are where Model Context Protocol servers listen. An exposed MCP server can give anyone the tools it gives an AI agent, which is why internet indexes now look for them. The <a href="/blog/ai-llm-credential-probing/">AI post</a> covers who else asks.</p>
+<p><strong>Palo Alto Networks Cortex Xpanse</strong> asked almost only for <code>/</code>, plus <code>security.txt</code> and once a path that cannot exist (<code>/yawhpsiabsent</code>), the same "is everything a 200?" check described in the <a href="/blog/one-ip-many-exploits-spray-scanners/">spray scanner post</a>. Xpanse is sold to organisations to find their own internet-facing assets, so the data ends up with defenders.</p>
+<p><strong>Odin</strong> returns every few days with the same short routine:</p>
+<pre><code>2026-10-23 05:15:51  GET    /                              200
+2026-10-28 15:54:03  GET    /                              200
+2026-10-30 07:31:25  GET    /odinhttpcall1793345485        404
+2026-10-30 07:31:25  POST   /sdk                           404
+2026-10-30 07:31:26  GET    /HNAP1                         404
+2026-10-30 07:31:26  GET    /evox/about                    404
+2026-10-30 07:31:28  GET    /                              200
+2026-11-02 13:07:43  GET    /odinhttpcall1793624863        404
+2026-11-02 13:07:43  POST   /sdk                           404
+2026-11-02 13:07:44  GET    /HNAP1                         404
+2026-11-02 13:07:44  GET    /evox/about                    404
+2026-11-02 13:07:46  GET    /                              200
+2026-11-08 13:51:16  GET    /odinhttpcall1794145875        404
+2026-11-08 13:51:16  POST   /sdk                           404
+2026-11-08 13:51:16  GET    /evox/about                    404
+2026-11-08 13:51:16  GET    /HNAP1                         404
+2026-11-08 13:51:18  GET    /                              200</code></pre>
+<p>A unique marker path (<code>/odinhttpcall</code> plus a Unix timestamp), then <code>POST /sdk</code> (VMware vSphere's SOAP endpoint), <code>/HNAP1</code> (D-Link routers) and <code>/evox/about</code> (a device information page): product identification for its index, without exploit payloads.</p>
+<p><strong>Nokia's GenomeCrawler</strong> requests router, VPN and admin login pages; see the <a href="/blog/one-ip-many-exploits-spray-scanners/">spray scanner post</a>. <strong>FH Münster's</strong> research scanner asked for <code>/dicom-web/studies</code>, the web API of medical imaging (PACS) systems, a reminder that research scans look for exposed hospital systems too.</p>
+
+<h2>5. Names That Claim Research</h2>
+<p>Some clients describe themselves as research or authorised testing but behave like the attackers in the rest of this series:</p>
+<table><thead><tr><th>User-Agent</th><th>Requests</th><th>IPs</th><th>What it asked for</th></tr></thead><tbody>
+<tr><td><code>Mozilla/5.0 (compatible; research-scan/1.0)</code></td><td>38</td><td>1</td><td>/, /@vite/client, /.git/HEAD, /.env, /.env~</td></tr>
+<tr><td><code>Mozilla/5.0 (compatible; Scanner/1.0)</code></td><td>21</td><td>19</td><td>/.git/config</td></tr>
+<tr><td><code>php2shell-scan/3.1 (authorized-security-assessment)</code></td><td>37</td><td>1</td><td>/, /phpinfo.php, /info.php, /test.php, /phpversion.php</td></tr>
+<tr><td><code>grok-fp/1.0 (authorized research)</code></td><td>1</td><td>1</td><td>/</td></tr>
+<tr><td><code>Mozilla/5.0 (compatible; opendir-scanner/1.0)</code></td><td>4</td><td>1</td><td>/</td></tr>
+<tr><td><code>Mozilla/5.0 (X11; Linux x86_64) HighPerfScanner/10G</code></td><td>4</td><td>4</td><td>/</td></tr>
+</tbody></table>
+<p><code>research-scan/1.0</code> from 129.213.151.234 needed four seconds (2026-10-30 20:07:59 to 20:08:03 UTC) for this list:</p>
+<pre><code>/
+/@vite/client
+/.git/HEAD
+/.env
+/.env~
+/.env.local
+/.env.bak
+/.env.old
+/.env.zip
+/backup.tar.gz
+/.git-credentials
+/.env.prod
+/.env.save
+/backup.zip
+/site.zip
+/.env.production.local
+/.git/config
+/www.zip
+/.env.gz
+/.env.production
+/actuator/env
+/info.php
+/phpinfo.php
+/wp-config.php.bak
+/wp-config.php
+/.docker/config.json
+/config.json
+/config.js
+/config.yaml
+/application.yml
+/terraform.tfvars
+/docker-compose.yml
+/docker-compose.yaml
+/secrets.json
+/credentials.json
+/.aws/credentials
+/server.js
+/app.js</code></pre>
+<p><code>.env</code> files, Git credentials, AWS keys, Docker registry credentials, Terraform variables and site backups. There is no link, no contact and no opt-out, and nothing in this list measures anything; it collects secrets. <code>Scanner/1.0</code> sent 21 requests from 19 addresses, 21 of them for <code>/.git/config</code>. <code>php2shell-scan/3.1 (authorized-security-assessment)</code> was not authorised by us (see the <a href="/blog/php2shell-exploitation-in-the-wild/">PHP2Shell post</a>).</p>
+<p>The useful test is not the name but the behaviour: does the client link to a page that names an organisation and offers an opt-out, and does it only read public pages? Censys, Xpanse, Infrawatch, Odin, Modat and the university scanners pass. The clients in this table do not.</p>
+
+<h2>6. Tools, Not Organisations</h2>
+<p>Some User-Agents name software that anyone can run:</p>
+<ul>
+<li><strong>zgrab</strong>, the scanner behind several research projects and many private ones: 109 requests from 86 addresses. Most just fetched <code>/</code>; others asked for SAP NetWeaver's <code>/developmentserver/metadatauploader</code> (the CVE-2025-31324 upload endpoint), Apache Druid's console and Red Lion industrial devices. The tool tells you nothing about who ran it: / (55), /developmentserver/metadatauploader (17), /druid/index.html (6), /portal/redlion (5), /.svn/entries (4).</li>
+<li><strong>IVRE</strong> with masscan, an open-source network recon framework.</li>
+<li><strong>mrtscan/1.0</strong>, which names a cloud region (<code>westus</code>) and nothing else.</li>
+</ul>
+
+<h2>7. Should You Block Them?</h2>
+<p>Blocking the named scanners keeps your servers out of public indexes, and attackers do use those indexes to pick targets. But the named scanners were 8% of external traffic here, and blocking them does nothing about the other 92%, which found the server just as fast without them. Meanwhile the same indexes are how defenders and their providers (attack-surface tools like Xpanse, threat-intelligence feeds, CERT notification services) find exposures and tell you about them.</p>
+<p>Our recommendation: do not rely on hiding. Assume everything you expose is in every index within a day, because here it was. If you want to opt out, use the scanners' published opt-out pages rather than IP blocklists, which go stale. And treat clients that claim to be research but fetch secrets as what they are.</p>
+
+<h2>8. Detection (KQL)</h2>
+<p>Tag self-identified scanners so they can be filtered or reviewed separately, and flag "research" names that request sensitive paths:</p>
+<pre><code class="language-kusto">let Known = dynamic(["CensysInspect", "Infrawatch", "Palo Alto Networks", "Expanse", "GenomeCrawler", "ForestEngine", "ModatScanner", "Odin", "InternetMeasurement", "NetcraftSurveyAgent"]);
+Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| extend Client = tostring(j.client), UA = tostring(j.user_agent), Uri = tostring(j.uri)
+| extend Named = UA has_any (Known)
+| extend ClaimsResearch = UA matches regex @"(?i)research|authori[sz]ed|scanner|scan/"
+| extend Sensitive = Uri matches regex @"(?i)/\.env|/\.git/|credentials|\.aws/|terraform\.tfvars|backup\.(zip|tar)|wp-config"
+| summarize Requests = count(), SensitiveHits = countif(Sensitive), Paths = make_set(Uri, 15) by Client, UA, Named, ClaimsResearch
+| where (ClaimsResearch and not(Named) and SensitiveHits > 0) or (Named and SensitiveHits > 0)
+| order by SensitiveHits desc</code></pre>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
