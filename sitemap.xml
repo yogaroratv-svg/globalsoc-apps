@@ -52,19 +52,6 @@
   <url><loc>https://globalsoc.com.au/blog/codex-corporate-network-guardrails/</loc><lastmod>2026-11-04</lastmod></url>
   <url><loc>https://globalsoc.com.au/blog/securing-ai-code-generation-enterprise/</loc><lastmod>2026-11-05</lastmod></url>
   <url><loc>https://globalsoc.com.au/blog/attacking-kubernetes/</loc><lastmod>2026-11-05</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/ssh-brute-force-131k-attempts/</loc><lastmod>2026-11-01</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/redtail-cryptominer-dropper-analysis/</loc><lastmod>2026-11-07</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/legacy-php-rce-still-scanned/</loc><lastmod>2026-11-04</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/env-git-secret-hunters/</loc><lastmod>2026-11-03</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/ai-llm-credential-probing/</loc><lastmod>2026-11-11</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/react2shell-payloads-on-a-php-server/</loc><lastmod>2026-11-09</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/php2shell-exploitation-in-the-wild/</loc><lastmod>2026-11-10</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/iot-botnet-droppers-on-a-php-server/</loc><lastmod>2026-11-08</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/non-http-traffic-on-port-80/</loc><lastmod>2026-11-02</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/qualys-scan-vs-real-attackers/</loc><lastmod>2026-11-13</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/one-ip-many-exploits-spray-scanners/</loc><lastmod>2026-11-12</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/internet-scanner-census/</loc><lastmod>2026-11-14</lastmod></url>
-  <url><loc>https://globalsoc.com.au/blog/honeypot-24-days-of-attacks/</loc><lastmod>2026-11-15</lastmod></url>
   <url><loc>https://globalsoc.com.au/blog/detect-redtail-cryptominer/</loc><lastmod>2026-11-07</lastmod></url>
   <url><loc>https://globalsoc.com.au/blog/detect-ssh-brute-force/</loc><lastmod>2026-11-01</lastmod></url>
   <url><loc>https://globalsoc.com.au/blog/detect-non-http-traffic-port-80/</loc><lastmod>2026-11-02</lastmod></url>
