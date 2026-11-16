@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Not Everything on Port 80 Is HTTP: Detecting Protocol Mismatch, RAT C2 and Open Proxies | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-non-http-traffic-port-80/">
+<meta name="description" content="My web honeypot received TLS handshakes, RDP and Siemens S7 requests, fake njRAT and Gh0st victims hunting for malware controllers, and proxy tests on port 80. Scanners hunting for C2 servers handed me the exact check-in bytes of two RATs. Here&#x27;s how to use them to find infected hosts in your own network, in Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-non-http-traffic-port-80/">
+<meta property="og:title" content="Not Everything on Port 80 Is HTTP: Detecting Protocol Mismatch, RAT C2 and Open Proxies | Global SOC">
+<meta property="og:description" content="My web honeypot received TLS handshakes, RDP and Siemens S7 requests, fake njRAT and Gh0st victims hunting for malware controllers, and proxy tests on port 80. Scanners hunting for C2 servers handed me the exact check-in bytes of two RATs. Here&#x27;s how to use them to find infected hosts in your own network, in Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Not Everything on Port 80 Is HTTP: Detecting Protocol Mismatch, RAT C2 and Open Proxies | Global SOC">
+<meta name="twitter:description" content="My web honeypot received TLS handshakes, RDP and Siemens S7 requests, fake njRAT and Gh0st victims hunting for malware controllers, and proxy tests on port 80. Scanners hunting for C2 servers handed me the exact check-in bytes of two RATs. Here&#x27;s how to use them to find infected hosts in your own network, in Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-non-http-traffic-port-80/#article",
+      "url": "https://globalsoc.com.au/blog/detect-non-http-traffic-port-80/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-non-http-traffic-port-80/"
+      },
+      "headline": "Not Everything on Port 80 Is HTTP: What Scanners Sent, and How to Turn It Into Detections",
+      "description": "My web honeypot received TLS handshakes, RDP and Siemens S7 requests, fake njRAT and Gh0st victims hunting for malware controllers, and proxy tests on port 80. Scanners hunting for C2 servers handed me the exact check-in bytes of two RATs. Here's how to use them to find infected hosts in your own network, in Splunk + CrowdStrike and Sentinel + Defender for Endpoint.",
+      "datePublished": "2026-11-02",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Not Everything on Port 80 Is HTTP: What Scanners Sent, and How to Turn It Into Detections",
+          "item": "https://globalsoc.com.au/blog/detect-non-http-traffic-port-80/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-02">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 2 November 2026</p>
+<h1>Not Everything on Port 80 Is HTTP: What Scanners Sent, and How to Turn It Into Detections</h1>
+<p>My web honeypot received TLS handshakes, RDP and Siemens S7 requests, fake njRAT and Gh0st victims hunting for malware controllers, and proxy tests on port 80. Scanners hunting for C2 servers handed me the exact check-in bytes of two RATs. Here&#x27;s how to use them to find infected hosts in your own network, in Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Probes, Decoded · Pyramid of Pain · Web-Layer Detections · Network and Endpoint Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL on this page ran against the honeypot's real logs. The network and endpoint queries are written from the probe bytes captured here, so adapt the field names to your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>Port 80 is the web port, but nothing forces a client to speak HTTP to it. nginx logs anything that isn't valid HTTP as a <code>400</code> with no method. That makes non-HTTP traffic easy to pick out of a web log:</p>
+
+<table><thead><tr><th>What the first bytes were</th><th>Lines</th><th>Sources</th></tr></thead><tbody>
+<tr><td>TLS handshake (HTTPS on the plain-HTTP port)</td><td>570</td><td>273</td></tr>
+<tr><td>Other binary protocols</td><td>168</td><td>37</td></tr>
+<tr><td>HTTP/2 cleartext preface (<code>PRI * HTTP/2.0</code>)</td><td>97</td><td>90</td></tr>
+<tr><td>TPKT: RDP or Siemens S7</td><td>42</td><td>10</td></tr>
+<tr><td>Empty</td><td>27</td><td>7</td></tr>
+<tr><td>RAT check-ins (Gh0st, njRAT)</td><td>16</td><td>3</td></tr>
+<tr><td>WebLogic T3</td><td>10</td><td>3</td></tr>
+<tr><td>SSH banner</td><td>2</td><td>2</td></tr>
+</tbody></table>
+
+<p>A packet capture showed even more: probes for MongoDB, SQL Server, Oracle, Redis, SMB, MQTT, DNP3, IPMI and the Niagara Fox building-automation protocol. They came from nine addresses in one cloud provider. The scanner reset each connection before nginx could even log it. That census is pure reconnaissance, and there's nothing to defend against except your own exposure.</p>
+
+<p>The interesting part for a defender is the RAT traffic. Three addresses sent messages that look exactly like a computer infected with njRAT or Gh0st checking in with its controller. They weren't infected. They were checking whether <em>my</em> server was a RAT controller, which would have answered. Security vendors run these scans to map malware infrastructure. And in doing so, they handed me the exact bytes that a real infected machine sends. That's what makes this post useful: those bytes are what you look for leaving your own network.</p>
+
+<h2 id="steps">2. The Probes, Decoded</h2>
+
+<h3><span class="kc">Recon</span> TLS, HTTP/2 and the protocol census</h3>
+<p>Internet-wide scanners try TLS and HTTP/2 on every open port, because services run on unexpected ports and the only way to find out is to ask (T1595.001, T1046). The census probes carried tool names: <code>mstshash=zgrab</code> in an RDP cookie, an MQTT client ID of <code>LZR</code>, and an Oracle program name of <code>lzrORA</code>. Those are fingerprints of the open-source zgrab and LZR scanners. Anyone can run those tools, so the names tell you the tool, not who was running it.</p>
+
+<h3><span class="kc">Command and Control</span> njRAT check-ins (what an infected host sends)</h3>
+<p>njRAT separates fields with <code>|'|'|</code>. Here's the 0.6.4 "new victim" message as it arrived:</p>
+<pre><code>lv|'|'|VHJvamFuX0M0NkY2RTk=|'|'|MARK|'|'|user|'|'|2013-11-22|'|'||'|'|Win XP|'|'|No|'|'|0.6.4|'|'|..|'|'||'|'|[endof]</code></pre>
+<p>Field 0 (<code>lv</code>) is the command. The base64 victim name decodes to <code>Trojan_C46F6E9</code>, followed by a user, an install date, the OS, whether there's a webcam, and the RAT version. The 0.7d variant sends its config too. Decoded, it names a campaign, a controller address and njRAT's default port, 5552:</p>
+<pre><code>HacKed
+192.168.92.222:5552
+Desktop
+clienta.exe
+False
+False
+True
+False</code></pre>
+<p>The controller is a private address, so this is a lab recording being replayed at the whole internet. On your network, the same message structure leaving a workstation means a real njRAT infection (T1071.001, T1095 for the raw-TCP variants).</p>
+
+<h3><span class="kc">Command and Control</span> Gh0st RAT login</h3>
+<p>Gh0st packets start with the five-byte magic <code>Gh0st</code>, then two little-endian lengths, then a zlib-compressed body:</p>
+<pre><code>0000  47 68 30 73 74 ad 00 00 00 e0 00 00 00 78 9c 4b  Gh0st........x.K
+0010  53 60 60 98 c3 c0 c0 c0 06 c4 8c 40 bc 51 96 81  S``........@.Q..
+0020  81 09 48 07 a7 16 95 65 26 a7 2a 04 24 26 67 2b  ..H....e&amp;.*.$&amp;g+
+      [... compressed body continues ...]</code></pre>
+<p>Decompressed, it's a login packet: OS version (<code>Service Pack 1</code>), the local IP <code>192.168.1.60</code> and host name <code>WIN-T9UN4HIIHEC</code>. <code>66.240.205.34</code> sent it on six different days over three weeks. It was re-checking my server each time to see whether it had turned into a controller.</p>
+
+<h3><span class="kc">Recon</span> Open-proxy tests</h3>
+<p>Eleven sources sent 20 <code>CONNECT</code> requests to IP-echo services like <code>api.ipify.org</code> and <code>internetdb.shodan.io</code>. If the echo came back, my server would be an open proxy that anyone could use to hide their traffic (T1090). All of them got a 400.</p>
+
+<h3><span class="kc">Recon</span> Made-up HTTP methods</h3>
+<p>Some requests used random methods like <code>OCHH</code>, <code>INVI</code> and <code>JMTX</code>. Apache passes unknown methods to PHP, and PHP serves the page as if it were a GET. My server answered every one with a 200. That's how scanners find servers where a WAF only filters GET and POST, so a different verb walks straight past it.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>RAT hunters <code>143.244.175.42</code>, <code>66.240.205.34</code>, <code>66.228.41.140</code>; census pool in Linode space</td><td>Ignore. These are research scanners, not attackers.</td></tr>
+<tr><td>Network artefacts</td><td><code>mstshash=zgrab</code>, <code>LZR</code>, <code>lzrORA</code>, fake victim names like <code>HacKed_D4990627</code></td><td>Useful for labelling scanner traffic so analysts don't chase it.</td></tr>
+<tr><td>Protocol structure</td><td>njRAT's <code>|'|'|</code> delimiter and <code>lv</code>/<code>ll</code> commands; the <code>Gh0st</code> magic and header</td><td>This is the gift. The operator can rename every field, but the wire format is the malware family. Detect it leaving your network.</td></tr>
+<tr><td>TTPs</td><td>Non-HTTP on a web port (T1571); raw-IP beacons from user-writable paths (T1071, T1095)</td><td>The durable rule: something that isn't HTTP or TLS on 80 or 443, or a regular raw-IP connection from an unsigned binary in <code>AppData</code>. It works for families you've never heard of.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Web-Layer Detections</h2>
+<p>For Org B I've parsed the honeypot's nginx log into a <code>WebAccess</code> function. Swap in your own source and keep the column names. Org A uses the CIM <code>Web</code> data model, or raw nginx where we need the request line as sent.</p>
+<pre><code>let WebAccess = Syslog
+| where SyslogMessage startswith "php_http: "
+| extend j = parse_json(substring(SyslogMessage, 10))
+| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+          Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
+          UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
+
+<h3>W1. Classify non-HTTP traffic on web ports (T1046, T1571)</h3>
+<p><span class="org orgB">Org B</span> Tested: produced the table in section 1.</p>
+<pre><code>WebAccess
+| where isempty(Method) and Status == 400
+| extend B0 = toint(unicode_codepoints_from_string(substring(Request, 0, 1))[0])
+| extend Kind = case(
+    B0 == 22, "TLS handshake",
+    Request startswith "PRI * HTTP/2", "HTTP/2 cleartext preface",
+    Request startswith "Gh0st" or Request has "|'|'|", "RAT check-in (Gh0st / njRAT)",
+    B0 == 3, "TPKT (RDP / Siemens S7)",
+    Request startswith "SSH-", "SSH banner",
+    Request startswith "t3 ", "WebLogic T3",
+    isempty(Request), "empty",
+    "other binary")
+| summarize Lines = count(), Sources = dcount(SrcIp), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated) by Kind
+| order by Lines desc</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=web sourcetype=nginx:access status=400 NOT method=*
+| eval b0=substr(request,1,1)
+| eval kind=case(
+    b0==urldecode("%16"), "TLS handshake",
+    like(request,"PRI * HTTP/2%"), "HTTP/2 cleartext preface",
+    like(request,"Gh0st%") OR like(request,"%|'|'|%"), "RAT check-in (Gh0st / njRAT)",
+    b0==urldecode("%03"), "TPKT (RDP / Siemens S7)",
+    like(request,"SSH-%"), "SSH banner",
+    like(request,"t3 %"), "WebLogic T3",
+    request=="", "empty",
+    true(), "other binary")
+| stats count as lines dc(clientip) as sources min(_time) as first max(_time) as last by kind
+| sort - lines</code></pre>
+<p>Run it as a weekly dashboard, not an alert. TLS on port 80 is constant background noise. Watch the RAT and TPKT rows. If an <em>internal</em> address ever appears in them, you've found something.</p>
+
+<h3>W2. Open-proxy behaviour (T1090)</h3>
+<p><span class="org orgB">Org B</span> Tested: 20 attempts from 11 sources, 0 answered.</p>
+<pre><code>WebAccess
+| where Method == "CONNECT" or Request startswith "CONNECT "
+| summarize Attempts = count(), Answered = countif(Status between (200 .. 299)), Targets = make_set(Url, 10) by SrcIp
+| summarize Sources = count(), Attempts = sum(Attempts), Answered = sum(Answered)</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web where Web.http_method="CONNECT" by Web.src Web.dest Web.url Web.status
+| rename Web.* as *
+| eval answered=if(status&gt;=200 AND status&lt;300, count, 0)
+| stats sum(count) as attempts sum(answered) as answered values(url) as targets by src dest
+| where answered &gt; 0</code></pre>
+<p>Attempts are noise. One answered <code>CONNECT</code> is a misconfiguration that turns your server into someone else's anonymiser. Alert at high severity on <code>Answered &gt; 0</code>.</p>
+
+<h3>W3. Unknown HTTP methods that get a 200</h3>
+<p><span class="org orgB">Org B</span> Tested: four outside sources sent made-up methods (<code>OCHH</code>, <code>INVI</code>, <code>JMTX</code>, <code>YEQW</code>), and all four got a 200. My own authorised scanner accounts for every other row.</p>
+<pre><code>WebAccess
+| where isnotempty(Method)
+    and Method !in ("GET","POST","HEAD","OPTIONS","PUT","DELETE","PATCH","CONNECT","PROPFIND","TRACE")
+| summarize Requests = count(), Answered200 = countif(Status == 200) by Method, SrcIp</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count from datamodel=Web
+    where NOT Web.http_method IN ("GET","POST","HEAD","OPTIONS","PUT","DELETE","PATCH","CONNECT","PROPFIND","TRACE")
+    by Web.src Web.dest Web.http_method Web.status
+| rename Web.* as *
+| where status=200</code></pre>
+<p>This is a posture finding rather than an attack alert. If a random verb gets a 200, check that your WAF rules cover every method, or reject non-standard methods at the web server.</p>
+
+<h2 id="endpoint">5. Network and Endpoint Detections</h2>
+<p>Now point the same knowledge outward. An infected host inside your network sends the same check-in that the scanners faked for me.</p>
+
+<h3>E1. RAT protocol on the wire</h3>
+<p><span class="org orgB">Org B</span> Defender for Endpoint's network protection inspects traffic and records a sample of what it saw, in <code>NetworkSignatureInspected</code> events:</p>
+<pre><code>DeviceNetworkEvents
+| where Timestamp &gt; ago(7d)
+| where ActionType == "NetworkSignatureInspected"
+| extend Af = parse_json(AdditionalFields)
+| extend Signature = tostring(Af.SignatureName), Sample = tostring(Af.SamplePacketContent)
+| where Sample has_any ("Gh0st", "|'|'|") or Sample startswith "lv|" or Signature has_any ("Gh0st", "njRAT")
+| project Timestamp, DeviceName, InitiatingProcessFileName, InitiatingProcessFolderPath,
+          RemoteIP, RemotePort, Signature, Sample</code></pre>
+<p><span class="org orgA">Org A</span> Falcon doesn't keep packet content, so for the protocol view Org A needs network telemetry. Here it's Zeek or Palo Alto App-ID in Splunk, looking for traffic on web ports that isn't HTTP or TLS:</p>
+<pre><code>index=network (sourcetype=zeek:conn OR sourcetype=bro:conn_json)
+    dest_port IN (80, 443, 8080) direction=outbound
+| where isnull(service) OR NOT match(service, "http|ssl|tls")
+| stats count dc(dest_ip) as dests sum(orig_bytes) as bytes_out by src_ip dest_port service
+| where count &gt;= 5
+
+index=pan sourcetype="pan:traffic" dest_port IN (80, 443) app IN ("unknown-tcp", "not-applicable", "insufficient-data")
+    direction=outbound
+| stats count dc(dest_ip) as dests by src_ip dest_port app</code></pre>
+<p>Outbound traffic on 80 or 443 that isn't HTTP or TLS has very few legitimate sources once you've allowlisted a handful of VPN and game clients. It catches njRAT, Gh0st and plenty of families that haven't been named yet (T1571 Non-Standard Port, T1095). High severity for any match with the <code>Gh0st</code> magic or the <code>|'|'|</code> delimiter.</p>
+
+<h3>E2. Raw-IP beaconing from a user-writable path</h3>
+<p>Both RATs install into user-writable folders and call a hard-coded IP or dynamic-DNS name at regular intervals. This catches the behaviour even if the traffic is wrapped in TLS:</p>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let Browsers = dynamic(["chrome.exe","msedge.exe","firefox.exe","iexplore.exe","brave.exe","opera.exe"]);
+DeviceNetworkEvents
+| where Timestamp &gt; ago(7d)
+| where ActionType == "ConnectionSuccess" and RemoteIPType == "Public"
+| where RemotePort in (80, 443, 5552, 1177, 8080)
+| where InitiatingProcessFileName !in~ (Browsers)
+| where isempty(RemoteUrl)                      // connected by raw IP, no DNS name
+| where InitiatingProcessFolderPath has_any (@"\AppData\", @"\Temp\", @"\ProgramData\", @"\Users\Public\")
+| summarize Connections = count(), Hours = dcount(bin(Timestamp, 1h)), Ports = make_set(RemotePort)
+          by DeviceName, InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessSHA256, RemoteIP
+| where Hours &gt;= 6</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Win event_simpleName=NetworkConnectIP4
+    RemotePort IN (80, 443, 5552, 1177, 8080)
+| where NOT cidrmatch("10.0.0.0/8", RemoteAddressIP4) AND NOT cidrmatch("172.16.0.0/12", RemoteAddressIP4)
+    AND NOT cidrmatch("192.168.0.0/16", RemoteAddressIP4)
+| join type=inner aid ContextProcessId_decimal
+    [ search index=crowdstrike event_platform=Win event_simpleName=ProcessRollup2
+        (ImageFileName="*\\AppData\\*" OR ImageFileName="*\\Temp\\*" OR ImageFileName="*\\ProgramData\\*" OR ImageFileName="*\\Users\\Public\\*")
+      | rename TargetProcessId_decimal as ContextProcessId_decimal
+      | fields aid ContextProcessId_decimal ImageFileName SHA256HashData ]
+| bin _time span=1h
+| stats dc(_time) as hours count as connections values(RemotePort) as ports
+        by aid ComputerName ImageFileName SHA256HashData RemoteAddressIP4
+| where hours &gt;= 6</code></pre>
+<p>"Connected out by raw IP in at least six different hours, from a binary in <code>AppData</code>, <code>Temp</code> or <code>ProgramData</code>" is a short list in most environments. Expect some updaters and helper apps the first time you run it. Allowlist them by signer or hash, and what's left is worth a look. Medium severity, raised to high if the binary is unsigned or new to your estate.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>W1 to W3 with external sources:</strong> recon. Label it and move on. Fix any proxy or method posture issues.</li>
+<li><strong>E1 or E2 on an internal host:</strong> treat it as an active RAT. <span class="org orgA">Org A</span> Network-contain the host in Falcon and pull the binary through RTR. <span class="org orgB">Org B</span> Isolate the device, collect an investigation package, and submit the file for deep analysis.</li>
+<li><strong>Decode the check-in.</strong> If you have the bytes, the njRAT fields give you the campaign name, the controller address and port, and the install path. That gives you three IOCs to sweep the rest of the estate with.</li>
+<li><strong>Hunt the controller address</strong> across firewall, proxy and DNS logs for the last 30 days. RAT campaigns rarely hit one machine.</li>
+<li><strong>Reset credentials</strong> for whoever used the machine. Both RATs keylog and steal saved passwords.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li>Default-deny outbound from servers. Workstations should go out through a proxy that only speaks HTTP and TLS, so raw TCP on 80 or 443 simply fails.</li>
+<li>Reject non-standard HTTP methods at the web server or WAF.</li>
+<li>Never enable <code>CONNECT</code> or forward-proxy modules on a public web server.</li>
+<li>Don't expose database, ICS or management protocols to the internet on any port. The census shows someone checks every port for them, and does it every day.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<p>Mostly research scanners, listed so you can label them rather than chase them.</p>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>RAT controller hunters</td><td><code>143.244.175.42</code>, <code>66.240.205.34</code>, <code>66.228.41.140</code></td><td>Fake njRAT 0.6.4 / 0.7d and Gh0st check-ins</td></tr>
+<tr><td>Fake victim names</td><td><code>Trojan_C46F6E9</code>, <code>HacKed_D4990627</code>, <code>WIN-JNAPIER0859</code>, <code>WIN-T9UN4HIIHEC</code></td><td>Inside the probes</td></tr>
+<tr><td>Protocol census</td><td><code>45.79.115.59, 45.79.207.71, 45.33.109.10, 198.74.56.135, 45.33.12.122, 192.155.88.231, 45.33.14.5, 45.79.163.53, 173.255.221.189</code></td><td>Linode address space, client reset before data</td></tr>
+<tr><td>Tool strings</td><td><code>lzrORA</code>, MQTT client <code>LZR</code>, <code>mstshash=zgrab</code>, <code>SSH-2.0-probe</code></td><td>Scanner fingerprints</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
