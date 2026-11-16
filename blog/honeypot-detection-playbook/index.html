@@ -116,10 +116,10 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 15 November 2026</p>
 <h1>The Honeypot Detection Playbook: What Attacked My Server, and the Splunk and Sentinel Rules to Catch It</h1>
 <p>I ran a deliberately vulnerable PHP server on the internet and turned everything that hit it into detections. This is the hub: the kill-chain and ATT&amp;CK coverage map, the data sources you need, and links to twelve posts with tested queries for Splunk + CrowdStrike Falcon and Microsoft Sentinel + Defender for Endpoint.</p>
-<nav class="toc"><strong>Key Sections:</strong> Why I Built This · How to Read the Series · Coverage Map · The Five Rules to Build First · Data You Need · The Posts</nav>
+<nav class="toc"><strong>Key Sections:</strong> Why I Built This · How to Read the Series · Coverage Map · The Five Rules to Build First · Data You Need · Falcon Field Names · The Posts</nav>
 <h2 id="why">1. Why I Built This</h2>
 
-<p>I put a vulnerable PHP container on a public IP the day after a new PHP bug was disclosed, logged everything into Microsoft Sentinel, and watched. The first request arrived after 33 minutes. Over the next three and a half weeks it took 135,442 SSH password guesses, about 10,500 web requests from more than 1,100 addresses, and every flavour of exploit, credential hunt and scanner you'd expect, plus a few I didn't.</p>
+<p>I put a vulnerable PHP container on a public IP the day after a new PHP bug was disclosed, logged everything into Microsoft Sentinel, and watched. The first request arrived after 33 minutes. Over the next three and a half weeks it took 133,331 SSH password guesses, about 10,500 web requests from more than 1,100 addresses, and every flavour of exploit, credential hunt and scanner you'd expect, plus a few I didn't.</p>
 
 <p>The traffic itself isn't the interesting part. What matters is what a defender should do about it. So each post in this series takes one kind of attack and walks through it the same way:</p>
 <ul>
@@ -144,7 +144,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <tr><td>Recon</td><td>T1595.002 Vulnerability Scanning</td><td><a href="/blog/detect-spray-scanners/">Spray</a>, <a href="/blog/detect-redtail-cryptominer/">RedTail</a></td><td>Multi-family exploit burst; kit fingerprint</td><td>Correlated with web-server child process</td></tr>
 <tr><td>Recon</td><td>T1595.003 Wordlist Scanning</td><td><a href="/blog/detect-env-git-secret-hunting/">.env/.git</a>, <a href="/blog/detect-ai-credential-mcp-probing/">AI/MCP</a></td><td>Secret-path wordlist; canary calibration</td><td>n/a</td></tr>
 <tr><td>Recon</td><td>T1592.002 Gather Host Software</td><td><a href="/blog/detect-spray-scanners/">Spray</a></td><td>Slow edge-device fingerprinting</td><td>n/a</td></tr>
-<tr><td>Credential Access</td><td>T1110.001 / .003 Guessing, Spraying</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a></td><td>Per-source volume; many-sources-one-username</td><td>Success after failures (<code>UserLogon</code>, <code>DeviceLogonEvents</code>)</td></tr>
+<tr><td>Credential Access</td><td>T1110.001 Password Guessing (incl. distributed)</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a></td><td>Per-source volume; many-sources-one-username</td><td>Success after failures (<code>UserLogon</code>, <code>DeviceLogonEvents</code>)</td></tr>
 <tr><td>Credential Access</td><td>T1552.001 Credentials in Files</td><td><a href="/blog/detect-env-git-secret-hunting/">.env/.git</a>, <a href="/blog/detect-ai-credential-mcp-probing/">AI/MCP</a>, <a href="/blog/detect-react2shell/">React2Shell</a></td><td>Secret file actually served (size check)</td><td>Agent token files read by other processes; <code>env; cat .env</code> from an app runtime</td></tr>
 <tr><td>Initial Access</td><td>T1190 Exploit Public-Facing App</td><td>All web posts</td><td>Code in request; per-CVE rules; execution canaries</td><td>n/a</td></tr>
 <tr><td>Initial Access</td><td>T1078 Valid Accounts (incl. .004 Cloud)</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a>, <a href="/blog/detect-env-git-secret-hunting/">.env/.git</a></td><td>CloudTrail: <code>GetSendQuota</code>, <code>CreateUser</code>; key from new IP</td><td>AI API calls from unapproved processes</td></tr>
@@ -152,10 +152,9 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <tr><td>Persistence</td><td>T1505.003 Web Shell</td><td><a href="/blog/detect-legacy-php-rce/">Legacy PHP</a>, <a href="/blog/detect-php2shell/">PHP2Shell</a></td><td><code>pearcmd</code> writes; session-file include</td><td>PHP file written to <code>/tmp</code> or web root</td></tr>
 <tr><td>Persistence</td><td>T1098.004 SSH Authorized Keys</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a></td><td>n/a</td><td><code>authorized_keys</code> written; <code>chattr +i</code></td></tr>
 <tr><td>Defence Evasion</td><td>T1564.001 Hidden Files</td><td><a href="/blog/detect-redtail-cryptominer/">RedTail</a>, <a href="/blog/detect-legacy-php-rce/">Legacy PHP</a></td><td>n/a</td><td>Dot-file or temp-path executable run by the web user</td></tr>
-<tr><td>Defence Evasion</td><td>T1562.001 Impair Defences (kill competitors)</td><td><a href="/blog/detect-iot-botnet-droppers/">IoT</a></td><td>n/a</td><td>Mirai-style <code>killall</code> by architecture names</td></tr>
 <tr><td>Discovery</td><td>T1083 File and Directory Discovery</td><td><a href="/blog/detect-redtail-cryptominer/">RedTail</a></td><td>n/a</td><td>"Where can I execute?" (<code>findmnt noexec</code>, <code>find -perm</code>, <code>dd</code> test)</td></tr>
 <tr><td>Discovery</td><td>T1082 System Information Discovery</td><td><a href="/blog/detect-ssh-brute-force/">SSH</a>, <a href="/blog/detect-iot-botnet-droppers/">IoT</a></td><td>n/a</td><td>Post-login fingerprinting burst</td></tr>
-<tr><td>Delivery</td><td>T1105 Ingress Tool Transfer</td><td>All dropper posts</td><td>Download-and-run command to a raw IP</td><td>Web tier SSH egress; hostname-beacon pipelines; IoT raw-IP downloads</td></tr>
+<tr><td>Delivery</td><td>T1105 Ingress Tool Transfer</td><td>All dropper posts</td><td>Download-and-run command to a raw IP</td><td>Web tier SSH egress; hostname-beacon pipelines; IoT raw-IP downloads; Mirai-style loader routine</td></tr>
 <tr><td>C2</td><td>T1071 / T1095 / T1571 App Protocol, Non-App, Non-Standard Port</td><td><a href="/blog/detect-non-http-traffic-port-80/">Non-HTTP</a>, <a href="/blog/detect-react2shell/">React2Shell</a>, <a href="/blog/detect-iot-botnet-droppers/">IoT</a></td><td>RAT check-in classification</td><td>RAT protocol on the wire; raw-IP beaconing; Node reverse shell; Mozi DHT</td></tr>
 <tr><td>Impact</td><td>T1496 Resource Hijacking</td><td><a href="/blog/detect-redtail-cryptominer/">RedTail</a></td><td>n/a</td><td>Mining-pool connections (hunt)</td></tr>
 <tr><td>Impact</td><td>T1565.003 / T1491.002 Runtime Manipulation, Defacement</td><td><a href="/blog/detect-react2shell/">React2Shell</a></td><td>Redirect-rate anomaly per site</td><td>(Invisible to EDR: in-memory patch)</td></tr>
@@ -181,17 +180,30 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <tr><td>Cloud audit</td><td>AWS CloudTrail add-on</td><td><code>AWSCloudTrail</code></td><td>Leaked keys being used.</td></tr>
 </tbody></table>
 
+
+<h3 id="falcon">Falcon field names for Org A</h3>
+<p>The Org A queries use the field names Falcon's Event Search shows: <code>FileName</code>, <code>ParentBaseFileName</code>, <code>GrandParentBaseFileName</code>, <code>ComputerName</code>, <code>UserName</code> and the <code>*_decimal</code> process IDs. If you ingest raw Falcon Data Replicator events into Splunk, some of those don't exist yet. Add this macro, put it straight after <code>index=crowdstrike event_simpleName=…</code>, and move the remaining filters into a <code>| search</code> after it:</p>
+<pre><code># macros.conf
+[falcon_norm]
+definition = eval FileName=coalesce(FileName, replace(ImageFileName, "^.*[\\\\/]", "")), \
+  TargetProcessId_decimal=coalesce(TargetProcessId_decimal, TargetProcessId), \
+  ContextProcessId_decimal=coalesce(ContextProcessId_decimal, ContextProcessId), \
+  ParentProcessId_decimal=coalesce(ParentProcessId_decimal, ParentProcessId) \
+| lookup aid_master aid OUTPUTNEW ComputerName \
+| lookup falcon_user_map UserSid_readable OUTPUTNEW UserName</code></pre>
+<p>Raw FDR doesn't always carry the grandparent's name. Where a query filters on <code>GrandParentBaseFileName</code>, either use the Event Search field or join <code>ProcessRollup2</code> to itself on <code>aid</code> and <code>ParentProcessId</code> to walk one level up.</p>
+
 <p>The Org B web parser used throughout the series. Swap the source for your own and keep the column names:</p>
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
 <h2 id="posts">6. The Posts</h2>
 <table><thead><tr><th>Post</th><th>What you'll build</th></tr></thead><tbody>
-<tr><td><a href="/blog/detect-ssh-brute-force/">SSH brute force</a></td><td>Spraying detection that sees the 789 quiet sources; success-after-failure; post-login fingerprinting; <code>authorized_keys</code> writes</td></tr>
+<tr><td><a href="/blog/detect-ssh-brute-force/">SSH brute force</a></td><td>Distributed-guessing detection that sees the 784 quiet sources; success-after-failure; post-login fingerprinting; <code>authorized_keys</code> writes</td></tr>
 <tr><td><a href="/blog/detect-non-http-traffic-port-80/">Non-HTTP on port 80</a></td><td>Protocol-mismatch classification; RAT check-in signatures turned outward; open-proxy and odd-method posture</td></tr>
 <tr><td><a href="/blog/detect-env-git-secret-hunting/">.env and .git hunting</a></td><td>Wordlist detection; "secret actually served"; AndroxGh0st sequence; CloudTrail rules for leaked keys</td></tr>
 <tr><td><a href="/blog/detect-legacy-php-rce/">Legacy PHP RCE</a></td><td>Code-in-request; execution canaries; hostname-beacon droppers; hidden scripts in <code>/tmp</code></td></tr>

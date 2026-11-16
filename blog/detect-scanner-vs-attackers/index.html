@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Qualys vs Real Attackers: What Your Scanner Misses, and How to Stop It Drowning Your SOC</h1>
 <p>An authorised Qualys scan sent 11,262 requests to my honeypot in 31 minutes. Over three and a half weeks, attackers sent 3,307 requests for secret files, and the scan asked for .env zero times. I compare the two, then show how to handle scanner noise properly in Splunk and Sentinel, find the coverage gaps, and use the scan to test your own detections.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · Side by Side · Pyramid of Pain · Detections · Using the Scan to Test Your SOC · When It Fires · Hardening</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The validation queries are templates for your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The validation queries are templates for your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -213,7 +213,7 @@ powershell -c 191*7</code></pre>
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 

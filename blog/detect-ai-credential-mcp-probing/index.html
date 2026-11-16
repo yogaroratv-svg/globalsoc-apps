@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Scanners Are Hunting Claude, Codex and MCP Credentials: How to Detect It and Protect Your Agents</h1>
 <p>My honeypot received 178 requests for AI API keys, coding-agent token files and MCP endpoints, on a server with none of them. I walk through the wordlists and the one MCP handshake I captured, then give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint, including rules for the developer machines and agent hosts where these secrets actually live.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint and Egress Detections · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint and egress queries are written for developer workstations and agent hosts, so adapt the process names and allowlists to your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint and egress queries are written for developer workstations and agent hosts, so adapt the process names and allowlists to your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -218,14 +218,14 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 
 <h3><span class="kc">Recon</span> Step 3: Find MCP servers</h3>
 <p>The Model Context Protocol lets an AI client call tools on a remote server over HTTP, on <code>/mcp</code> or <code>/sse</code> by convention. A scanner calling itself Infrawatch probed those paths on 18 different days. Each visit was spread across several addresses so no single IP sent more than a request or two:</p>
-<pre><code>2026-10-22 23:11:13  69.5.169.245     GET / HTTP/1.1  -&gt; 200
-2026-10-22 23:11:33  193.176.31.250   GET / HTTP/1.1  -&gt; 200
-2026-10-22 23:11:33  81.19.216.74     GET /favicon.ico HTTP/1.1  -&gt; 404
-2026-10-22 23:11:34  185.223.235.34   GET /mcp/ HTTP/1.1  -&gt; 404
-2026-10-22 23:11:34  89.21.67.181     GET / HTTP/1.1  -&gt; 200
-2026-10-22 23:11:34  81.19.216.100    GET /mcp HTTP/1.1  -&gt; 404
-2026-10-22 23:11:34  193.176.31.248   GET /api/mcp HTTP/1.1  -&gt; 404
-2026-10-22 23:11:35  81.19.216.70     GET /sse HTTP/1.1  -&gt; 404</code></pre>
+<pre><code>2026-10-22 23:11:13  69.5.169[.]245     GET / HTTP/1.1  -&gt; 200
+2026-10-22 23:11:33  193.176.31[.]250   GET / HTTP/1.1  -&gt; 200
+2026-10-22 23:11:33  81.19.216[.]74     GET /favicon.ico HTTP/1.1  -&gt; 404
+2026-10-22 23:11:34  185.223.235[.]34   GET /mcp/ HTTP/1.1  -&gt; 404
+2026-10-22 23:11:34  89.21.67[.]181     GET / HTTP/1.1  -&gt; 200
+2026-10-22 23:11:34  81.19.216[.]100    GET /mcp HTTP/1.1  -&gt; 404
+2026-10-22 23:11:34  193.176.31[.]248   GET /api/mcp HTTP/1.1  -&gt; 404
+2026-10-22 23:11:35  81.19.216[.]70     GET /sse HTTP/1.1  -&gt; 404</code></pre>
 <p>Its MCP probes came from 64 addresses in five <code>/24</code> networks. A per-IP rate limit never sees that.</p>
 
 <h3><span class="kc">Discovery</span> Step 4: Speak the protocol</h3>
@@ -267,20 +267,20 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
 <h3>W1. AI credential and agent-config paths (T1595.003, T1552.001)</h3>
-<p><span class="org orgB">Org B</span> Tested: 89 requests for 82 paths from 7 sources.</p>
-<pre><code>let AiPaths = @"(?i)/(\.claude|\.codex|\.cursor|\.gemini|\.opencode|\.local/share/opencode|\.grok|\.hermes|\.openclaw|\.kilo|\.kilocode|\.windsurf|\.roo|\.qwen|\.continue|\.aider|\.amazonq|\.kiro|\.zed|\.trae|\.augment|\.junie|\.clinerules|\.huggingface|\.config/huggingface)(/|$)|(claude_desktop_config|cline_mcp_settings|\.mcp)\.json|/(\.env\.)?(openai|anthropic|claude|gemini|bedrock|aws-bedrock|bedrock-api-key|bedrock-credentials|azure-openai|huggingface|llm)[\w\-]*\.(env|json|ya?ml|config|txt)$|/bedrock(/|\.env|-)";
+<p><span class="org orgB">Org B</span> Tested: 93 requests for 86 paths from 7 sources.</p>
+<pre><code>let AiPaths = @"(?i)/(\.claude|\.codex|\.cursor|\.gemini|\.opencode|\.local/share/opencode|\.grok|\.hermes|\.openclaw|\.kilo|\.kilocode|\.windsurf|\.roo|\.qwen|\.continue|\.aider|\.amazonq|\.kiro|\.zed|\.trae|\.augment|\.junie|\.clinerules|\.huggingface|\.config/huggingface)(/|$)|(claude_desktop_config|cline_mcp_settings|\.mcp|/mcp|\.claude)\.json|/\.env\.(openai|anthropic|claude|gemini|bedrock|azure-openai|huggingface)$|/(\.env\.)?(openai|anthropic|claude|gemini|bedrock|aws-bedrock|bedrock-api-key|bedrock-credentials|azure-openai|huggingface|llm)[\w\-]*\.(env|json|ya?ml|config|txt)$|/bedrock(/|\.env|-)";
 WebAccess
 | where Url matches regex AiPaths
 | summarize Requests = count(), Paths = dcount(Url), Sources = dcount(SrcIp)</code></pre>
 <p><span class="org orgA">Org A</span></p>
 <pre><code>| tstats count from datamodel=Web by Web.src Web.dest Web.url Web.status
 | rename Web.* as *
-| regex url="(?i)/(\.claude|\.codex|\.cursor|\.gemini|\.opencode|\.local/share/opencode|\.grok|\.hermes|\.openclaw|\.kilo|\.kilocode|\.windsurf|\.roo|\.qwen|\.continue|\.aider|\.amazonq|\.kiro|\.zed|\.trae|\.augment|\.junie|\.clinerules|\.huggingface|\.config/huggingface)(/|$)|(claude_desktop_config|cline_mcp_settings|\.mcp)\.json|/(\.env\.)?(openai|anthropic|claude|gemini|bedrock|aws-bedrock|bedrock-api-key|bedrock-credentials|azure-openai|huggingface|llm)[\w\-]*\.(env|json|ya?ml|config|txt)$|/bedrock(/|\.env|-)"
+| regex url="(?i)/(\.claude|\.codex|\.cursor|\.gemini|\.opencode|\.local/share/opencode|\.grok|\.hermes|\.openclaw|\.kilo|\.kilocode|\.windsurf|\.roo|\.qwen|\.continue|\.aider|\.amazonq|\.kiro|\.zed|\.trae|\.augment|\.junie|\.clinerules|\.huggingface|\.config/huggingface)(/|$)|(claude_desktop_config|cline_mcp_settings|\.mcp|/mcp|\.claude)\.json|/\.env\.(openai|anthropic|claude|gemini|bedrock|azure-openai|huggingface)$|/(\.env\.)?(openai|anthropic|claude|gemini|bedrock|aws-bedrock|bedrock-api-key|bedrock-credentials|azure-openai|huggingface|llm)[\w\-]*\.(env|json|ya?ml|config|txt)$|/bedrock(/|\.env|-)"
 | stats sum(count) as requests dc(url) as paths values(status) as status by src dest</code></pre>
 <p>Pair it with the "secret file actually served" rule from the <a href="/blog/detect-env-git-secret-hunting/">.env post</a>. Any 200 here that isn't your home page is critical.</p>
 
@@ -398,10 +398,10 @@ DeviceNetworkEvents
 
 <h2 id="iocs">8. IOCs</h2>
 <table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
-<tr><td>Credential hunter</td><td><code>34.213.231.51</code>, UA <code>opendirme-credhunt/…</code></td><td>Agent token files</td></tr>
-<tr><td>Wordlist runs</td><td><code>45.138.12.179</code> (svs), <code>54.170.28.185</code>, <code>79.124.58.22</code></td><td>Provider key files; agent folder census</td></tr>
-<tr><td>MCP census</td><td>UA <code>Infrawatch/1.0</code> from <code>89.21.67.0/24</code>, <code>185.223.235.0/24</code>, <code>81.19.216.0/24</code>, <code>193.176.31.0/24</code>, <code>69.5.169.0/24</code></td><td>Distributed <code>/mcp</code>, <code>/sse</code> discovery</td></tr>
-<tr><td>MCP handshake</td><td><code>45.156.129.80</code>, client <code>internet-census-mcp-scanner</code></td><td>JSON-RPC <code>initialize</code></td></tr>
+<tr><td>Credential hunter</td><td><code>34.213.231[.]51</code>, UA <code>opendirme-credhunt/…</code></td><td>Agent token files</td></tr>
+<tr><td>Wordlist runs</td><td><code>45.138.12[.]179</code> (svs), <code>54.170.28[.]185</code>, <code>79.124.58[.]22</code></td><td>Provider key files; agent folder census</td></tr>
+<tr><td>MCP census</td><td>UA <code>Infrawatch/1.0</code> from <code>89.21.67[.]0/24</code>, <code>185.223.235[.]0/24</code>, <code>81.19.216[.]0/24</code>, <code>193.176.31[.]0/24</code>, <code>69.5.169[.]0/24</code></td><td>Distributed <code>/mcp</code>, <code>/sse</code> discovery</td></tr>
+<tr><td>MCP handshake</td><td><code>45.156.129[.]80</code>, client <code>internet-census-mcp-scanner</code></td><td>JSON-RPC <code>initialize</code></td></tr>
 </tbody></table>
 <aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
 <footer>

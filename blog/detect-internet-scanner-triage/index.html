@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Found in 33 Minutes: How to Triage Internet Scanners by Behaviour, Not by What They Call Themselves</h1>
 <p>The first request reached my new server 33 minutes after it went online. 24 scanners named themselves, and several that claimed to be &quot;research&quot; collected secrets like any attacker. Here&#x27;s how to triage scanner traffic by behaviour in Splunk and Sentinel, auto-close the benign ones safely, and find your own new exposures before the scanners do with CrowdStrike and Defender for Endpoint.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · Who Came · Pyramid of Pain · Detections · Endpoint: Beat the Scanners · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are templates for your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are templates for your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -201,7 +201,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
@@ -216,11 +216,11 @@ WebAccess
 | where Hostile &gt; 0
 | order by Hostile desc</code></pre>
 <p><span class="org orgA">Org A</span></p>
-<pre><code>| tstats count dc(Web.src) as sources from datamodel=Web by Web.http_user_agent Web.url
+<pre><code>| tstats count from datamodel=Web by Web.http_user_agent Web.url Web.src
 | rename Web.* as *
 | regex http_user_agent="(?i)(research|scan|census|bot|crawler|measurement|security|authori[sz]ed)"
 | eval hostile=if(match(url, "(?i)(/\.env|\.git/|/\.aws/|credentials|wp-config\.|\.sql|eval-stdin|invokefunction|allow_url_include|/cgi-bin/|\$\{jndi|/\.ssh/)"), count, 0)
-| stats sum(count) as requests sum(hostile) as hostile max(sources) as sources by http_user_agent
+| stats sum(count) as requests sum(hostile) as hostile dc(src) as sources by http_user_agent
 | eval hostile_pct=round(100*hostile/requests,0)
 | where hostile &gt; 0
 | sort - hostile</code></pre>
@@ -290,7 +290,7 @@ DeviceNetworkEvents
 
 <h2 id="iocs">8. IOCs</h2>
 <table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
-<tr><td>Fake research</td><td><code>129.213.151.234</code> (<code>research-scan/1.0</code>)</td><td>Secret-file collection in 4 seconds</td></tr>
+<tr><td>Fake research</td><td><code>129.213.151[.]234</code> (<code>research-scan/1.0</code>)</td><td>Secret-file collection in 4 seconds</td></tr>
 <tr><td>Fake research</td><td>UA <code>Scanner/1.0</code>, 21 addresses</td><td><code>/.git/config</code> only</td></tr>
 <tr><td>Self-described "authorised"</td><td><code>php2shell-scan/3.1 (authorized-security-assessment)</code></td><td>Nobody authorised it here</td></tr>
 </tbody></table>

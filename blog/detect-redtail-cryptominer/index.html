@@ -117,13 +117,13 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Detecting RedTail: From a 15-Second Exploit Spray to a Hidden Miner, in Splunk and Sentinel</h1>
 <p>RedTail hit my PHP honeypot from 12 IPs with the same 49-request exploit kit. I walk through the payload step by step, map it to the kill chain and MITRE ATT&amp;CK, and give the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections I would run for it.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. Every web-layer KQL query on this page was run against the honeypot's real logs, and the counts quoted are what came back. The endpoint queries are written from the attacker's own script, because the honeypot had no EDR on it, so treat their field names as a starting point for your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. Every web-layer KQL query on this page was run against the honeypot's real logs, and the counts quoted are what came back. The endpoint queries are written from the attacker's own script, because the honeypot had no EDR on it, so treat their field names as a starting point for your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
 <p>RedTail is a Monero-mining botnet. It doesn't phish anyone. It finds internet-facing web servers with old bugs, gets a shell as the web server user, and turns your CPU into someone else's income.</p>
 
-<p>Twelve IPs, in twelve different countries, ran the same 49-request exploit kit against my PHP honeypot between 23 October and 5 November. Each one showed up once, fired the whole kit in 8 to 146 seconds, and never came back. No repeat visits, no follow-up, no human. That's what a botnet's spreading module looks like from the receiving end.</p>
+<p>Twelve IPs, in nine different countries, ran the same 49-request exploit kit against my PHP honeypot between 23 October and 5 November. Eleven of them fired the whole kit in 14 to 146 seconds; the twelfth stopped after six requests. None came back. No repeat visits, no follow-up, no human. That's what a botnet's spreading module looks like from the receiving end.</p>
 
 <p>One request in that kit carries the real payload. It's a PHP-CGI argument-injection exploit that, if it lands, writes an SSH private key to disk and uses it to <code>scp</code> the next stage off the attacker's server:</p>
 
@@ -262,7 +262,7 @@ chmod +x $FILENAME
 
 <h3>W1. The User-Agent (bottom of the pyramid, but free)</h3>
 
-<p><span class="org orgB">Org B</span> Tested: 521 requests from 12 sources, 23 Oct to 5 Nov.</p>
+<p><span class="org orgB">Org B</span> Tested: 521 requests from 12 sources, 23 Oct to 5 Nov. The bots sent 545 requests in total. The other 24 were the two Apache traversal requests at the start of each full run, which carry no User-Agent at all.</p>
 <pre><code>WebAccess
 | where UserAgent == "libredtail-http"
 | summarize Requests = count(), Sources = dcount(SrcIp), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)</code></pre>
@@ -364,7 +364,7 @@ DeviceProcessEvents
 | order by Timestamp asc</code></pre>
 <p>This is the single most valuable rule against any web RCE, not only RedTail. It catches the <code>shell_exec</code> in step 2 and the <code>wget</code>, <code>curl</code> or <code>scp</code> in step 3. False positives come from apps that shell out on purpose: image conversion, PDF generation, the odd admin panel's "run backup" button. Baseline for a week, allowlist the exact command lines you find, and run it at high severity.</p>
 
-<h3>E2. Web tier connects out on SSH (T1105, T1048)</h3>
+<h3>E2. Web tier connects out on SSH (T1105)</h3>
 <p><span class="org orgA">Org A</span></p>
 <pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
     FileName IN ("scp","ssh","sftp")
@@ -478,7 +478,7 @@ DeviceNetworkEvents
 <tr><td>Embedded SSH key</td><td><code>SHA256:O/at8341SoPpKvTPvMsJSgjQm30md9VTS2it25sY0vg</code> (comment <code>dlr@sftp</code>)</td></tr>
 <tr><td>Files</td><td><code>key.ppk</code>, <code>sshcfg</code>, <code>out_sh</code>, <code>.redtail</code>, <code>.testfile2</code>, a random 2 MB dot-file</td></tr>
 <tr><td>Canary</td><td>MD5 of <code>Hello CVE-2024-4577</code>, <code>Hello PHPUnit</code>, <code>Hello</code> or <code>hi</code> in a response body</td></tr>
-<tr><td>Scanner IPs</td><td><code>169.58.137.184</code>, <code>45.140.193.140</code>, <code>165.99.207.153</code>, <code>102.244.97.185</code>, <code>119.15.169.38</code>, <code>184.185.26.51</code>, <code>101.35.95.146</code>, <code>157.245.84.42</code>, <code>58.182.58.128</code>, <code>209.99.187.10</code>, <code>51.159.5.6</code>, <code>171.34.139.222</code></td></tr>
+<tr><td>Scanner IPs</td><td><code>169.58.137[.]184</code>, <code>45.140.193[.]140</code>, <code>165.99.207[.]153</code>, <code>102.244.97[.]185</code>, <code>119.15.169[.]38</code>, <code>184.185.26[.]51</code>, <code>101.35.95[.]146</code>, <code>157.245.84[.]42</code>, <code>58.182.58[.]128</code>, <code>209.99.187[.]10</code>, <code>51.159.5[.]6</code>, <code>171.34.139[.]222</code></td></tr>
 </tbody></table>
 <aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
 <footer>

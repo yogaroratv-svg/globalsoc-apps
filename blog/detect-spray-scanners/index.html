@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>One IP, Many Exploits: Detecting Spray Scanners by How They Behave, Not What They Send</h1>
 <p>152 sources sent 1,143 exploit requests to my honeypot, and 52 of them tried more than one exploit type. I show how to detect spray kits by behaviour (canary paths, kit fingerprints, slow fingerprinting), then how to turn all that noise into one high-fidelity alert with risk-based correlation in Splunk and Sentinel.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Behaviour Detections · Correlation: Making Noise Useful · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk Enterprise Security with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The behaviour KQL ran against the honeypot's real logs. The correlation rules are templates for your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk Enterprise Security with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The behaviour KQL ran against the honeypot's real logs. The correlation rules are templates for your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -151,7 +151,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <p>If <code>/.git/reconx-599a9650d3d5</code> returns 200, the server answers 200 to everything, and a 200 for <code>/.git/config</code> means nothing. That's how the scanner avoids false positives (T1595.003). For us it's a fingerprint: random-suffix paths only come from tools.</p>
 
 <h3><span class="kc">Recon</span> Step 2: Fingerprint slowly</h3>
-<p><code>67.205.160.10</code> sent 78 requests over 21 minutes, one every 14 seconds, with no payloads. Just login pages:</p>
+<p><code>67.205.160[.]10</code> sent 78 requests over 21 minutes, one every 14 seconds, with no payloads. Just login pages:</p>
 <pre><code>12:43:35  /robots.txt
 12:44:03  /+CSCOE+/logon.html
 12:44:20  /+CSCOT+/oem-customization?app=AnyConnect&amp;type=oem&amp;platform=..&amp;resource-type=..&amp;name=%2BCSCOE%2B/portal_inc.lua
@@ -188,7 +188,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
@@ -210,7 +210,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <p>Low volume and very precise. The only false positive I'd expect is cache-busting asset names (<code>app-3f9a…e1.js</code>), so exclude your static paths.</p>
 
 <h3>B2. Slow edge-device fingerprinting (T1592.002)</h3>
-<p><span class="org orgB">Org B</span> Tested: found the 14-second fingerprinter <code>67.205.160.10</code>, and a second address I hadn't spotted, <code>138.197.223.34</code>, with the same User-Agent and the same 16-product list. It also flagged my own authorised scanner, which is the false positive to allowlist.</p>
+<p><span class="org orgB">Org B</span> Tested: found the 14-second fingerprinter <code>67.205.160[.]10</code>, and a second address I hadn't spotted, <code>138.197.223[.]34</code>, with the same User-Agent and the same 16-product list. It also flagged my own authorised scanner, which is the false positive to allowlist.</p>
 <pre><code>let EdgeLogin = @"(?i)(\+CSCOE\+|/dana-na/|/remote/login|/global-protect/|/WebInterface/login|/api/v2/cmdb|/Orion/Login|/owa/auth|/vpn/index\.html|/cgi-bin/login|/logon/LogonPoint|/my\.policy|/ui/login|/manage/account/login)";
 WebAccess
 | where Url matches regex EdgeLogin
@@ -255,17 +255,16 @@ WebAccess
 <p>No single rule above should page a human. What should is a spray against a host <em>followed by</em> the host doing something a web server shouldn't do.</p>
 
 <h3><span class="org orgB">Org B</span> C1. Spray, then a web-server child process on the same host</h3>
-<pre><code>// WebAccess needs the web server's name for this join: add DestHost = Computer to its projection
-let Spray = WebAccess
+<pre><code>let Spray = WebAccess
 | extend Family = case(
       Request has_any ("allow_url_include","auto_prepend_file"), "php-cgi",
       Request has "eval-stdin.php", "phpunit", Request has "invokefunction", "thinkphp",
       Request has "pearcmd", "pearcmd", Body has "constructor:constructor", "react2shell",
       Body has "PHP_SESSION_UPLOAD_PROGRESS", "php2shell", Request has "/.env", "env", "")
 | where isnotempty(Family)
-| summarize Families = dcount(Family) by SrcIp, DestHost, bin(TimeGenerated, 5m)
+| summarize Families = dcount(Family), SprayStart = min(TimeGenerated) by SrcIp, DestHost, SprayWindow = bin(TimeGenerated, 5m)
 | where Families &gt;= 3
-| summarize SprayStart = min(TimeGenerated), Sprayers = make_set(SrcIp, 20) by DestHost;
+| project DestHost, SrcIp, SprayStart;
 DeviceProcessEvents
 | where Timestamp &gt; ago(1d)
 | where InitiatingProcessFileName in~ ("apache2","httpd","nginx","php","php-fpm","node","java","w3wp.exe")
@@ -273,7 +272,8 @@ DeviceProcessEvents
 | where FileName in~ ("sh","bash","dash","wget","curl","powershell.exe","cmd.exe")
 | join kind=inner Spray on $left.DeviceName == $right.DestHost
 | where Timestamp between (SprayStart .. SprayStart + 30m)
-| project Timestamp, DeviceName, FileName, ProcessCommandLine, SprayStart, Sprayers</code></pre>
+| summarize Sprayers = make_set(SrcIp, 20), LatestSpray = max(SprayStart)
+          by Timestamp, DeviceName, FileName, ProcessCommandLine</code></pre>
 <p>Run it as a scheduled analytics rule every 15 minutes, with entity mapping on <code>DeviceName</code> and the sprayer IPs. Sentinel's Fusion engine does something similar automatically for some pairs, but an explicit rule is easier to explain to an auditor.</p>
 
 <h3><span class="org orgA">Org A</span> C1. Risk-based alerting in Enterprise Security</h3>
@@ -302,11 +302,11 @@ DeviceProcessEvents
 
 <h2 id="iocs">8. IOCs</h2>
 <table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
-<tr><td>Canary scanner</td><td><code>181.215.186.252</code>, prefix <code>reconx-</code>, UA <code>ReconX-L2S/1.0</code></td><td>Calibration paths</td></tr>
-<tr><td>Slow fingerprint</td><td><code>67.205.160.10</code>, <code>138.197.223.34</code></td><td>Edge-device login pages, about 1 per 14 s</td></tr>
-<tr><td>Laravel kit</td><td><code>31.76.118.108</code>, marker <code>SNIPPER_OK_</code></td><td>Ignition, Livewire, PHPUnit, then <code>.env</code></td></tr>
+<tr><td>Canary scanner</td><td><code>181.215.186[.]252</code>, prefix <code>reconx-</code>, UA <code>ReconX-L2S/1.0</code></td><td>Calibration paths</td></tr>
+<tr><td>Slow fingerprint</td><td><code>67.205.160[.]10</code>, <code>138.197.223[.]34</code></td><td>Edge-device login pages, about 1 per 14 s</td></tr>
+<tr><td>Laravel kit</td><td><code>31.76.118[.]108</code>, marker <code>SNIPPER_OK_</code></td><td>Ignition, Livewire, PHPUnit, then <code>.env</code></td></tr>
 <tr><td>phpMyAdmin hunter</td><td>UA <code>Go Web Pentest Tool</code>, 128 paths, 7 addresses</td><td>Database admin panels</td></tr>
-<tr><td>Arithmetic check</td><td><code>152.236.14.113</code>, <code>63187*52324</code></td><td>ThinkPHP and PHPUnit</td></tr>
+<tr><td>Arithmetic check</td><td><code>152.236.14[.]113</code>, <code>63187*52324</code></td><td>ThinkPHP and PHPUnit</td></tr>
 </tbody></table>
 <aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
 <footer>

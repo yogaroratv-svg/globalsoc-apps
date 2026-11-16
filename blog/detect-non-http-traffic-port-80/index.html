@@ -117,7 +117,7 @@ ul,ol{max-width:82ch}li{margin:6px 0}
 <h1>Not Everything on Port 80 Is HTTP: What Scanners Sent, and How to Turn It Into Detections</h1>
 <p>My web honeypot received TLS handshakes, RDP and Siemens S7 requests, fake njRAT and Gh0st victims hunting for malware controllers, and proxy tests on port 80. Scanners hunting for C2 servers handed me the exact check-in bytes of two RATs. Here&#x27;s how to use them to find infected hosts in your own network, in Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
 <nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Probes, Decoded · Pyramid of Pain · Web-Layer Detections · Network and Endpoint Detections · When It Fires · Hardening · IOCs</nav>
-<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL on this page ran against the honeypot's real logs. The network and endpoint queries are written from the probe bytes captured here, so adapt the field names to your environment.</p>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. Its Falcon queries use Event Search field names; on raw FDR data, apply the <a href="/blog/honeypot-detection-playbook/#falcon">normalisation macro</a> first. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The web-layer KQL on this page ran against the honeypot's real logs. The network and endpoint queries are written from the probe bytes captured here, so adapt the field names to your environment.</p>
 
 <h2 id="what">1. What Hit the Server</h2>
 
@@ -163,7 +163,7 @@ False</code></pre>
 0010  53 60 60 98 c3 c0 c0 c0 06 c4 8c 40 bc 51 96 81  S``........@.Q..
 0020  81 09 48 07 a7 16 95 65 26 a7 2a 04 24 26 67 2b  ..H....e&amp;.*.$&amp;g+
       [... compressed body continues ...]</code></pre>
-<p>Decompressed, it's a login packet: OS version (<code>Service Pack 1</code>), the local IP <code>192.168.1.60</code> and host name <code>WIN-T9UN4HIIHEC</code>. <code>66.240.205.34</code> sent it on six different days over three weeks. It was re-checking my server each time to see whether it had turned into a controller.</p>
+<p>Decompressed, it's a login packet: OS version (<code>Service Pack 1</code>), the local IP <code>192.168.1.60</code> and host name <code>WIN-T9UN4HIIHEC</code>. <code>66.240.205[.]34</code> sent it on six different days over three weeks. It was re-checking my server each time to see whether it had turned into a controller.</p>
 
 <h3><span class="kc">Recon</span> Open-proxy tests</h3>
 <p>Eleven sources sent 20 <code>CONNECT</code> requests to IP-echo services like <code>api.ipify.org</code> and <code>internetdb.shodan.io</code>. If the echo came back, my server would be an open proxy that anyone could use to hide their traffic (T1090). All of them got a 400.</p>
@@ -173,7 +173,7 @@ False</code></pre>
 
 <h2 id="pyramid">3. Pyramid of Pain</h2>
 <table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
-<tr><td>IP addresses</td><td>RAT hunters <code>143.244.175.42</code>, <code>66.240.205.34</code>, <code>66.228.41.140</code>; census pool in Linode space</td><td>Ignore. These are research scanners, not attackers.</td></tr>
+<tr><td>IP addresses</td><td>RAT hunters <code>143.244.175[.]42</code>, <code>66.240.205[.]34</code>, <code>66.228.41[.]140</code>; census pool in Linode space</td><td>Ignore. These are research scanners, not attackers.</td></tr>
 <tr><td>Network artefacts</td><td><code>mstshash=zgrab</code>, <code>LZR</code>, <code>lzrORA</code>, fake victim names like <code>HacKed_D4990627</code></td><td>Useful for labelling scanner traffic so analysts don't chase it.</td></tr>
 <tr><td>Protocol structure</td><td>njRAT's <code>|'|'|</code> delimiter and <code>lv</code>/<code>ll</code> commands; the <code>Gh0st</code> magic and header</td><td>This is the gift. The operator can rename every field, but the wire format is the malware family. Detect it leaving your network.</td></tr>
 <tr><td>TTPs</td><td>Non-HTTP on a web port (T1571); raw-IP beacons from user-writable paths (T1071, T1095)</td><td>The durable rule: something that isn't HTTP or TLS on 80 or 443, or a regular raw-IP connection from an unsigned binary in <code>AppData</code>. It works for families you've never heard of.</td></tr>
@@ -184,7 +184,7 @@ False</code></pre>
 <pre><code>let WebAccess = Syslog
 | where SyslogMessage startswith "php_http: "
 | extend j = parse_json(substring(SyslogMessage, 10))
-| project TimeGenerated, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
+| project TimeGenerated, DestHost = Computer, SrcIp = tostring(j.client), Method = tostring(j.method), Request = tostring(j.request),
           Url = tostring(j.uri), Status = toint(j.status), BytesOut = toint(j.bytes_out),
           UserAgent = tostring(j.user_agent), ContentType = tostring(j.content_type), Body = tostring(j.body);</code></pre>
 
@@ -263,7 +263,8 @@ False</code></pre>
           RemoteIP, RemotePort, Signature, Sample</code></pre>
 <p><span class="org orgA">Org A</span> Falcon doesn't keep packet content, so for the protocol view Org A needs network telemetry. Here it's Zeek or Palo Alto App-ID in Splunk, looking for traffic on web ports that isn't HTTP or TLS:</p>
 <pre><code>index=network (sourcetype=zeek:conn OR sourcetype=bro:conn_json)
-    dest_port IN (80, 443, 8080) direction=outbound
+| eval src_ip=coalesce('id.orig_h', src_ip), dest_ip=coalesce('id.resp_h', dest_ip), dest_port=coalesce('id.resp_p', dest_port)
+| where dest_port IN (80, 443, 8080) AND NOT (cidrmatch("10.0.0.0/8", dest_ip) OR cidrmatch("172.16.0.0/12", dest_ip) OR cidrmatch("192.168.0.0/16", dest_ip))
 | where isnull(service) OR NOT match(service, "http|ssl|tls")
 | stats count dc(dest_ip) as dests sum(orig_bytes) as bytes_out by src_ip dest_port service
 | where count &gt;= 5
@@ -323,9 +324,9 @@ DeviceNetworkEvents
 <h2 id="iocs">8. IOCs</h2>
 <p>Mostly research scanners, listed so you can label them rather than chase them.</p>
 <table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
-<tr><td>RAT controller hunters</td><td><code>143.244.175.42</code>, <code>66.240.205.34</code>, <code>66.228.41.140</code></td><td>Fake njRAT 0.6.4 / 0.7d and Gh0st check-ins</td></tr>
+<tr><td>RAT controller hunters</td><td><code>143.244.175[.]42</code>, <code>66.240.205[.]34</code>, <code>66.228.41[.]140</code></td><td>Fake njRAT 0.6.4 / 0.7d and Gh0st check-ins</td></tr>
 <tr><td>Fake victim names</td><td><code>Trojan_C46F6E9</code>, <code>HacKed_D4990627</code>, <code>WIN-JNAPIER0859</code>, <code>WIN-T9UN4HIIHEC</code></td><td>Inside the probes</td></tr>
-<tr><td>Protocol census</td><td><code>45.79.115.59, 45.79.207.71, 45.33.109.10, 198.74.56.135, 45.33.12.122, 192.155.88.231, 45.33.14.5, 45.79.163.53, 173.255.221.189</code></td><td>Linode address space, client reset before data</td></tr>
+<tr><td>Protocol census</td><td><code>45.79.115[.]59, 45.79.207[.]71, 45.33.109[.]10, 198.74.56[.]135, 45.33.12[.]122, 192.155.88[.]231, 45.33.14[.]5, 45.79.163[.]53, 173.255.221[.]189</code></td><td>Linode address space, client reset before data</td></tr>
 <tr><td>Tool strings</td><td><code>lzrORA</code>, MQTT client <code>LZR</code>, <code>mstshash=zgrab</code>, <code>SSH-2.0-probe</code></td><td>Scanner fingerprints</td></tr>
 </tbody></table>
 <aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
