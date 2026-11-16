@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting SSH Brute Force and What Comes After, in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-ssh-brute-force/">
+<meta name="description" content="Port 22 on my honeypot took 135,442 password guesses from 1,257 IPs. Most sources tried fewer than five times, which is exactly why a simple threshold misses them. Here are the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections for the guessing, the success, and what an attacker does in the first two minutes.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-ssh-brute-force/">
+<meta property="og:title" content="Detecting SSH Brute Force and What Comes After, in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="Port 22 on my honeypot took 135,442 password guesses from 1,257 IPs. Most sources tried fewer than five times, which is exactly why a simple threshold misses them. Here are the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections for the guessing, the success, and what an attacker does in the first two minutes.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting SSH Brute Force and What Comes After, in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="Port 22 on my honeypot took 135,442 password guesses from 1,257 IPs. Most sources tried fewer than five times, which is exactly why a simple threshold misses them. Here are the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections for the guessing, the success, and what an attacker does in the first two minutes.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-ssh-brute-force/#article",
+      "url": "https://globalsoc.com.au/blog/detect-ssh-brute-force/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-ssh-brute-force/"
+      },
+      "headline": "135,442 SSH Password Guesses: Detecting Brute Force, Spraying and the First Minutes After a Break-In",
+      "description": "Port 22 on my honeypot took 135,442 password guesses from 1,257 IPs. Most sources tried fewer than five times, which is exactly why a simple threshold misses them. Here are the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections for the guessing, the success, and what an attacker does in the first two minutes.",
+      "datePublished": "2026-11-01",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "135,442 SSH Password Guesses: Detecting Brute Force, Spraying and the First Minutes After a Break-In",
+          "item": "https://globalsoc.com.au/blog/detect-ssh-brute-force/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-01">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 1 November 2026</p>
+<h1>135,442 SSH Password Guesses: Detecting Brute Force, Spraying and the First Minutes After a Break-In</h1>
+<p>Port 22 on my honeypot took 135,442 password guesses from 1,257 IPs. Most sources tried fewer than five times, which is exactly why a simple threshold misses them. Here are the Splunk + CrowdStrike and Sentinel + Defender for Endpoint detections for the guessing, the success, and what an attacker does in the first two minutes.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Hit the Server · The Attack, Step by Step · Pyramid of Pain · Log Detections · Endpoint Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The sshd-log KQL on this page ran against the honeypot's real Syslog data, and the counts are what came back. The endpoint queries are written from the commands SSH bots typically run after they get in. No bot got in here, so adapt the field names to your environment.</p>
+
+<h2 id="what">1. What Hit the Server</h2>
+
+<p>I built the honeypot to watch PHP exploits on port 80. Port 22 was open too, and it got more traffic than everything else put together.</p>
+
+<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+<tr><td>Failed password attempts</td><td>135,442</td></tr>
+<tr><td>Source IPs</td><td>1,257</td></tr>
+<tr><td>Distinct usernames</td><td>3,177</td></tr>
+<tr><td>Guesses for <code>root</code></td><td>55,526 (41%)</td></tr>
+<tr><td>Guesses for <code>claude</code> / <code>openclaw</code></td><td>756 / 429</td></tr>
+<tr><td>Successful attacker logins</td><td>0</td></tr>
+</tbody></table>
+
+<p>The usernames tell you what attackers expect to find on a cloud Linux box right now: distro defaults (<code>ubuntu</code>, <code>azureuser</code>, <code>pi</code>), CI/CD accounts (<code>deploy</code>, <code>jenkins</code>, <code>runner</code>), game servers, and now AI-agent accounts. If you've made a <code>claude</code> user on a VM so an agent can SSH in, bots are already guessing its password.</p>
+
+<p>The number that matters most for detection is this one:</p>
+
+<table><thead><tr><th>Attempts per source IP (whole period)</th><th>Sources</th></tr></thead><tbody>
+<tr><td>1–4</td><td>789</td></tr>
+<tr><td>5–19</td><td>242</td></tr>
+<tr><td>20–99</td><td>88</td></tr>
+<tr><td>100–999</td><td>81</td></tr>
+<tr><td>1,000+</td><td>64</td></tr>
+</tbody></table>
+
+<p>Most of the IPs that tried my server tried fewer than five times, in total, over three and a half weeks. A rule like "alert on 20 failures from one IP" sees the loud 64, and never sees most of the rest. The botnets know where your thresholds are.</p>
+
+<p>One more thing jumped out. <code>184.185.26.51</code> made 2,926 SSH guesses spread over 137 different hours. The same IP also ran the full RedTail exploit kit against port 80 (see the <a href="/blog/detect-redtail-cryptominer/">RedTail post</a>). That's a compromised server doing what compromised servers do: guessing SSH passwords and spraying web exploits to recruit the next one. Brute force isn't a separate threat from the web exploits. It's the same botnets.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Recon</span> Step 1: Find port 22</h3>
+<p>Mass scanners such as masscan and zmap sweep the whole IPv4 space for open 22 in minutes (T1595.001). You can't stop being found. The first guesses arrived within hours of the VM getting its public IP.</p>
+
+<h3><span class="kc">Credential Access</span> Step 2: Guessing</h3>
+<p>I saw three distinct styles. Each needs a different detection.</p>
+<ul>
+<li><strong>Hammering (T1110.001):</strong> one IP, one username (usually <code>root</code>), thousands of attempts. 586 sources only ever tried a single username.</li>
+<li><strong>Wordlist workers (T1110.001):</strong> 48 IPs each tried exactly 416 usernames, 42 of them from a single <code>/24</code> (<code>109.160.32.0/24</code>). That's one botnet splitting one list across many workers, each running for around six hours.</li>
+<li><strong>Low and slow (T1110.003, password spraying):</strong> hundreds of IPs, each trying a few common usernames once or twice. On its own each IP looks like noise. Together it's a campaign.</li>
+</ul>
+
+<h3><span class="kc">Initial Access</span> Step 3: The one that works</h3>
+<p>On a server with password logins enabled and a weak password somewhere, one of these eventually succeeds (T1078 Valid Accounts, T1021.004 SSH). Nothing got in here, because the only accounts with passwords had strong ones and root couldn't log in with a password. From this point on I'm describing what SSH bots do on the servers they <em>do</em> get into, which is well documented and very consistent.</p>
+
+<h3><span class="kc">Discovery</span> Step 4: "Is this box worth it?"</h3>
+<p>Within seconds of logging in, the bot fingerprints the machine: <code>uname -a</code>, <code>nproc</code>, <code>cat /proc/cpuinfo</code>, <code>free -m</code>, <code>lscpu</code>, sometimes <code>crontab -l</code> and <code>w</code> (T1082 System Information Discovery). It wants the CPU count and architecture so it knows which miner to drop, and whether a human is logged in.</p>
+
+<h3><span class="kc">Persistence</span> Step 5: Lock the door behind them</h3>
+<p>The classic move is to write the attacker's key into <code>~/.ssh/authorized_keys</code>, often with <code>chattr +i</code> so you can't easily remove it (T1098.004 SSH Authorized Keys). Some bots also change the password they just guessed (<code>echo "root:newpass" | chpasswd</code>) so competing botnets can't use it (T1098 Account Manipulation).</p>
+
+<h3><span class="kc">Actions on Objectives</span> Step 6: Mine, or join the botnet</h3>
+<p>Then comes a miner (T1496), a DDoS bot, or a brute-forcer that starts the cycle against someone else from your IP. That's what <code>184.185.26.51</code> was doing to me.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>1,257 sources; 789 of them sent fewer than 5 guesses</td><td>Blocklists help with the hammerers and do nothing against the long tail. Fail2ban-style blocking makes your logs quieter, not your server safer.</td></tr>
+<tr><td>Network artefacts</td><td>SSH client banners, the <code>/24</code> that hosted the 416-username workers</td><td>A useful pivot for threat intel. It rotates every campaign.</td></tr>
+<tr><td>Host artefacts</td><td>The usernames list (<code>claude</code>, <code>openclaw</code>, <code>deploy</code>…)</td><td>Tells you which of <em>your</em> accounts are at risk. Check that none of them exist with a password.</td></tr>
+<tr><td>Tools</td><td>Distributed wordlist workers; spray mode</td><td>Detect the shape: many sources, one username, few attempts each.</td></tr>
+<tr><td>TTPs</td><td>Success after failures; post-login fingerprinting; <code>authorized_keys</code> writes; password changes</td><td>The rules that matter. A bot can rotate every IP it owns, but after it gets in it still has to fingerprint the box and plant a key.</td></tr>
+</tbody></table>
+
+<h2 id="web">4. Log Detections (sshd)</h2>
+
+<p>Both organisations forward sshd logs. Org B uses the Syslog table through the Azure Monitor Agent. Org A uses the Splunk Add-on for Unix and Linux (<code>sourcetype=linux_secure</code>). Here's the KQL parser I used, which every Org B query below builds on:</p>
+<pre><code>let SshAuth = Syslog
+| where Facility == "auth" and ProcessName == "sshd"
+| extend Outcome = case(SyslogMessage startswith "Failed password", "Failed",
+                        SyslogMessage startswith "Accepted", "Accepted", "")
+| where isnotempty(Outcome)
+| extend SrcIp = extract(@"from (\d+\.\d+\.\d+\.\d+)", 1, SyslogMessage),
+         User = extract(@"for (?:invalid user )?(\S+) from", 1, SyslogMessage),
+         InvalidUser = SyslogMessage has "invalid user",
+         Method = extract(@"^Accepted (\S+)", 1, SyslogMessage);</code></pre>
+<p><span class="org orgA">Org A</span> The equivalent field extraction:</p>
+<pre><code>index=linux sourcetype=linux_secure process=sshd ("Failed password" OR "Accepted")
+| rex "(?&lt;outcome&gt;Failed|Accepted) (?&lt;method&gt;\S+) for (?:invalid user )?(?&lt;user&gt;\S+) from (?&lt;src&gt;\d+\.\d+\.\d+\.\d+)"
+| eval invalid_user=if(searchmatch("invalid user"),1,0)</code></pre>
+
+<h3>L1. Volume per source (catches the hammerers)</h3>
+<p><span class="org orgB">Org B</span> Tested: fired for 174 sources across 759 source-hours. The busiest source made 889 attempts in one hour.</p>
+<pre><code>SshAuth
+| where Outcome == "Failed"
+| summarize Attempts = count(), Users = dcount(User), InvalidPct = round(100.0 * countif(InvalidUser) / count(), 0)
+          by SrcIp, Hour = bin(TimeGenerated, 1h)
+| where Attempts &gt;= 20</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=linux sourcetype=linux_secure process=sshd "Failed password"
+| rex "for (?:invalid user )?(?&lt;user&gt;\S+) from (?&lt;src&gt;\d+\.\d+\.\d+\.\d+)"
+| bin _time span=1h
+| stats count as attempts dc(user) as users by _time src host
+| where attempts &gt;= 20</code></pre>
+<p>Everyone has this rule, and it's fine, but treat it as informational. On an internet-facing host it fires all day and changes nothing. Its real job is to feed L3.</p>
+
+<h3>L2. Spraying: many sources, one username, each quiet (T1110.003)</h3>
+<p><span class="org orgB">Org B</span> Tested: 22 hours where 10 or more sources each tried the same username fewer than 20 times. The usernames were <code>root</code>, <code>ubuntu</code> and <code>admin</code>.</p>
+<pre><code>SshAuth
+| where Outcome == "Failed"
+| summarize Attempts = count() by SrcIp, User, Hour = bin(TimeGenerated, 1h)
+| summarize Sources = dcount(SrcIp), Attempts = sum(Attempts), MaxPerSource = max(Attempts),
+            SampleSources = make_set(SrcIp, 20) by User, Hour
+| where Sources &gt;= 10 and MaxPerSource &lt; 20</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=linux sourcetype=linux_secure process=sshd "Failed password"
+| rex "for (?:invalid user )?(?&lt;user&gt;\S+) from (?&lt;src&gt;\d+\.\d+\.\d+\.\d+)"
+| bin _time span=1h
+| stats count as attempts by _time user src
+| stats dc(src) as sources sum(attempts) as attempts max(attempts) as max_per_source values(src) as sample_sources by _time user
+| where sources &gt;= 10 AND max_per_source &lt; 20</code></pre>
+<p>This is the rule that sees the long tail L1 misses. Flip the logic: instead of "which IP is noisy?", ask "which username is being tried from everywhere at once?" If that username exists on your server with a password, it's the one at risk. Medium severity, raised to high if the username is a real account.</p>
+
+<h3>L3. Success after failures (the alert that matters)</h3>
+<p><span class="org orgB">Org B</span> Tested: 0 results, correctly. The only successful logins were my own, with a key, from an IP that never failed.</p>
+<pre><code>let Failures = SshAuth
+| where Outcome == "Failed"
+| summarize Failures = count(), LastFailure = max(TimeGenerated) by SrcIp;
+SshAuth
+| where Outcome == "Accepted"
+| join kind=inner Failures on SrcIp
+| where TimeGenerated &gt; LastFailure - 1d
+| project TimeGenerated, Computer, SrcIp, User, Method, Failures</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=linux sourcetype=linux_secure process=sshd ("Failed password" OR "Accepted")
+| rex "(?&lt;outcome&gt;Failed|Accepted) (?&lt;method&gt;\S+) for (?:invalid user )?(?&lt;user&gt;\S+) from (?&lt;src&gt;\d+\.\d+\.\d+\.\d+)"
+| stats count(eval(outcome="Failed")) as failures count(eval(outcome="Accepted")) as successes
+        latest(eval(if(outcome="Accepted",_time,null()))) as success_time values(user) as users by src host
+| where failures &gt;= 5 AND successes &gt; 0
+| convert ctime(success_time)</code></pre>
+<p>High severity, page someone. The one false positive you'll see is a human who mistyped their password a few times. That's easy to confirm with a phone call, and worth the call.</p>
+
+<p>Both EDRs also record logons on Linux, which gives you the same rule without relying on syslog forwarding:</p>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let Window = 1h;
+DeviceLogonEvents
+| where Timestamp &gt; ago(7d)
+| where ActionType in ("LogonFailed", "LogonSuccess") and isnotempty(RemoteIP)
+| where RemoteIPType == "Public"
+| summarize Failures = countif(ActionType == "LogonFailed"), Successes = countif(ActionType == "LogonSuccess"),
+            FirstSuccess = minif(Timestamp, ActionType == "LogonSuccess"), Accounts = make_set(AccountName, 10)
+          by DeviceName, RemoteIP, bin(Timestamp, Window)
+| where Failures &gt;= 10 and Successes &gt; 0</code></pre>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName IN (UserLogon, UserLogonFailed2)
+    RemoteAddressIP4=*
+| where NOT cidrmatch("10.0.0.0/8", RemoteAddressIP4) AND NOT cidrmatch("172.16.0.0/12", RemoteAddressIP4)
+    AND NOT cidrmatch("192.168.0.0/16", RemoteAddressIP4)
+| bin _time span=1h
+| stats count(eval(event_simpleName="UserLogonFailed2")) as failures
+        count(eval(event_simpleName="UserLogon")) as successes values(UserName) as users
+        by _time aid ComputerName RemoteAddressIP4
+| where failures &gt;= 10 AND successes &gt; 0</code></pre>
+
+<h2 id="endpoint">5. Endpoint Detections (after the login)</h2>
+
+<p>If L3 is your tripwire, these are your proof. Each one targets something a bot has to do after it gets in, whatever IP or username it used.</p>
+
+<h3>E1. Post-login fingerprinting burst (T1082)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    (GrandParentBaseFileName="sshd" OR ParentBaseFileName="sshd")
+    (FileName IN ("uname","nproc","lscpu","free","w","crontab","lspci","dmidecode")
+     OR CommandLine="*/proc/cpuinfo*" OR CommandLine="*/proc/meminfo*")
+| bin _time span=2m
+| stats dc(FileName) as distinct_tools values(CommandLine) as commands by _time aid ComputerName UserName
+| where distinct_tools &gt;= 3</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where InitiatingProcessParentFileName == "sshd" or InitiatingProcessFileName == "sshd"
+| where FileName in~ ("uname","nproc","lscpu","free","w","crontab","lspci","dmidecode")
+     or ProcessCommandLine has_any ("/proc/cpuinfo", "/proc/meminfo")
+| summarize DistinctTools = dcount(FileName), Commands = make_set(ProcessCommandLine, 20)
+          by DeviceName, AccountName, bin(Timestamp, 2m)
+| where DistinctTools &gt;= 3</code></pre>
+<p>Three or more of these tools within two minutes of an SSH session starting is a bot. Humans log in and do one thing. Some config-management tools (Ansible fact gathering) do this too, so allowlist your automation accounts and source IPs. Medium severity on its own, high if it follows an L3 hit.</p>
+
+<h3>E2. authorized_keys written (T1098.004)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    CommandLine="*authorized_keys*"
+    (CommandLine="*&gt;&gt;*" OR CommandLine="*echo *" OR FileName IN ("tee","cp","mv","chattr","sed"))
+| table _time ComputerName UserName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceFileEvents
+| where Timestamp &gt; ago(7d)
+| where FileName == "authorized_keys" and ActionType in ("FileCreated", "FileModified")
+| where InitiatingProcessFileName !in~ ("ssh-copy-id", "cloud-init", "waagent", "google_guest_agent")
+| project Timestamp, DeviceName, FolderPath, InitiatingProcessAccountName,
+          InitiatingProcessFileName, InitiatingProcessCommandLine</code></pre>
+<p>On a well-run server, keys arrive through your provisioning tool, not through a shell. Any other write is worth a look. High severity if it's root's file or happens inside a session that started after failures.</p>
+
+<h3>E3. Password changed or keys made immutable (T1098)</h3>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_platform=Lin event_simpleName=ProcessRollup2
+    (FileName IN ("chpasswd","passwd","usermod") OR CommandLine="*chattr*authorized_keys*")
+    (GrandParentBaseFileName="sshd" OR ParentBaseFileName IN ("sh","bash","dash"))
+| table _time ComputerName UserName ParentBaseFileName FileName CommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>DeviceProcessEvents
+| where Timestamp &gt; ago(7d)
+| where FileName in~ ("chpasswd", "passwd", "usermod")
+     or (FileName == "chattr" and ProcessCommandLine has "authorized_keys")
+| where InitiatingProcessParentFileName == "sshd" or InitiatingProcessFileName in~ ("sh", "bash", "dash")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine</code></pre>
+<p><code>chattr +i</code> on <code>authorized_keys</code> has almost no legitimate use. <code>chpasswd</code> fed from a pipe in an interactive session isn't normal admin behaviour either. High severity.</p>
+
+<h2 id="respond">6. When It Fires</h2>
+<ol>
+<li><strong>L1 or L2 only:</strong> confirm password authentication is off, or that the targeted usernames don't exist. If both are true, close it. If password auth is on, that's your finding. Fix it today.</li>
+<li><strong>L3 fired:</strong> treat it as compromised until proven otherwise. <span class="org orgA">Org A</span> Network-contain the host in Falcon. <span class="org orgB">Org B</span> Isolate the device in Defender. Then lock the account and kill its sessions.</li>
+<li><strong>Check E1 to E3 for that host and time.</strong> If any of them fired, the bot did its post-login routine. Pull <code>authorized_keys</code> for every user, check <code>crontab -l</code> and systemd units, and look for new hidden binaries. Falcon RTR or a Defender live response session lets you do this without logging in over SSH.</li>
+<li><strong>Scope sideways.</strong> Search for the same source IP and the same username across every server. Bots that get one box usually try the same credential everywhere.</li>
+<li><strong>Rebuild</strong> from a known image, and rotate any credentials or keys that were on the box.</li>
+</ol>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li><code>PasswordAuthentication no</code>. Every one of the 135,442 guesses fails at this line.</li>
+<li>Don't expose 22 to the internet at all. Use Azure Bastion, a VPN, or an allowlisted NSG rule.</li>
+<li>Don't create accounts named after the software that uses them (<code>claude</code>, <code>deploy</code>, <code>jenkins</code>). If you must, give them no password and a restricted shell.</li>
+<li>Keep <code>PermitRootLogin prohibit-password</code> or <code>no</code>.</li>
+<li>Manage <code>authorized_keys</code> centrally (cloud-init, config management, or <code>AuthorizedKeysCommand</code>). Then any other write stands out in E2.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<p>These are low value, as section 3 explains. They're here mainly for threat-intel correlation.</p>
+<table><thead><tr><th>Type</th><th>Value</th></tr></thead><tbody>
+<tr><td>Wordlist worker networks</td><td><code>109.160.32.0/24</code> (42 workers) and <code>77.239.124.0/24</code> (6 workers), all on the same 416-username list. The second network also hosted a busybox dropper payload seen on port 80.</td></tr>
+<tr><td>Brute force + RedTail</td><td><code>184.185.26.51</code> (2,926 SSH guesses over 137 hours, plus the RedTail web kit)</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
