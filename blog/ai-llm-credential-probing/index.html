@@ -372,7 +372,7 @@ td code{overflow-wrap:anywhere}
 2026-10-22 23:11:34  81.19.216.100    GET /mcp HTTP/1.1  -&gt; 404
 2026-10-22 23:11:34  193.176.31.248   GET /api/mcp HTTP/1.1  -&gt; 404
 2026-10-22 23:11:35  81.19.216.70     GET /sse HTTP/1.1  -&gt; 404</code></pre>
-<p>Eight requests, eight source IPs, 22 seconds. Over the whole period this User-Agent sent 144 requests from 119 addresses in five networks: 89.21.67.0/24 (16 IPs), 185.223.235.0/24 (16 IPs), 193.176.31.0/24 (14 IPs), 81.19.216.0/24 (14 IPs), 69.5.169.0/24 (4 IPs). A rate limit or block list keyed on source IP never sees it. Grouping by User-Agent, or by /24, does.</p>
+<p>Eight requests, eight source IPs, 22 seconds. Over the whole period this User-Agent sent 144 requests from 119 addresses in five networks: 185.223.235.0/24 (16 IPs), 89.21.67.0/24 (16 IPs), 193.176.31.0/24 (14 IPs), 81.19.216.0/24 (14 IPs), 69.5.169.0/24 (4 IPs). A rate limit or block list keyed on source IP never sees it. Grouping by User-Agent, or by /24, does.</p>
 <p>These are bare GETs. A real MCP endpoint answers a GET on <code>/sse</code> with an event stream and a GET on <code>/mcp</code> with <code>405</code> or a stream, so the response code alone tells the scanner whether to look closer.</p>
 
 <h2>6. The MCP Handshake</h2>

@@ -122,9 +122,9 @@ td code{overflow-wrap:anywhere}
 
 <h2>2. What They Ask For</h2>
 <svg viewBox="0 0 720 246" role="img" style="width:100%;max-width:720px;height:auto;font:13px system-ui,sans-serif">
-<text x="222" y="16" text-anchor="end" fill="#1d3344">.env files</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">1,997</text>
+<text x="222" y="16" text-anchor="end" fill="#1d3344">.env files</text><rect class="bar" x="230" y="4" width="410" height="15" rx="2"/><text x="646" y="16" fill="#47687c">1,998</text>
 <text x="222" y="40" text-anchor="end" fill="#1d3344">.git repository</text><rect class="bar" x="230" y="28" width="73" height="15" rx="2"/><text x="309" y="40" fill="#47687c">357</text>
-<text x="222" y="64" text-anchor="end" fill="#1d3344">Other config files</text><rect class="bar" x="230" y="52" width="69" height="15" rx="2"/><text x="305" y="64" fill="#47687c">340</text>
+<text x="222" y="64" text-anchor="end" fill="#1d3344">Other config files</text><rect class="bar" x="230" y="52" width="69" height="15" rx="2"/><text x="305" y="64" fill="#47687c">339</text>
 <text x="222" y="88" text-anchor="end" fill="#1d3344">Database dumps and backups</text><rect class="bar" x="230" y="76" width="33" height="15" rx="2"/><text x="269" y="88" fill="#47687c">161</text>
 <text x="222" y="112" text-anchor="end" fill="#1d3344">Docker, Kubernetes, CI files</text><rect class="bar" x="230" y="100" width="22" height="15" rx="2"/><text x="258" y="112" fill="#47687c">110</text>
 <text x="222" y="136" text-anchor="end" fill="#1d3344">Cloud credentials (.aws, credentials)</text><rect class="bar" x="230" y="124" width="21" height="15" rx="2"/><text x="257" y="136" fill="#47687c">107</text>
@@ -134,9 +134,9 @@ td code{overflow-wrap:anywhere}
 <text x="222" y="232" text-anchor="end" fill="#1d3344">SSH and TLS private keys</text><rect class="bar" x="230" y="220" width="3" height="15" rx="2"/><text x="239" y="232" fill="#47687c">16</text>
 </svg>
 <table><thead><tr><th>Family</th><th>Requests</th><th>Source IPs</th><th>Distinct paths</th><th>Most requested</th></tr></thead><tbody>
-<tr><td>.env files</td><td>1,997</td><td>46</td><td>479</td><td><code>/.env</code></td></tr>
+<tr><td>.env files</td><td>1,998</td><td>46</td><td>480</td><td><code>/.env</code></td></tr>
 <tr><td>.git repository</td><td>357</td><td>56</td><td>59</td><td><code>/.git/config</code></td></tr>
-<tr><td>Other config files</td><td>340</td><td>35</td><td>144</td><td><code>/config.json</code></td></tr>
+<tr><td>Other config files</td><td>339</td><td>35</td><td>143</td><td><code>/config.json</code></td></tr>
 <tr><td>Database dumps and backups</td><td>161</td><td>11</td><td>60</td><td><code>/site.zip</code></td></tr>
 <tr><td>Docker, Kubernetes, CI files</td><td>110</td><td>16</td><td>34</td><td><code>/docker-compose.yml</code></td></tr>
 <tr><td>Cloud credentials (.aws, credentials)</td><td>107</td><td>16</td><td>55</td><td><code>/.aws/credentials</code></td></tr>
@@ -148,7 +148,7 @@ td code{overflow-wrap:anywhere}
 
 <h2>3. .env in 479 Places</h2>
 <p>A <code>.env</code> file holds an application's settings as <code>KEY=value</code> lines: database password, mail server login, payment and cloud API keys, the framework's signing key. Laravel, Symfony, Node, Django and Rails projects all use one. It belongs one level above the web root. When the project root is the web root, <code>/.env</code> is a public URL.</p>
-<p>1,997 requests asked for 479 variations. The 40 most requested:</p>
+<p>1,998 requests asked for 480 variations. The 40 most requested:</p>
 <pre><code> 316  /.env
   40  /.env.local
   36  /.env.backup
@@ -304,7 +304,7 @@ td code{overflow-wrap:anywhere}
    4  /debug/default/view?panel=config
    4  /sftp-config.json
    4  /web.config
-   4  /actuator/ /env
+   4  /actuator/;/env
    4  /secrets.json
    4  /wp-content/debug.log</code></pre>
 
