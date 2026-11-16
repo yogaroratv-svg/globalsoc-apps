@@ -361,7 +361,7 @@ td code{overflow-wrap:anywhere}
  19  /sse
  18  /api/mcp
  18  /mcp/</code></pre>
-<pre><code> 72  Mozilla/5.0 (compatible  Infrawatch/1.0  +https://infrawat.ch/)
+<pre><code> 72  Mozilla/5.0 (compatible; Infrawatch/1.0; +https://infrawat.ch/)
   2  python-httpx/0.28.1</code></pre>
 <p>72 of them carry a User-Agent naming a scanning project, Infrawatch. Its pattern is unusual. It came on 18 different days, and each visit was spread over several addresses so that no single IP sent more than a request or two. The first visit:</p>
 <pre><code>2026-10-22 23:11:13  69.5.169.245     GET / HTTP/1.1  -&gt; 200
@@ -372,7 +372,7 @@ td code{overflow-wrap:anywhere}
 2026-10-22 23:11:34  81.19.216.100    GET /mcp HTTP/1.1  -&gt; 404
 2026-10-22 23:11:34  193.176.31.248   GET /api/mcp HTTP/1.1  -&gt; 404
 2026-10-22 23:11:35  81.19.216.70     GET /sse HTTP/1.1  -&gt; 404</code></pre>
-<p>Eight requests, eight source IPs, 22 seconds. Over the whole period this User-Agent sent 144 requests from 119 addresses in five networks: 185.223.235.0/24 (16 IPs), 89.21.67.0/24 (16 IPs), 81.19.216.0/24 (14 IPs), 193.176.31.0/24 (14 IPs), 69.5.169.0/24 (4 IPs). A rate limit or block list keyed on source IP never sees it. Grouping by User-Agent, or by /24, does.</p>
+<p>Eight requests, eight source IPs, 22 seconds. Over the whole period this User-Agent sent 144 requests from 119 addresses in five networks: 89.21.67.0/24 (16 IPs), 185.223.235.0/24 (16 IPs), 193.176.31.0/24 (14 IPs), 81.19.216.0/24 (14 IPs), 69.5.169.0/24 (4 IPs). A rate limit or block list keyed on source IP never sees it. Grouping by User-Agent, or by /24, does.</p>
 <p>These are bare GETs. A real MCP endpoint answers a GET on <code>/sse</code> with an event stream and a GET on <code>/mcp</code> with <code>405</code> or a stream, so the response code alone tells the scanner whether to look closer.</p>
 
 <h2>6. The MCP Handshake</h2>
@@ -429,14 +429,14 @@ Content-Type: application/json
 <h2>8. Who Is Asking</h2>
 <p>Sources other than the MCP endpoint scanners:</p>
 <table><thead><tr><th>Source IP</th><th>Country</th><th>AI-related requests</th><th>All requests</th><th>First seen (UTC)</th><th>User-Agent</th></tr></thead><tbody>
-<tr><td>45.138.12.179</td><td>Lithuania</td><td>58</td><td>400</td><td>2026-11-02 22:40</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
-<tr><td>79.124.58.22</td><td>Bulgaria</td><td>18</td><td>26</td><td>2026-11-05 17:52</td><td><code>Mozilla/5.0 (X11  Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)</code></td></tr>
-<tr><td>54.170.28.185</td><td>Ireland</td><td>11</td><td>302</td><td>2026-10-30 04:16</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
+<tr><td>45.138.12.179</td><td>Lithuania</td><td>58</td><td>400</td><td>2026-11-02 22:40</td><td><code>Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
+<tr><td>79.124.58.22</td><td>Bulgaria</td><td>18</td><td>26</td><td>2026-11-05 17:52</td><td><code>Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)</code></td></tr>
+<tr><td>54.170.28.185</td><td>Ireland</td><td>11</td><td>302</td><td>2026-10-30 04:16</td><td><code>Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
 <tr><td>34.213.231.51</td><td>United States</td><td>7</td><td>13</td><td>2026-10-22 09:00</td><td><code>opendirme-credhunt/gen2+riskd-baseline-20261012-1-g5b5b7ae</code></td></tr>
-<tr><td>213.209.159.175</td><td>Germany</td><td>4</td><td>327</td><td>2026-11-03 22:31</td><td><code>Mozilla/5.0 (Windows  U  Windows NT 5.0  de-DE  rv:1.6) Gecko/20040206</code></td></tr>
-<tr><td>164.52.24.185</td><td>Japan</td><td>3</td><td>6</td><td>2026-10-31 21:01</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
-<tr><td>148.153.56.170</td><td>United States</td><td>2</td><td>12</td><td>2026-10-24 20:03</td><td><code>Mozilla/5.0 (X11  Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)</code></td></tr>
-<tr><td>5.182.17.163</td><td>France</td><td>1</td><td>18</td><td>2026-11-04 05:57</td><td><code>Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
+<tr><td>213.209.159.175</td><td>Germany</td><td>4</td><td>327</td><td>2026-11-03 22:31</td><td><code>Mozilla/5.0 (Windows; U; Windows NT 5.0; de-DE; rv:1.6) Gecko/20040206</code></td></tr>
+<tr><td>164.52.24.185</td><td>Japan</td><td>3</td><td>6</td><td>2026-10-31 21:01</td><td><code>Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
+<tr><td>148.153.56.170</td><td>United States</td><td>2</td><td>12</td><td>2026-10-24 20:03</td><td><code>Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)</code></td></tr>
+<tr><td>5.182.17.163</td><td>France</td><td>1</td><td>18</td><td>2026-11-04 05:57</td><td><code>Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, l</code></td></tr>
 </tbody></table>
 <p>The AI paths are a small part of what each of these sent ("All requests"). None of them is an AI-specific tool except the first scanner in section 2. They are general secret scanners whose lists have grown.</p>
 
@@ -459,7 +459,7 @@ Content-Type: application/json
 <table>
 <tr><th>Type</th><th>Value</th></tr>
 <tr><td>User-Agent</td><td><code>opendirme-credhunt/gen2+riskd-baseline-20261012-1-g5b5b7ae</code></td></tr>
-<tr><td>User-Agent</td><td><code>Mozilla/5.0 (compatible  Infrawatch/1.0  +https://infrawat.ch/)</code> (distributed over 185.223.235.0/24, 89.21.67.0/24, 193.176.31.0/24, 81.19.216.0/24, 69.5.169.0/24)</td></tr>
+<tr><td>User-Agent</td><td><code>Mozilla/5.0 (compatible; Infrawatch/1.0; +https://infrawat.ch/)</code> (distributed over 185.223.235.0/24, 89.21.67.0/24, 193.176.31.0/24, 81.19.216.0/24, 69.5.169.0/24)</td></tr>
 <tr><td>MCP client name</td><td><code>internet-census-mcp-scanner</code></td></tr>
 <tr><td>Paths</td><td><code>/mcp</code>, <code>/mcp/</code>, <code>/api/mcp</code>, <code>/sse</code> on hosts that run no MCP server; any request under <code>/.claude</code>, <code>/.codex</code>, <code>/.cursor</code></td></tr>
 </table>

