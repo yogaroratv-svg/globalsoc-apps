@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detecting the Optimizely Supply-Chain Skimmer in Splunk and Sentinel | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/detect-optimizely-supply-chain-skimmer/">
+<meta name="description" content="The Optimizely Web compromise ran a wallet clipper and card skimmer in visitors&#x27; browsers from a domain everyone trusts. I detonated the real payload in a sealed lab, then wrote detections for both sides. For your users: DNS, proxy and EDR rules that separate a blocked request from a real exposure. For your own sites: snippet integrity, CSP-report and synthetic-browser checks. Every rule is given for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/detect-optimizely-supply-chain-skimmer/">
+<meta property="og:title" content="Detecting the Optimizely Supply-Chain Skimmer in Splunk and Sentinel | Global SOC">
+<meta property="og:description" content="The Optimizely Web compromise ran a wallet clipper and card skimmer in visitors&#x27; browsers from a domain everyone trusts. I detonated the real payload in a sealed lab, then wrote detections for both sides. For your users: DNS, proxy and EDR rules that separate a blocked request from a real exposure. For your own sites: snippet integrity, CSP-report and synthetic-browser checks. Every rule is given for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Detecting the Optimizely Supply-Chain Skimmer in Splunk and Sentinel | Global SOC">
+<meta name="twitter:description" content="The Optimizely Web compromise ran a wallet clipper and card skimmer in visitors&#x27; browsers from a domain everyone trusts. I detonated the real payload in a sealed lab, then wrote detections for both sides. For your users: DNS, proxy and EDR rules that separate a blocked request from a real exposure. For your own sites: snippet integrity, CSP-report and synthetic-browser checks. Every rule is given for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/detect-optimizely-supply-chain-skimmer/#article",
+      "url": "https://globalsoc.com.au/blog/detect-optimizely-supply-chain-skimmer/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/detect-optimizely-supply-chain-skimmer/"
+      },
+      "headline": "Detecting the Optimizely Skimmer: Blocked or Reached, Embedded or Fetched, and the Rules That Tell Them Apart",
+      "description": "The Optimizely Web compromise ran a wallet clipper and card skimmer in visitors' browsers from a domain everyone trusts. I detonated the real payload in a sealed lab, then wrote detections for both sides. For your users: DNS, proxy and EDR rules that separate a blocked request from a real exposure. For your own sites: snippet integrity, CSP-report and synthetic-browser checks. Every rule is given for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.",
+      "datePublished": "2026-11-18",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Detecting the Optimizely Skimmer: Blocked or Reached, Embedded or Fetched, and the Rules That Tell Them Apart",
+          "item": "https://globalsoc.com.au/blog/detect-optimizely-supply-chain-skimmer/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-18">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 18 November 2026</p>
+<h1>Detecting the Optimizely Skimmer: Blocked or Reached, Embedded or Fetched, and the Rules That Tell Them Apart</h1>
+<p>The Optimizely Web compromise ran a wallet clipper and card skimmer in visitors&#x27; browsers from a domain everyone trusts. I detonated the real payload in a sealed lab, then wrote detections for both sides. For your users: DNS, proxy and EDR rules that separate a blocked request from a real exposure. For your own sites: snippet integrity, CSP-report and synthetic-browser checks. Every rule is given for Splunk + CrowdStrike and Sentinel + Defender for Endpoint.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Happened · The Attack, Step by Step · Pyramid of Pain · Network Detections · Endpoint Detections · Web Detections (Your Own Sites) · When It Fires · Hardening · IOCs</nav>
+<p class="small">Part of my <a href="/blog/honeypot-detection-playbook/">detection series</a>, and the companion to <a href="/blog/optimizely-skimmer-detonated-in-a-lab/">The Optimizely Skimmer, Detonated</a>. <span class="org orgA">Org A</span> runs Splunk with CrowdStrike Falcon and Cisco Umbrella. <span class="org orgB">Org B</span> runs Microsoft Sentinel with Defender for Endpoint. The rules are built from what my lab recorded (DNS, proxy, browser and exfiltration traffic from the real final build). I haven't run them against production EDR data, so check field names and log sources in your environment.</p>
+
+<h2 id="what">1. What Happened</h2>
+<p>On 16 November 2026 an attacker added a loader to the Project JavaScript of Optimizely Web customers. For about 16 hours, visitors to 178 organisations' sites downloaded <code>track.js</code> from <code>1688360[.]cc</code>, through a trusted <code>cdn.optimizely.com</code> file. The payload:</p>
+<ul>
+<li>swapped crypto addresses on the page, in the clipboard and in form fields (8 chains, checksum-validated);</li>
+<li>sent card number, expiry and CVV to <code>card.php</code> with <code>sendBeacon</code>;</li>
+<li>sent the URL, readable cookies and an html2canvas screenshot to <code>hit.php</code>;</li>
+<li>sent older iPhones to <code>.icu</code> routers and a hidden iframe leading to the Coruna and DarkSword kits.</li>
+</ul>
+<p>Two different teams care about this. The SOC wants to know <strong>which users were exposed</strong>. Web and AppSec teams want to know <strong>whether their own site served it</strong>. This post covers both.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+<h3><span class="kc">Initial Access</span> Step 1: Write access to a SaaS tag tool</h3>
+<p>The attacker edited Optimizely Project JavaScript in many customer projects (T1195.002 Compromise Software Supply Chain). How they got access is unconfirmed. The CDN then served the edited file to every visitor (T1189 Drive-by Compromise).</p>
+<h3><span class="kc">Execution</span> Step 2: One of three loaders</h3>
+<p>The loader is a plain <code>&lt;script src&gt;</code>, an <code>atob()</code>-hidden URL, or a Base64 copy of the whole payload run with <code>(0,eval)</code> when the remote load fails (T1059.007, T1027). The third one never touches the IOC domain unless it exfiltrates.</p>
+<h3><span class="kc">Collection</span> Step 3: Clip, skim, screenshot</h3>
+<p>Address replacement in the page and clipboard (T1565.003 Runtime Data Manipulation, T1115 Clipboard Data), card capture from form and <code>fetch</code>/XHR bodies (T1056.003 Web Portal Capture), cookies (T1539) and a screenshot (T1113).</p>
+<h3><span class="kc">Exfiltration</span> Step 4: Beacon home</h3>
+<p><code>POST /hit.php</code> (text/plain JSON, about 25 KB with the screenshot) and a <code>sendBeacon</code> to <code>/card.php</code> (about 73 bytes) on the payload host (T1041).</p>
+<h3><span class="kc">Exploitation</span> Step 5: iOS only</h3>
+<p>iPhones and iPads load <code>boot.js</code> from two <code>.icu</code> routers. On iOS 18.6 and earlier, a 0x0 iframe loads <code>/JIUJIU888/weifile.html</code> and then the exploit kits (T1203). Pages reload to retry.</p>
+
+<h2 id="pyramid">3. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What I'd do with it</th></tr></thead><tbody>
+<tr><td>Hash</td><td>26+ <code>track.js</code> builds in one day, including one unreported (<code>95084ed3…</code>)</td><td>Useful for retro-hunting stored web content only. The author rebuilt it every 30 minutes.</td></tr>
+<tr><td>IP</td><td><code>136.113.106[.]136</code>, <code>34.96.213[.]201</code>, <code>34.87.36[.]58</code></td><td>Retro-hunt the 16 November window. Cloud IPs get reused.</td></tr>
+<tr><td>Domain</td><td><code>1688360[.]cc</code>, <code>webshell[.]lol</code>, the <code>.icu</code> routers, <code>ua23[.]online</code></td><td>Block and retro-hunt. All were registered days before use, so newly registered domain policies would have caught them.</td></tr>
+<tr><td>Network / host artefacts</td><td><code>/card.php</code>, <code>/hit.php</code>, <code>/hook.php</code>, <code>track.js?cb=</code>, <code>px.gif?e=</code>, <code>/JIUJIU888/</code>, <code>data-channel-code="02111110"</code>, <code>window.TASK===1</code>, <code>sessionStorage["cc_…"]</code></td><td>Survive a domain change. Path-shape rules (N3, N4) and the browser artefact (E2) are the ones to build.</td></tr>
+<tr><td>Tools</td><td>Base64 payload plus <code>(0,eval)</code> fallback inside a vendor snippet; html2canvas fetched from the C2</td><td>Snippet integrity (W1) catches any tool that has to live in a vendor file.</td></tr>
+<tr><td>TTPs</td><td>Abuse of a third party's write access to push JavaScript; theft that needs no network (the clipper)</td><td>CSP without <code>'unsafe-eval'</code>, change control on tag tools, CSP reporting (W2), synthetic checks (W3).</td></tr>
+</tbody></table>
+
+<h2 id="network">4. Network Detections</h2>
+
+<h3>N1. Every IOC contact, split into blocked and reached (T1189)</h3>
+<p>This is the triage rule. Umbrella answers blocked lookups with an address in <code>146.112.0.0/16</code>. Defender then logs <code>ConnectionSuccess</code> to that address, because the browser did reach the block page. That's a block, not a hit. In my lab's block mode the browser got the block page and the payload never loaded.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>(index=umbrella sourcetype="cisco:umbrella:dns") OR (index=crowdstrike event_simpleName=DnsRequest)
+    (query="*1688360.cc*" OR query="*webshell.lol*" OR query="*5vobauua3ojpklx.icu*" OR query="*eil786npto9u5bq.icu*"
+     OR query="*ua23.online*" OR DomainName="*1688360.cc" OR DomainName="*webshell.lol"
+     OR DomainName="5vobauua3ojpklx.icu" OR DomainName="eil786npto9u5bq.icu" OR DomainName="ua23.online")
+| eval domain=coalesce(query, DomainName), host=coalesce(identities, ComputerName)
+| eval verdict=case(match(action,"(?i)block"), "blocked (Umbrella)",
+                    match(IP4Records,"^146\.112\."), "blocked (block-page IP)",
+                    true(), "REACHED - check")
+| stats count min(_time) as first max(_time) as last values(verdict) as verdict by host domain
+| convert ctime(first) ctime(last)</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let IOCs = dynamic(["1688360.cc","webshell.lol","5vobauua3ojpklx.icu","eil786npto9u5bq.icu","ua23.online"]);
+DeviceNetworkEvents
+| where Timestamp between (datetime(2026-11-09) .. now())
+| where RemoteUrl has_any (IOCs)
+| extend Verdict = iff(ipv4_is_in_range(RemoteIP, "146.112.0.0/16"), "Blocked (block-page IP)", "REACHED - check")
+| summarize Events = count(), First = min(Timestamp), Last = max(Timestamp), RemoteIPs = make_set(RemoteIP, 5),
+            Browsers = make_set(InitiatingProcessFileName, 5) by DeviceName, RemoteUrl, ActionType, Verdict
+| order by Verdict desc, Events desc</code></pre>
+
+<h3>N2. Optimizely, then the IOC, within two minutes</h3>
+<p>This is the supply-chain shape: a trusted snippet loads, and a domain nobody has seen before follows immediately. The IOC version is below. For the generic version, replace <code>has_any (IOCs)</code> with "domain first seen in the last 7 days".</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_simpleName=DnsRequest
+    (DomainName="cdn.optimizely.com" OR DomainName="*1688360.cc" OR DomainName="*webshell.lol" OR DomainName="*.icu")
+| eval kind=if(DomainName="cdn.optimizely.com","opt","ioc")
+| sort 0 aid ContextProcessId _time
+| streamstats current=f last(_time) as prev_t last(kind) as prev_kind by aid ContextProcessId
+| where kind="ioc" AND prev_kind="opt" AND (_time-prev_t)&lt;=120
+| table _time ComputerName DomainName ContextProcessId</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let IOCs = dynamic(["1688360.cc","webshell.lol","5vobauua3ojpklx.icu","eil786npto9u5bq.icu","ua23.online"]);
+let Opt = DeviceNetworkEvents
+| where RemoteUrl has "cdn.optimizely.com"
+| project DeviceId, OptTime = Timestamp, InitiatingProcessId;
+DeviceNetworkEvents
+| where RemoteUrl has_any (IOCs)
+| join kind=inner Opt on DeviceId, InitiatingProcessId
+| where Timestamp between (OptTime .. (OptTime + 2m))
+| summarize OptimizelyAt = max(OptTime) by DeviceName, Timestamp, RemoteUrl, RemoteIP, InitiatingProcessFileName</code></pre>
+
+<h3>N3. The exfiltration shape on the proxy, whatever the domain</h3>
+<p>In the lab every exfiltration was a cross-site <code>POST</code> from a browser to <code>/hit.php</code>, <code>/card.php</code> or <code>/hook.php</code>. <code>hit.php</code> was <code>text/plain</code> of about 25 KB; <code>card.php</code> was 73 bytes, form-encoded. Domains change, but the operator kept these paths all day.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count values(Web.http_referrer) as referrer values(Web.bytes_out) as bytes_out from datamodel=Web
+    where Web.http_method=POST (Web.uri_path="/hit.php" OR Web.uri_path="/card.php" OR Web.uri_path="/hook.php")
+    by Web.src Web.dest Web.uri_path
+| where mvcount(referrer) &gt; 0</code></pre>
+<p><span class="org orgB">Org B</span> (ASIM web session, so any proxy or SWG connector works)</p>
+<pre><code>_Im_WebSession(starttime = ago(14d))
+| where HttpRequestMethod == "POST"
+| extend Path = tostring(parse_url(Url).Path)
+| where Path in ("/hit.php", "/card.php", "/hook.php")
+| where isnotempty(HttpReferrer) and parse_url(HttpReferrer).Host != parse_url(Url).Host
+| summarize Posts = count(), Bytes = sum(SrcBytes), Sites = make_set(tostring(parse_url(HttpReferrer).Host), 10)
+            by SrcIpAddr, DstHostname = tostring(parse_url(Url).Host), Path</code></pre>
+
+<h3>N4. A phone walking the iOS delivery chain (T1203)</h3>
+<p>MDE won't see an iPhone, but your proxy, SWG or mobile DNS service will. The chain is distinctive: <code>boot.js</code> on a random <code>.icu</code> name, then <code>/JIUJIU888/</code>, <code>/A8/</code>, <code>/B9/</code>, <code>/C10/</code>, <code>/D11/</code> or <code>/D12/</code>.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>| tstats count values(Web.url) as urls from datamodel=Web
+    where (Web.url="*.icu/boot.js*" OR Web.url="*/JIUJIU888/*" OR Web.url="*.icu/A8/*" OR Web.url="*.icu/B9/*"
+           OR Web.url="*.icu/C10/*" OR Web.url="*.icu/D11/*" OR Web.url="*.icu/D12/*")
+    by Web.src Web.http_user_agent
+| search Web.http_user_agent="*iPhone*" OR Web.http_user_agent="*iPad*"</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>_Im_WebSession(starttime = ago(14d))
+| where Url matches regex @"\.icu/(boot\.js|JIUJIU888/|A8/|B9/|C10/|D11/|D12/)"
+| where HttpUserAgent has_any ("iPhone", "iPad")
+| summarize Hits = count(), Paths = make_set(tostring(parse_url(Url).Path), 10), First = min(TimeGenerated)
+            by SrcIpAddr, SrcUsername, HttpUserAgent</code></pre>
+<p>Any result here is an Escalate. The device should be checked for its iOS version (anything below 18.7.3 or 26.3 was in scope) and handled as possibly compromised.</p>
+
+<h2 id="endpoint">5. Endpoint Detections</h2>
+
+<h3>E1. A browser reached the real infrastructure and sent data</h3>
+<p>The opposite of a block: the browser connected to the IOC on a non-block address and sent more than a handshake. In the lab, <code>hit.php</code> uploads were about 25 KB.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=crowdstrike event_simpleName=NetworkConnectIP4
+    RemoteAddressIP4 IN ("136.113.106[.]136","34.96.213[.]201","34.87.36[.]58")
+    ContextBaseFileName IN ("msedge.exe","chrome.exe","firefox.exe","brave.exe")
+| stats count min(_time) as first by ComputerName UserName ContextBaseFileName RemoteAddressIP4 RemotePort</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>let IOCs = dynamic(["1688360.cc","webshell.lol","5vobauua3ojpklx.icu","eil786npto9u5bq.icu","ua23.online"]);
+let IOCIPs = dynamic(["136.113.106[.]136","34.96.213[.]201","34.87.36[.]58"]);
+DeviceNetworkEvents
+| where (RemoteUrl has_any (IOCs) or RemoteIP in (IOCIPs)) and ActionType == "ConnectionSuccess"
+| where not(ipv4_is_in_range(RemoteIP, "146.112.0.0/16"))
+| project Timestamp, DeviceName, InitiatingProcessAccountName, InitiatingProcessFileName, RemoteUrl, RemoteIP, RemotePort</code></pre>
+<p>MDE doesn't record per-connection byte counts in this table, so pair a hit with your proxy's bytes-out for the same minute (N3).</p>
+
+<h3>E2. The skimmer's own breadcrumb in the browser profile</h3>
+<p>To avoid sending a card twice, the skimmer writes <code>cc_&lt;number&gt;&lt;expiry&gt;&lt;cvv&gt;</code> to <code>sessionStorage</code> in plain text. Chromium persists session storage to the profile's <code>Session Storage</code> LevelDB folder, so on an E1 host you may be able to confirm a capture without asking the user. Run it through Falcon RTR or MDE Live Response as a script. It's a forensic check, not a SIEM rule. I haven't validated it in the lab, because Playwright throws its browser profiles away, so test it on a known-good browser first. Chromium can store the string as one-byte or UTF-16 text, so the script checks both:</p>
+<pre><code># PowerShell: look for the skimmer's dedup key in Edge/Chrome Session Storage (ASCII or UTF-16)
+$roots = "$env:LOCALAPPDATA\Microsoft\Edge\User Data", "$env:LOCALAPPDATA\Google\Chrome\User Data"
+$rx = 'cc_\d{13,19}\d{2}/\d{2}\d{3,4}'
+Get-ChildItem $roots -Recurse -Include *.log,*.ldb -ErrorAction SilentlyContinue |
+  Where-Object { $_.DirectoryName -like '*Session Storage*' } | ForEach-Object {
+    $b = [IO.File]::ReadAllBytes($_.FullName)
+    if ([Text.Encoding]::ASCII.GetString($b) -match $rx -or [Text.Encoding]::Unicode.GetString($b) -match $rx) {
+      "$($_.FullName)  (match: card captured; don't paste the value into a ticket)" } }</code></pre>
+<p>A match means a card was captured in that browser. Whether it reached the attacker depends on E1 and N3. Treat it as exposed either way.</p>
+
+<h2 id="web">6. Web Detections (Your Own Sites)</h2>
+
+<h3>W1. Your vendor snippet changed, and the change looks like a loader</h3>
+<p>No SIEM sees inside a third-party file, so fetch it yourself. A scheduled job pulls every third-party script your pages load (Optimizely, tag managers, chat widgets) every five minutes and logs a hash, the domains inside it and loader tokens. Alert on a change that adds a domain, <code>atob(</code>, <code>(0,eval)(</code> or <code>new Function(</code>. On 16 November that would have fired within minutes of the first infected write (03:55 UTC on the BBC snippet, per HECAVEX), hours before the first public sighting.</p>
+<p><span class="org orgA">Org A</span> (custom sourcetype <code>vendor:snippet</code>)</p>
+<pre><code>index=appsec sourcetype=vendor:snippet
+| sort 0 url _time
+| streamstats current=f last(sha256) as prev_sha last(domains) as prev_domains by url
+| where sha256!=prev_sha
+| eval new_domains=mvmap(domains, if(isnull(mvfind(prev_domains, "^".replace(domains,"\.","\\.")."$")), domains, null()))
+| where isnotnull(new_domains) OR match(loader_tokens,"atob|eval|Function")
+| table _time url prev_sha sha256 new_domains loader_tokens</code></pre>
+<p><span class="org orgB">Org B</span> (custom table <code>VendorSnippet_CL</code>)</p>
+<pre><code>VendorSnippet_CL
+| order by Url asc, TimeGenerated asc
+| extend PrevSha = prev(Sha256, 1), PrevDomains = prev(Domains, 1), SameUrl = Url == prev(Url, 1)
+| where SameUrl and Sha256 != PrevSha
+| extend NewDomains = set_difference(todynamic(Domains), todynamic(PrevDomains))
+| where array_length(NewDomains) &gt; 0 or LoaderTokens has_any ("atob", "eval", "Function")
+| project TimeGenerated, Url, PrevSha, Sha256, NewDomains, LoaderTokens</code></pre>
+
+<h3>W2. CSP reports naming a script-src or connect-src you've never allowed</h3>
+<p>In the lab the CSP-protected page produced four violation reports per view: <code>track.js</code> and html2canvas (<code>script-src-elem</code>), then <code>hit.php</code> and <code>card.php</code> (<code>connect-src</code>). If you collect CSP reports, a new blocked host showing up across many users at once is a supply-chain signal.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>index=appsec sourcetype=csp:report
+| rename "csp-report.blocked-uri" as blocked_uri, "csp-report.effective-directive" as directive, "csp-report.source-file" as source_file
+| eval blocked_host=replace(blocked_uri, "^https?://([^/:]+).*", "\1")
+| stats dc(src) as users values(directive) as directives values(source_file) as source_files earliest(_time) as first by blocked_host
+| where users &gt;= 5 AND first &gt;= relative_time(now(), "-1d")</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>CspReport_CL
+| extend BlockedHost = tostring(parse_url(BlockedUri).Host)
+| summarize Users = dcount(ClientIp), Directives = make_set(EffectiveDirective), SourceFiles = make_set(SourceFile, 5),
+            First = min(TimeGenerated) by BlockedHost
+| where Users &gt;= 5 and First &gt; ago(1d)</code></pre>
+<p>Remember what the lab showed: CSP stopped the exfiltration, but the clipper still worked. A W2 alert means the code ran on your page, not only that it was blocked.</p>
+
+<h3>W3. A synthetic browser that checks for the payload's own markers</h3>
+<p>Point a headless browser at your key pages every few minutes and evaluate one line. Every build since 15:21 sets the stray global <code>TASK</code>, and all of them set <code>_k7</code>. Patched built-ins are a generic sign of a hooking skimmer:</p>
+<pre><code>({ k7: !!window._k7, cc: !!window._cc, task: window.TASK === 1,
+   callHooked: Function.prototype.call.toString().indexOf('[native code]') &lt; 0,
+   fetchHooked: window.fetch.toString().indexOf('[native code]') &lt; 0 })</code></pre>
+<p>Send the result to your SIEM and alert on any <code>true</code>. The two "hooked" checks will need an allowlist for legitimate tools that wrap <code>fetch</code> (some RUM agents do), but nothing legitimate should patch <code>Function.prototype.call</code>.</p>
+
+<h2 id="respond">7. When It Fires</h2>
+<table><thead><tr><th>What you see</th><th>Meaning</th><th>Tier</th></tr></thead><tbody>
+<tr><td>N1 shows only block-page IPs</td><td>The fetch of the payload was blocked. If the site served the embedded variant, the code may still have run, but nothing reached the attacker's domain.</td><td>Watch. Check whether the user paid by card or moved crypto on that site on 16 November.</td></tr>
+<tr><td>N1 or E1 "REACHED", no POST in N3</td><td>The payload loaded. No sign of exfiltration.</td><td>Notify. Run E2 on the host and ask the user about payments that day.</td></tr>
+<tr><td>N3 POST to <code>card.php</code> or an E2 match</td><td>A card was captured and probably sent</td><td>Escalate. Treat the card as compromised; the user should cancel it.</td></tr>
+<tr><td>N3 POST to <code>hit.php</code></td><td>An address was swapped, and cookies and a screenshot were sent</td><td>Escalate. Check any crypto transfer, and invalidate sessions for the site in the screenshot.</td></tr>
+<tr><td>N4 any hit</td><td>An iPhone or iPad walked the exploit chain</td><td>Escalate. Check the iOS version; reimage or replace if below 18.7.3 or 26.3.</td></tr>
+<tr><td>W1, W2 or W3 on your own site</td><td>You are serving it</td><td>Escalate. Remove the code, rotate the vendor account's credentials, and assess customer impact and notification duties.</td></tr>
+</tbody></table>
+
+<h2 id="harden">8. Hardening</h2>
+<ul>
+<li>Treat tag-manager and A/B-tool accounts as production deploy rights: SSO, MFA, least privilege, audit-log export to the SIEM and an approval step for custom code.</li>
+<li>Remove <code>'unsafe-eval'</code> from <code>script-src</code> where you can. In the lab it was the only thing that let the embedded copy run.</li>
+<li>Set a tight <code>connect-src</code> and collect reports (W2). It blocked every exfiltration in the lab.</li>
+<li>Keep card entry in the payment provider's cross-origin iframe. The skimmer couldn't read across origins.</li>
+<li>Block newly registered domains at the DNS filter. Every domain here was days old.</li>
+<li>Keep managed iPhones on current iOS, and route mobile traffic through a DNS filter so N4 has data.</li>
+</ul>
+
+<h2 id="iocs">9. IOCs</h2>
+<p>The full table, with build hashes and wallets, is in <a href="/blog/optimizely-skimmer-detonated-in-a-lab/#iocs">the lab post</a>. The ones to load first:</p>
+<table><thead><tr><th>Type</th><th>Indicator</th></tr></thead><tbody>
+<tr><td>Domains</td><td><code>1688360[.]cc</code>, <code>webshell[.]lol</code>, <code>5vobauua3ojpklx[.]icu</code>, <code>eil786npto9u5bq[.]icu</code>, <code>ua23[.]online</code> (new)</td></tr>
+<tr><td>IPs</td><td><code>136.113.106[.]136</code>, <code>34.96.213[.]201</code>, <code>34.87.36[.]58</code></td></tr>
+<tr><td>Paths</td><td><code>/track.js?cb=</code>, <code>/hit.php</code>, <code>/card.php</code>, <code>/hook.php</code>, <code>/px.gif?e=</code>, <code>/boot.js</code>, <code>/JIUJIU888/weifile.html</code>, <code>/ch/pub03</code></td></tr>
+<tr><td>Browser artefacts</td><td><code>window.TASK===1</code>, <code>window._k7</code>, <code>sessionStorage["cc_…"]</code></td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
