@@ -45,7 +45,7 @@ header .count{font-family:var(--display);color:var(--muted);font-size:16px;lette
 .eyebrow{font-family:var(--display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .pat b{display:block;font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:.02em;line-height:1.1}
 .switch{font-size:12px;color:var(--brass)}
-#wheel{width:124px;height:124px;flex:none}
+#wheel{width:108px;height:108px;flex:none}
 #wheel .pk{fill:var(--felt-3);stroke:var(--felt-2);stroke-width:.8}
 #wheel .pk.in{fill:var(--brass)}
 #wheel .pk.last{stroke:var(--ink);stroke-width:2}
@@ -55,12 +55,23 @@ header .count{font-family:var(--display);color:var(--muted);font-size:16px;lette
 .reason{margin:0;font-size:15px}
 .why{margin:0;font-size:14px;color:var(--muted)}
 .landed{margin:0;font-family:var(--display);font-size:16px;letter-spacing:.03em}
+.chips{font-family:var(--display);font-size:17px;letter-spacing:.03em;color:var(--ink)}
+.how{margin:0;font-family:var(--display);font-weight:600;font-size:20px;line-height:1.25;letter-spacing:.02em;color:var(--brass-2)}
+.how[data-l="0"]{color:var(--muted)}
+.tbl{display:grid;grid-template-columns:minmax(0,1.15fr) repeat(12,minmax(0,1fr));grid-template-rows:repeat(3,30px);gap:3px}
+.tbl i{font-style:normal;display:grid;place-items:center;border-radius:5px;background:var(--felt-3);color:var(--muted);font-family:var(--display);font-weight:700;font-size:15px;position:relative;min-width:0}
+.tbl i.bet{background:var(--brass);color:var(--brass-ink)}
+.tbl i.add::after{content:"";position:absolute;inset:-2px;border:2px solid var(--ink);border-radius:6px}
+.tbl i.rem{outline:2px dashed var(--ink);outline-offset:-3px;color:var(--ink)}
+.tbl i.skip{text-decoration:line-through;text-decoration-thickness:2px;color:var(--ink)}
+.tbl.dim i.bet{background:var(--felt-3);color:var(--brass);outline:1px solid var(--brass);outline-offset:-1px}
+.tbllegend{margin:-2px 0 0;font-size:12px;color:var(--muted)}
 .landed .hit{color:var(--good);font-weight:700}
 .landed .miss{color:var(--bad);font-weight:700}
 
 /* number pad */
 .pad{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-.pad button{height:46px;border:1px solid var(--line);border-radius:8px;background:var(--felt-2);font-family:var(--display);font-weight:700;font-size:22px;color:var(--ink);position:relative}
+.pad button{height:42px;border:1px solid var(--line);border-radius:8px;background:var(--felt-2);font-family:var(--display);font-weight:700;font-size:22px;color:var(--ink);position:relative}
 .pad button:active{transform:translateY(1px)}
 .pad .z{grid-column:span 4}
 .pad .undo{grid-column:span 2;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -105,7 +116,7 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
 .btn.warn{border-color:var(--bad);color:var(--bad)}
 .many{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .many textarea{width:100%;min-height:70px;background:var(--felt-2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
-@media (max-width:380px){ .action{font-size:28px;padding:7px 12px 6px} #wheel{width:104px;height:104px} .rec{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:380px){ .action{font-size:28px;padding:7px 12px 6px} #wheel{width:92px;height:92px} .tbl i{font-size:13px} .how{font-size:18px} .rec{grid-template-columns:repeat(2,1fr)} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 </style>
 
@@ -120,26 +131,31 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
   <p class="banner" id="exampleBanner" hidden>Example: 65 real spins from a 15 Oct session, so you can see how it reads. Your first tap starts your own session.</p>
 
   <section class="call" aria-live="polite">
+    <p class="landed" id="landed" hidden></p>
     <div class="call-top">
       <div class="call-head">
         <div class="action" id="action" data-l="0">WATCH</div>
+        <span class="chips" id="chips"></span>
         <div class="pat"><span class="eyebrow">Pattern in play</span><b id="patName">Reading the table</b><span class="switch" id="switchNote" hidden></span></div>
       </div>
       <svg id="wheel" viewBox="0 0 120 120" role="img" aria-label="Wheel with the 16 numbers to bet"></svg>
     </div>
+    <p class="how" id="how" data-l="0"></p>
+    <div class="tbl" id="tbl" role="img" aria-label="Betting table"></div>
+    <p class="tbllegend">Machine layout · gold = bet · ringed = put on · dashed = take off · struck = skip</p>
     <p class="reason" id="reason"></p>
-    <p class="why" id="why"></p>
-    <p class="landed" id="landed" hidden></p>
   </section>
 
   <div class="pad" id="pad"></div>
-  <p class="padnote">Gold = the 16 numbers to bet. Struck through = skip it. Tap the number that lands.</p>
+  <p class="padnote">Tap the number that lands. Gold = the 16 to bet, struck through = skip.</p>
+  <p class="why" id="why"></p>
 
   <div class="strip" id="strip" aria-label="Recent spins, newest first"></div>
 
   <section>
     <h2>Patterns <span id="patHead">hits in last 8 calls · normal 3.5</span></h2>
     <ol class="pats" id="pats"></ol>
+    <p class="note" id="learnNote"></p>
   </section>
 
   <section>
@@ -165,8 +181,9 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
 
 <script>
 /* Sector Watch engine v13. Pure functions, no DOM. Same code runs in the app and in the lab runner.
-   Four patterns (the player's own: one side hot, even spread, hot numbers, cold side wakes) each pick 16
-   numbers. The one with the most hits in its last 8 calls is in play. The call comes from how it is going. */
+   Four patterns (the player's own: one side hot, even spread, hot numbers, cold side wakes) plus a small
+   learner (nn.js) each pick 16 numbers. The one with the most hits in its last 8 calls is in play.
+   The call comes from how it is going. */
 var SW = (function () {
   var WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
   var POS = []; WHEEL.forEach(function (n, i) { POS[n] = i; });
@@ -250,6 +267,9 @@ var SW = (function () {
   } });
 
 
+  // 5. The learner: a small neural network trained on the player's real spins, retrained every 25 spins (nn.js).
+  P.push({ id: "learn", name: "Learner", short: "Learner", learner: true, pick: null });
+
   /* Your hint, confirmed on your October spins: when the last 12 spins were (nearly) all different numbers,
      the last number did not come straight back (0 times in 86). So in that state the last number is left out
      of the 16 and the next pocket along takes its place. */
@@ -276,6 +296,8 @@ var SW = (function () {
      opts.record: that running record carried from earlier sessions. opts.live: true where the player was at the
      table (not typed-in history); only live spins count in the record. */
   var W = 8, CAP = 60;
+  // opts.learn = {cps:[{at, w, n}]}: learner weights and the spin from which each set applies
+  function learnAt(L, i) { var c = null; if (L && L.cps) L.cps.forEach(function (x) { if (x.at <= i && (!c || x.at >= c.at)) c = x; }); return c; }
   function copyRec(r) { var o = {}; [0, 1, 2, 3].forEach(function (t) { var x = (r && r[t]) || {}; o[t] = { h: x.h || 0, n: x.n || 0 }; }); return o; }
   function pct(x) { return x.n ? Math.round(100 * x.h / x.n) + "%" : "–"; }
   function rd(x) { return Math.round(x); }
@@ -291,6 +313,7 @@ var SW = (function () {
       if (i >= 3) {
         var last = hist[hist.length - 1], spread = allOver(hist);
         var picks = P.map(function (p) {
+          if (p.learner) return null;
           var pk = p.pick(hist);
           if (spread && pk.nums.indexOf(last) >= 0) { pk.nums = dropLast(pk.nums, last); pk.dropped = last; }
           return pk;
@@ -300,8 +323,17 @@ var SW = (function () {
           for (var j = r.length - 1, st = 0; j >= 0; j--) { if (st === 0) st = r[j] ? 1 : -1; if ((r[j] ? 1 : -1) === st) s += st; else break; }
           return { hw: lw.filter(Boolean).length, nw: lw.length, all: r.filter(Boolean).length, streak: s };
         });
+        // the learner scores all 37 numbers from what the four patterns and the spins show
+        var LK = P.length - 1, cp = learnAt(opts.learn, i);
+        if (cp && typeof NN !== "undefined") {
+          var X = NN.feats(hist, picks.slice(0, LK).map(function (q) { return q.nums; }), forms.slice(0, LK).map(function (q) { return q.nw ? q.hw / q.nw : 0; }));
+          var ln = NN.top16(NN.forward(cp.w, X).p);
+          picks[LK] = { nums: ln, why: NN.explain(X, ln, cp) };
+          if (spread && ln.indexOf(last) >= 0) { picks[LK].nums = dropLast(ln, last); picks[LK].dropped = last; }
+        } else picks[LK] = { nums: [], off: true, why: "The learner has not trained yet." };
         var best = 0;
         for (var k = 1; k < P.length; k++) {
+          if (picks[k].off) continue;
           var a = forms[k], b = forms[best];
           if (a.hw > b.hw || (a.hw === b.hw && a.all > b.all)) best = k;
         }
@@ -340,7 +372,7 @@ var SW = (function () {
       calls.push(call);
       if (i < h.length) {
         var x = h[i];
-        if (i >= 3) P.forEach(function (p, k) { rec[k].push(calls[i].picks[k].nums.indexOf(x) >= 0); });
+        if (i >= 3) P.forEach(function (p, k) { if (!calls[i].picks[k].off) rec[k].push(calls[i].picks[k].nums.indexOf(x) >= 0); });
         if (call) {
           call.result = x; call.hit = call.nums.indexOf(x) >= 0;
           if ((call.raw > 0 || call.cool) && i >= MIN_SPINS && live[i] !== false) {
@@ -357,24 +389,137 @@ var SW = (function () {
   return { WHEEL: WHEEL, POS: POS, P: P, run: run, wd: wd, K: K, CH: CH, MIN_SPINS: MIN_SPINS, W: W, CAP: CAP, pct: pct };
 })();
 
+/* Sector Watch learner: a small neural network that scores every number from what the spins so far show.
+   Same weights for all 37 numbers (each number gets its own inputs), softmax across the 37, trained on the
+   player's real spins only. Deterministic start (no random numbers anywhere). */
+var NN = (function () {
+  var WHEEL = SW.WHEEL, POS = SW.POS, wd = SW.wd, H = 8;
+  var NAMES = ["just came", "came 2 spins ago", "spins since last (scaled)", "never this session", "times in last 12", "times in last 37",
+    "wheel distance to last", "distance to 2nd last", "distance to 3rd last", "hits within 3 pockets (last 12)", "hits within 3 pockets (last 37)",
+    "spread of table (different in last 12)", "in One side hot", "in Even spread", "in Hot numbers", "in Cold side wakes",
+    "One side hot form", "Even spread form", "Hot numbers form", "Cold side wakes form"];
+  var F = NAMES.length;
+  function feats(h, picks, forms) {
+    var t = h.length, last = [], X = [];
+    for (var n = 0; n < 37; n++) last[n] = -1;
+    h.forEach(function (x, i) { last[x] = i; });
+    var r12 = h.slice(-12), r37 = h.slice(-37), d12 = {};
+    r12.forEach(function (x) { d12[x] = 1; });
+    var spread = Object.keys(d12).length / 12;
+    for (var n2 = 0; n2 < 37; n2++) {
+      var g = last[n2] < 0 ? -1 : t - last[n2];
+      var c12 = 0, c37 = 0, near12 = 0, near37 = 0;
+      r12.forEach(function (x) { if (x === n2) c12++; if (wd(x, n2) <= 3) near12++; });
+      r37.forEach(function (x) { if (x === n2) c37++; if (wd(x, n2) <= 3) near37++; });
+      var v = [g === 1 ? 1 : 0, g === 2 ? 1 : 0, g < 0 ? 1 : Math.min(g, 74) / 74, g < 0 ? 1 : 0, c12 / 3, c37 / 4,
+        t > 0 ? wd(n2, h[t - 1]) / 18 : 0.5, t > 1 ? wd(n2, h[t - 2]) / 18 : 0.5, t > 2 ? wd(n2, h[t - 3]) / 18 : 0.5,
+        near12 / 6, near37 / 12, spread];
+      for (var k = 0; k < 4; k++) v.push(picks[k].indexOf(n2) >= 0 ? 1 : 0);
+      for (var k2 = 0; k2 < 4; k2++) v.push(picks[k2].indexOf(n2) >= 0 ? forms[k2] : 0);
+      X.push(v);
+    }
+    return X;
+  }
+  function init() {
+    var m = { W1: [], b1: [], W2: [], b2: 0 };
+    for (var j = 0; j < H; j++) { m.W1.push([]); for (var i = 0; i < F; i++) m.W1[j].push(0.15 * Math.sin(1 + 7 * j + 3 * i)); m.b1.push(0); m.W2.push(0.1 * Math.cos(2 + 5 * j)); }
+    return m;
+  }
+  function clone(m) { return JSON.parse(JSON.stringify(m)); }
+  function forward(m, X) {
+    var hs = [], s = [];
+    for (var n = 0; n < 37; n++) {
+      var hv = [], o = m.b2;
+      for (var j = 0; j < H; j++) { var z = m.b1[j]; for (var i = 0; i < F; i++) z += m.W1[j][i] * X[n][i]; var a = Math.tanh(z); hv.push(a); o += m.W2[j] * a; }
+      hs.push(hv); s.push(o);
+    }
+    var mx = Math.max.apply(null, s), e = s.map(function (v) { return Math.exp(v - mx); }), z2 = e.reduce(function (a, b) { return a + b; }, 0);
+    return { p: e.map(function (v) { return v / z2; }), hs: hs, s: s };
+  }
+  // full-batch gradient descent with L2; examples = [{X, y}]
+  function train(m, ex, epochs, lr, l2) {
+    for (var ep = 0; ep < epochs; ep++) {
+      var gW1 = m.W1.map(function (r) { return r.map(function () { return 0; }); }), gb1 = m.b1.map(function () { return 0; }), gW2 = m.W2.map(function () { return 0; }), gb2 = 0;
+      ex.forEach(function (e) {
+        var f = forward(m, e.X);
+        for (var n = 0; n < 37; n++) {
+          var d = f.p[n] - (n === e.y ? 1 : 0);
+          gb2 += d;
+          for (var j = 0; j < H; j++) {
+            gW2[j] += d * f.hs[n][j];
+            var dz = d * m.W2[j] * (1 - f.hs[n][j] * f.hs[n][j]);
+            if (dz === 0) continue;
+            gb1[j] += dz;
+            for (var i = 0; i < F; i++) gW1[j][i] += dz * e.X[n][i];
+          }
+        }
+      });
+      var N = Math.max(1, ex.length);
+      for (var j = 0; j < H; j++) {
+        m.W2[j] -= lr * (gW2[j] / N + l2 * m.W2[j]); m.b1[j] -= lr * gb1[j] / N;
+        for (var i = 0; i < F; i++) m.W1[j][i] -= lr * (gW1[j][i] / N + l2 * m.W1[j][i]);
+      }
+      m.b2 -= lr * gb2 / N;
+    }
+    return m;
+  }
+  // plain-words reason: what the chosen 16 have most in common compared with the other 21 numbers
+  var SAY = [["they include the number that just came", "they leave out the number that just came"], ["they include the number from 2 spins ago", "they leave out the number from 2 spins ago"], ["they have been away a while", "they came recently"], ["they have not shown yet this session", "they have already shown this session"], ["they repeat in the last 12", "they are missing from the last 12"], ["they are busy in the last 37", "they are quiet in the last 37"], ["they sit on the far side of the wheel from the last number", "they sit close to the last number on the wheel"], ["they sit away from the number 2 spins ago", "they sit near the number 2 spins ago"], ["they sit away from the number 3 spins ago", "they sit near the number 3 spins ago"], ["they are in the busy part of the wheel (last 12)", "they are in the quiet part of the wheel (last 12)"], ["they are in the busy part of the wheel (last 37)", "they are in the quiet part of the wheel (last 37)"], null, ["they match One side hot", "they avoid One side hot"], ["they match Even spread", "they avoid Even spread"], ["they match Hot numbers", "they avoid Hot numbers"], ["they match Cold side wakes", "they avoid Cold side wakes"], ["they match One side hot while it is hitting", "they avoid One side hot while it is hitting"], ["they match Even spread while it is hitting", "they avoid Even spread while it is hitting"], ["they match Hot numbers while it is hitting", "they avoid Hot numbers while it is hitting"], ["they match Cold side wakes while it is hitting", "they avoid Cold side wakes while it is hitting"]];
+  function explain(X, nums, cp) {
+    var inSet = {}; nums.forEach(function (n) { inSet[n] = 1; });
+    var sc = [];
+    for (var i = 0; i < F; i++) {
+      if (!SAY[i]) continue;
+      var a = 0, b = 0, all = [];
+      for (var n = 0; n < 37; n++) { all.push(X[n][i]); if (inSet[n]) a += X[n][i]; else b += X[n][i]; }
+      var mean = all.reduce(function (x, y) { return x + y; }, 0) / 37, sd = Math.sqrt(all.reduce(function (x, y) { return x + (y - mean) * (y - mean); }, 0) / 37);
+      if (sd < 1e-9) continue;
+      sc.push({ i: i, d: (a / nums.length - b / (37 - nums.length)) / sd });
+    }
+    sc.sort(function (x, y) { return Math.abs(y.d) - Math.abs(x.d); });
+    var said = sc.slice(0, 2).map(function (x) { return SAY[x.i][x.d > 0 ? 0 : 1]; });
+    return "Trained on " + cp.n + " real spins" + (cp.label ? " (" + cp.label + ")" : "") + ". Why these 16: " + said.join("; ") + ".";
+  }
+  // turn sessions of spins into training examples: [{spins:[...]}] -> [{X, y}]
+  function examples(seqs) {
+    var ex = [];
+    seqs.forEach(function (sq) {
+      var h = sq.spins; if (!h || h.length < 4) return;
+      var r = SW.run(h, {});
+      for (var t = 3; t < h.length; t++) {
+        var c = r.calls[t], k = SW.P.length - 1;
+        ex.push({ X: feats(h.slice(0, t), c.picks.slice(0, k).map(function (p) { return p.nums; }), c.forms.slice(0, k).map(function (f) { return f.nw ? f.hw / f.nw : 0; })), y: h[t] });
+      }
+    });
+    return ex;
+  }
+  var LR = 0.5, L2 = 0.03, EPOCHS = 40;
+  function top16(p) { var ns = []; for (var n = 0; n < 37; n++) ns.push(n); ns.sort(function (a, b) { return p[b] - p[a] || POS[a] - POS[b]; }); return ns.slice(0, 16); }
+  return { feats: feats, init: init, clone: clone, forward: forward, train: train, top16: top16, explain: explain, examples: examples, F: F, NAMES: NAMES, LR: LR, L2: L2, EPOCHS: EPOCHS };
+})();
+
 </script>
 <script>
 (function(){
 "use strict";
 var $=function(id){return document.getElementById(id);};
 var KEY="sectorwatch.v13";
-var LEVELS=["HOLD","BET","BET ×2","BET ×3"], MARK=["–","B","×2","×3"];
+var LEVELS=["HOLD","BET","DOUBLE","TRIPLE"], MARK=["–","B","×2","×3"], CHIPS=["No bet this spin","1 chip on each gold number","2 chips on each gold number","3 chips on each gold number"];
+// The learner starts from weights trained on the 545 real October spins; it keeps learning from every session.
+var OCT=[[33,24,23,19,9,0,21,16,36,19,26,36,7,19,8,1,13,26,30,17,25,8,24,10,21,14,9,18,10,33,10,35,25,34,17,25,36,2,18,24,27,7,2,2,10,12,29,13,25,0,8,0,2,21,35,29,24,34,18,27,17,36,12,22,25,8,15,9,24,14,13,5,2,35,21,12,14,28,32,6,2,34,2,26,10,15,27,22,16,7,20,28,12,5,32,36,31,3,24,1,3,17,5,1,28,19,18,32,11,36,19,0,25,33,32,0,27,31,18,16,25,22,0,32,11,17,35,13,14,11,2,9,21,22,16,19,25,6],[8,4,0,18,16,2,6,24,20,4,15,31,7,29,21,31,35,30,10,20,14,13,31,14,13,17,16,5,20,5,15,31,31,19,26,1,36,16,0,1,15,27,30,15,27,3,21,0,9,9,20,20,5,23,9,2,12,13,27,9,13,24,33,4,28,28,9,0,2,11,1,19,21,24,17,14,3,36,14,30,0,29,4,24,31,20,15,6,0,36,17,3,26,25,13,28,8,7,29,0,1,34,8,9,31,14,0,22,14,29,1,0,15,10,33,32,13,4,34,24,19,35,11,31,6,28,22,14,9,30,16,24,32,5,13,9,36,34,26,24,36,34,35,0,0,30,4,13,7,6,32,1,22,9,14,26,28,12,31,27,6,29,24,3,30,31,8,24,23,35,31,1,19,9,27,31,13,30,4,7,32,32,36,29,16,8,1,24,4,30,19,29,13,35,36,0,35,24,4,2,5,1,17,36,22,6,24,33,10,32,14,33,18,25,3,12,22,15,36,19,3,20,7,19,34,23,9,27,12,0,5,3,9,34,18,12,2,26,17,26,9,19,21,2,28,32,24,28,8,6,9,26,9,16,1,9],[13,13,7,30,15,9,26,32,14,22,29,35,12,18,4,29,2,13,30,17,12,9,5,22,26,9,21,16,18],[12,0,1,35,9,29,36,21,33,14,22,18,3,15,21,29,20,7,10,23,18,15,21,13,35,13,30,21,20,22,15,6,20,23,4,27,31,35,16,14,16,36,34,1,4,30,26,15,32,11,26,27,14,26,0,4,17,4,29,18,36,6,7,7,18],[22,22,27,26,2,15,14,6,11,29,16,18,1,25,18,0,29,12,11,1,18,30,8,4,20,4,12,11,15,34,13,6,30,9,10,19,23,12,11,29,1,10,17,21,18,19,17,14,32,36,31,10,18,3,34,18,26]];
+var NN_PRE={"n":530,"w":{"W1":[[-0.011,-0.0104,-0.0054,-0.0007,0.003,0.0067,0.0047,-0.0008,-0.0088,-0.0086,-0.0004,0.0007,0.017,0.0168,-0.0007,0.0224,0.0083,0.0168,-0.0023,0.0234],[-0.0579,-0.0458,-0.0348,-0.0045,0.0117,0.0322,0.0164,-0.01,-0.0454,-0.0457,-0.002,-0.0076,0.0832,0.0694,-0.0005,0.0946,0.0455,0.0702,-0.006,0.101],[-0.0457,-0.0358,-0.026,-0.0028,0.0097,0.0249,0.0149,-0.0076,-0.0338,-0.0365,0.0001,-0.0056,0.0672,0.055,0.0014,0.075,0.0369,0.0552,-0.0036,0.0799],[0.0322,0.0237,0.0185,-0.0002,-0.005,-0.0196,-0.0092,0.002,0.0249,0.0223,0.0017,0,-0.0449,-0.0409,0.0001,-0.0546,-0.0243,-0.0396,0.0028,-0.0563],[0.0684,0.0528,0.0433,0.0049,-0.0124,-0.0394,-0.0162,0.0106,0.0557,0.0524,0.0044,0.0086,-0.0958,-0.0814,0.0019,-0.1102,-0.0526,-0.0818,0.0075,-0.1173],[0.0424,0.0341,0.0242,0.0027,-0.009,-0.0239,-0.0138,0.0063,0.0325,0.033,0.0009,0.0035,-0.0619,-0.053,-0.0001,-0.072,-0.0333,-0.0531,0.0044,-0.0762],[-0.0326,-0.0217,-0.0189,0.0013,0.004,0.0196,0.0086,-0.0015,-0.024,-0.0218,-0.0011,-0.0006,0.0446,0.039,0.0012,0.052,0.025,0.0372,-0.0011,0.0533],[-0.0484,-0.0349,-0.0293,-0.0008,0.0073,0.0287,0.0123,-0.0049,-0.038,-0.0343,-0.0028,-0.0029,0.0666,0.0582,-0.0002,0.0782,0.0368,0.057,-0.0038,0.0815]],"b1":[-0.0003,-0.0438,-0.0223,0.0097,0.0651,0.0215,-0.0062,-0.0248],"W2":[0.0495,0.2286,0.1801,-0.1257,-0.2677,-0.17,0.1212,0.1851],"b2":0}};
+function firstCps(nn,label){return [{at:0,w:nn.w,n:nn.n,label:label}];}
 // Running record of each call (0 = hold after a run of hits, 1 bet, 2 double, 3 triple), started from replaying
 // the 436 live spins saved by the previous app (10-16 Oct 2026) through these rules.
 var SEED={0:{h:24.6,n:60},1:{h:28.7,n:60},2:{h:24,n:40},3:{h:7,n:10}};
 var EXAMPLE={spins:[12,0,1,35,9,29,36,21,33,14,22,18,3,15,21,29,20,7,10,23,18,15,21,13,35,13,30,21,20,22,15,6,20,23,4,27,31,35,16,14,16,36,34,1,4,30,26,15,32,11,26,27,14,26,0,4,17,4,29,18,36,6,7,7,18],pre:22};
 function newRun(){return Date.now().toString(36);}
-function exampleState(){return {spins:EXAMPLE.spins.map(function(n,i){return {n:n,t:0,pre:i<EXAMPLE.pre};}),record:SEED,run:"example",example:true,archive:[]};}
+function exampleState(){var nn={w:NN_PRE.w,n:NN_PRE.n};return {spins:EXAMPLE.spins.map(function(n,i){return {n:n,t:0,pre:i<EXAMPLE.pre};}),record:SEED,run:"example",example:true,archive:[],nn:nn,cps:firstCps(nn,"your October spins")};}
 var state=exampleState();
 
 function load(){
   try{var raw=localStorage.getItem(KEY),old=false;if(!raw){raw=localStorage.getItem("sectorwatch.v12");old=true;}if(!raw)return;var s=JSON.parse(raw);if(old&&s)s.record=null;
-    if(s&&Array.isArray(s.spins)){state={spins:s.spins.filter(function(x){return x&&x.n>=0&&x.n<=36;}),record:s.record||SEED,run:s.run||newRun(),example:!!s.example,archive:Array.isArray(s.archive)?s.archive:[]};}
+    if(s&&Array.isArray(s.spins)){var nn=s.nn&&s.nn.w?s.nn:{w:NN_PRE.w,n:NN_PRE.n};state={spins:s.spins.filter(function(x){return x&&x.n>=0&&x.n<=36;}),record:s.record||SEED,run:s.run||newRun(),example:!!s.example,archive:Array.isArray(s.archive)?s.archive:[],nn:nn,cps:Array.isArray(s.cps)&&s.cps.length?s.cps:firstCps(nn,"your October spins")};}
   }catch(e){}
 }
 function save(){
@@ -387,7 +532,7 @@ function save(){
 var R=null;
 function recompute(){
   var h=state.spins.map(function(s){return s.n;}), live=state.spins.map(function(s){return !s.pre;});
-  R=SW.run(h,{record:state.record,live:live});
+  R=SW.run(h,{record:state.record,live:live,learn:{cps:state.cps}});
 }
 
 /* ---------- wheel ---------- */
@@ -432,11 +577,45 @@ function buildPad(){
     addSpin(Number(b.dataset.n));
   });
 }
-function startOwn(){state={spins:[],record:SEED,run:newRun(),example:false,archive:[]};}
+function startOwn(){var nn={w:NN_PRE.w,n:NN_PRE.n};state={spins:[],record:SEED,run:newRun(),example:false,archive:[],nn:nn,cps:firstCps(nn,"your October spins")};}
 function addSpin(n){
   if(state.example)startOwn();
   state.spins.push({n:n,t:Date.now(),pre:false});
-  requestWake();save();update();
+  requestWake();save();update();maybeLearn();
+}
+
+/* ---------- learning: every 25 spins you tap, the learner retrains on October + this phone's sessions ---------- */
+var learning=false;
+function liveCount(){return state.spins.filter(function(s){return !s.pre;}).length;}
+function r5(x){return Math.round(x*1e5)/1e5;}
+function maybeLearn(){
+  if(learning||state.example)return;
+  var lc=liveCount(),at=state.spins.length;
+  if(!lc||lc%25!==0||state.cps.some(function(c){return c.at===at;}))return;
+  learning=true;
+  var seqs=OCT.map(function(sp){return {spins:sp};});
+  state.archive.forEach(function(a){var sp=String(a.nums||"").split(" ").map(function(x){return Number(x.replace("s",""));}).filter(function(n){return n>=0&&n<=36;});if(sp.length>3)seqs.push({spins:sp});});
+  seqs.push({spins:state.spins.slice(0,at).map(function(s){return s.n;})});
+  var note=$("learnNote");note.textContent="Learning from your spins…";
+  setTimeout(function(){
+    var ex=NN.examples(seqs),m=NN.clone(state.nn.w),ep=0;
+    (function step(){
+      NN.train(m,ex,2,NN.LR,NN.L2);ep+=2;
+      note.textContent="Learning from "+ex.length+" spins… "+Math.round(100*ep/NN.EPOCHS)+"%";
+      if(ep<NN.EPOCHS){setTimeout(step,0);return;}
+      learning=false;
+      if(state.example||state.spins.length<at){renderLearn();return;}
+      var w={W1:m.W1.map(function(r){return r.map(r5);}),b1:m.b1.map(r5),W2:m.W2.map(r5),b2:r5(m.b2)};
+      state.nn={w:w,n:ex.length};
+      state.cps.push({at:at,w:w,n:ex.length,label:"retrained at spin "+at});
+      save();update();
+    })();
+  },60);
+}
+function renderLearn(){
+  if(learning)return;
+  var cp=state.cps[state.cps.length-1],lc=liveCount(),left=25-(lc%25);
+  $("learnNote").textContent="Learner: trained on "+cp.n+" real spins ("+cp.label+"). It retrains after every 25 spins you tap"+(state.example?"":": next in "+left+" spin"+(left===1?"":"s"))+". It only takes over when it is hitting better than the patterns.";
 }
 
 /* ---------- render ---------- */
@@ -448,11 +627,11 @@ function render(){
   $("undoBtn").disabled=state.example||!h.length;
   var act=$("action");
   if(!call){
-    act.textContent="WATCH";act.dataset.l="0";$("patName").textContent="Reading the table";$("switchNote").hidden=true;
+    act.textContent="WATCH";act.dataset.l="0";$("chips").textContent="No bet yet";$("patName").textContent="Reading the table";$("switchNote").hidden=true;
     $("reason").textContent="Tap each number as it lands. Patterns start after 3 spins and the first bet call comes at spin "+SW.MIN_SPINS+".";
     $("why").textContent="Have the machine's history? Use Add past numbers below to start straight away.";
   }else{
-    act.textContent=LEVELS[call.level];act.dataset.l=String(call.level);
+    act.textContent=LEVELS[call.level];act.dataset.l=String(call.level);$("chips").textContent=CHIPS[call.level];
     $("patName").textContent=call.name;
     $("switchNote").hidden=!call.switched;$("switchNote").textContent=call.switched?"Switched from "+call.switched:"";
     $("reason").textContent=call.reason;
@@ -470,8 +649,42 @@ function render(){
   var last=h.length?h[h.length-1]:null;
   Array.prototype.forEach.call($("pad").querySelectorAll("button[data-n]"),function(b){var n=Number(b.dataset.n);b.classList.toggle("bet",!!set[n]);b.classList.toggle("last",n===last);b.classList.toggle("skip",!!call&&call.dropped===n);});
   drawWheel(nums,h);
+  var how=howTo(call,h),hw=$("how");hw.textContent=how.t;hw.dataset.l=String(how.l);
+  renderTable(nums,how,call);
   var sm=$("saveMsg");if(state.example)sm.textContent="Example only. Nothing is saved until you tap a number.";else if(/^Example only/.test(sm.textContent))sm.textContent="Saved on this phone.";
-  renderStrip(h);renderPats(call);renderRec();
+  renderStrip(h);renderPats(call);renderRec();renderLearn();
+}
+/* Quick betting: most spins change 0-2 of the 16, so say what to do against the bet already on the machine
+   (REPEAT / move a few chips / DOUBLE) instead of making the player place 16 chips again. */
+function howTo(call,h){
+  var none={t:"",l:0,add:[],rem:[]};
+  if(!call||h.length<SW.MIN_SPINS){none.t="Watch: tap each number as it lands.";return none;}
+  var L=call.level,cur=call.nums;
+  if(L===0){none.t="Don't bet this spin. Just tap the number that lands.";return none;}
+  var i=h.length-1,pc=i>=0?R.calls[i]:null,prev=pc&&pc.level>0&&pc.at>=SW.MIN_SPINS&&!state.spins[i].pre?pc:null;
+  var word=["","1 chip","2 chips","3 chips"][L];
+  if(!prev)return {t:"New bet: "+word+" on each of the 16 gold numbers.",l:L,add:[],rem:[]};
+  var add=cur.filter(function(n){return prev.nums.indexOf(n)<0;}).sort(function(a,b){return a-b;}),rem=prev.nums.filter(function(n){return cur.indexOf(n)<0;}).sort(function(a,b){return a-b;});
+  var moves=(rem.length?" take off "+rem.join(" · ")+",":"")+(add.length?" put "+(L===prev.level?word:"1 chip")+" on "+add.join(" · ")+",":"");
+  var t;
+  if(add.length>6)t="New 16: clear, then "+word+" on each gold number.";
+  else if(L===prev.level)t=add.length?"Press REPEAT, then"+moves.replace(/,$/,".") :"Press REPEAT. Same 16, "+word+" each.";
+  else if(prev.level===1&&L===2)t="Press REPEAT,"+moves+" then DOUBLE (×2).";
+  else t="Clear, then "+word+" on each gold number.";
+  return {t:t,l:L,add:add,rem:rem};
+}
+var tblCells={};
+function buildTable(){
+  var el=$("tbl");
+  function mk(n,col,row){var c=document.createElement("i");c.className="num";c.textContent=n;c.style.gridColumn=col;c.style.gridRow=row;el.appendChild(c);tblCells[n]=c;}
+  mk(0,"1","1 / span 3");
+  for(var r=0;r<3;r++)for(var k=0;k<12;k++)mk(k*3+(3-r),String(k+2),String(r+1));
+}
+function renderTable(nums,how,call){
+  var set={},add={},rem={};nums.forEach(function(n){set[n]=1;});how.add.forEach(function(n){add[n]=1;});how.rem.forEach(function(n){rem[n]=1;});
+  for(var n=0;n<37;n++){var c=tblCells[n];c.className="num"+(set[n]?" bet":"")+(add[n]?" add":"")+(rem[n]?" rem":"")+(call&&call.dropped===n?" skip":"");}
+  var el=$("tbl");el.classList.toggle("dim",!call||call.level===0);
+  el.setAttribute("aria-label",(call&&call.level?"Bet on: ":"Would play: ")+nums.slice().sort(function(a,b){return a-b;}).join(", "));
 }
 function renderStrip(h){
   var el=$("strip");el.textContent="";
@@ -536,7 +749,7 @@ $("newBtn").addEventListener("click",function(){
     state.archive.push({run:state.run,start:state.spins[0].t,nums:state.spins.map(function(s){return (s.pre?"s":"")+s.n;}).join(" ")});
     state.archive=state.archive.slice(-10);
   }
-  state.spins=[];state.run=newRun();save();update();
+  state.spins=[];state.run=newRun();state.cps=firstCps(state.nn,"carried from your last session");save();update();
 });
 $("copyBtn").addEventListener("click",function(){
   var txt=state.spins.map(function(s){return s.n;}).join(" "),msg=$("saveMsg");
@@ -554,7 +767,7 @@ function cloudPush(){
   if(!cdb||state.example||!state.spins.length)return;
   if(cloudBusy){cloudAgain=true;return;}
   cloudBusy=true;
-  var body={run:state.run,app:"v13",spins:state.spins,record:state.record,updated:Date.now()};
+  var body={run:state.run,app:"v13.1",spins:state.spins,record:state.record,cps:state.cps,updated:Date.now()};
   cdb.doc("sessions/v13_"+state.run).set(body).then(function(){
     $("saveMsg").textContent="Saved on this phone and in the cloud at "+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+".";
   },function(e){
@@ -564,7 +777,7 @@ function cloudPush(){
 }
 window.addEventListener("online",cloudQueue);
 
-load();buildWheel();buildPad();update();
+load();buildWheel();buildPad();buildTable();update();
 var useDb=window.claude&&typeof window.claude.use==="function"?window.claude.use("db"):Promise.resolve(null);
 useDb.then(function(d){cdb=d;if(d)cloudPush();},function(){});
 })();
