@@ -136,7 +136,7 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
       <div class="call-head">
         <div class="action" id="action" data-l="0">WATCH</div>
         <span class="chips" id="chips"></span>
-        <div class="pat"><span class="eyebrow">Pattern in play</span><b id="patName">Reading the table</b><span class="switch" id="switchNote" hidden></span></div>
+        <div class="pat"><span class="eyebrow" id="patEyebrow">Pattern in play</span><b id="patName">Reading the table</b><span class="switch" id="switchNote" hidden></span></div>
       </div>
       <svg id="wheel" viewBox="0 0 120 120" role="img" aria-label="Wheel with the 16 numbers to bet"></svg>
     </div>
@@ -152,9 +152,14 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
 
   <div class="strip" id="strip" aria-label="Recent spins, newest first"></div>
 
-  <section>
+  <section id="patsSec">
     <h2>Patterns <span id="patHead">hits in last 8 calls · normal 3.5</span></h2>
     <ol class="pats" id="pats"></ol>
+  </section>
+
+  <section id="netSec" hidden>
+    <h2>Network <span>record at each confidence · break-even 44.4%</span></h2>
+    <div class="rec" id="bands"></div>
     <p class="note" id="learnNote"></p>
   </section>
 
@@ -494,8 +499,47 @@ var NN = (function () {
     return ex;
   }
   var LR = 0.5, L2 = 0.03, EPOCHS = 40;
+
+  /* Neural Watch: the network alone picks the 16. Hold / bet / double / triple come from the network's own record
+     at each confidence level (lower / middle / higher chance for its 16), learned on the player's live spins.
+     Until a level has 20 calls the app just bets 1 chip: on the October spins the network's confidence on its own
+     did not tell good spins from bad ones, so it has to earn the right to hold or double. */
+  var BANDS = [{ id: "low", name: "lower", max: 0.465 }, { id: "mid", name: "middle", max: 0.475 }, { id: "high", name: "higher", max: 9 }];
+  function bandOf(c) { for (var i = 0; i < BANDS.length; i++) if (c < BANDS[i].max) return BANDS[i]; return BANDS[2]; }
+  function learnAt(L, i) { var c = null; if (L && L.cps) L.cps.forEach(function (x) { if (x.at <= i && (!c || x.at >= c.at)) c = x; }); return c; }
+  function copyBand(r) { var o = {}; BANDS.forEach(function (b) { var x = (r && r[b.id]) || {}; o[b.id] = { h: x.h || 0, n: x.n || 0 }; }); return o; }
+  function of(x) { return Math.round(x.h) + " of " + Math.round(x.n) + " (" + Math.round(100 * x.h / x.n) + "%)"; }
+  function runNeural(h, opts) {
+    opts = opts || {};
+    var base = SW.run(h, {}), live = opts.live || [], rec = copyBand(opts.record), calls = [], CAP = 60, MIN = SW.MIN_SPINS, k = SW.P.length - 1;
+    for (var i = 0; i <= h.length; i++) {
+      var call = null, cp = i >= 3 ? learnAt(opts.learn, i) : null;
+      if (cp) {
+        var b = base.calls[i];
+        var X = feats(h.slice(0, i), b.picks.slice(0, k).map(function (p) { return p.nums; }), b.forms.slice(0, k).map(function (f) { return f.nw ? f.hw / f.nw : 0; }));
+        var f = forward(cp.w, X), nums = top16(f.p), chance = nums.reduce(function (a, n) { return a + f.p[n]; }, 0), band = bandOf(chance), r = rec[band.id], level, reason;
+        var ch = "The network gives these 16 a " + (100 * chance).toFixed(1) + "% chance (normal 43.2%, break-even 44.4%)";
+        if (i < MIN) { level = 0; reason = "Reading the table: " + i + " of " + MIN + " spins in. Watch, don't bet yet."; }
+        else if (r.n < 20) { level = 1; reason = ch + ". It has " + Math.round(r.n) + " calls on record at this " + band.name + " confidence; after 20 it will know whether to hold or double here. Bet."; }
+        else {
+          var rt = r.h / r.n;
+          if (rt < 0.444) { level = 0; reason = ch + ", but at this " + band.name + " confidence its calls have hit only " + of(r) + ", below break-even. Hold."; }
+          else if (rt >= 0.58 && r.n >= 30) { level = 3; reason = ch + ", and at this " + band.name + " confidence its calls have hit " + of(r) + ". Triple."; }
+          else if (rt >= 0.52) { level = 2; reason = ch + ", and at this " + band.name + " confidence its calls have hit " + of(r) + ". Double."; }
+          else { level = 1; reason = ch + ". At this " + band.name + " confidence its calls have hit " + of(r) + ", above break-even. Bet."; }
+        }
+        call = { at: i, pattern: "nn", name: "Neural network", nums: nums, chance: chance, band: band.id, level: level, reason: reason, why: explain(X, nums, cp), switched: null };
+      }
+      calls.push(call);
+      if (i < h.length && call) {
+        var x = h[i]; call.result = x; call.hit = call.nums.indexOf(x) >= 0;
+        if (i >= MIN && live[i] !== false) { var rr = rec[call.band]; rr.n++; if (call.hit) rr.h++; if (rr.n > CAP) { rr.h = rr.h * CAP / rr.n; rr.n = CAP; } }
+      }
+    }
+    return { calls: calls, next: calls[h.length], record: rec };
+  }
   function top16(p) { var ns = []; for (var n = 0; n < 37; n++) ns.push(n); ns.sort(function (a, b) { return p[b] - p[a] || POS[a] - POS[b]; }); return ns.slice(0, 16); }
-  return { feats: feats, init: init, clone: clone, forward: forward, train: train, top16: top16, explain: explain, examples: examples, F: F, NAMES: NAMES, LR: LR, L2: L2, EPOCHS: EPOCHS };
+  return { feats: feats, init: init, clone: clone, forward: forward, train: train, top16: top16, explain: explain, examples: examples, runNeural: runNeural, BANDS: BANDS, F: F, NAMES: NAMES, LR: LR, L2: L2, EPOCHS: EPOCHS };
 })();
 
 </script>
@@ -503,7 +547,8 @@ var NN = (function () {
 (function(){
 "use strict";
 var $=function(id){return document.getElementById(id);};
-var KEY="sectorwatch.v13";
+var MODE="patterns",NEURAL=MODE==="neural";
+var KEY=NEURAL?"neuralwatch.v1":"sectorwatch.v13";
 var LEVELS=["HOLD","BET","DOUBLE","TRIPLE"], MARK=["–","B","×2","×3"], CHIPS=["No bet this spin","1 chip on each gold number","2 chips on each gold number","3 chips on each gold number"];
 // The learner starts from weights trained on the 545 real October spins; it keeps learning from every session.
 var OCT=[[33,24,23,19,9,0,21,16,36,19,26,36,7,19,8,1,13,26,30,17,25,8,24,10,21,14,9,18,10,33,10,35,25,34,17,25,36,2,18,24,27,7,2,2,10,12,29,13,25,0,8,0,2,21,35,29,24,34,18,27,17,36,12,22,25,8,15,9,24,14,13,5,2,35,21,12,14,28,32,6,2,34,2,26,10,15,27,22,16,7,20,28,12,5,32,36,31,3,24,1,3,17,5,1,28,19,18,32,11,36,19,0,25,33,32,0,27,31,18,16,25,22,0,32,11,17,35,13,14,11,2,9,21,22,16,19,25,6],[8,4,0,18,16,2,6,24,20,4,15,31,7,29,21,31,35,30,10,20,14,13,31,14,13,17,16,5,20,5,15,31,31,19,26,1,36,16,0,1,15,27,30,15,27,3,21,0,9,9,20,20,5,23,9,2,12,13,27,9,13,24,33,4,28,28,9,0,2,11,1,19,21,24,17,14,3,36,14,30,0,29,4,24,31,20,15,6,0,36,17,3,26,25,13,28,8,7,29,0,1,34,8,9,31,14,0,22,14,29,1,0,15,10,33,32,13,4,34,24,19,35,11,31,6,28,22,14,9,30,16,24,32,5,13,9,36,34,26,24,36,34,35,0,0,30,4,13,7,6,32,1,22,9,14,26,28,12,31,27,6,29,24,3,30,31,8,24,23,35,31,1,19,9,27,31,13,30,4,7,32,32,36,29,16,8,1,24,4,30,19,29,13,35,36,0,35,24,4,2,5,1,17,36,22,6,24,33,10,32,14,33,18,25,3,12,22,15,36,19,3,20,7,19,34,23,9,27,12,0,5,3,9,34,18,12,2,26,17,26,9,19,21,2,28,32,24,28,8,6,9,26,9,16,1,9],[13,13,7,30,15,9,26,32,14,22,29,35,12,18,4,29,2,13,30,17,12,9,5,22,26,9,21,16,18],[12,0,1,35,9,29,36,21,33,14,22,18,3,15,21,29,20,7,10,23,18,15,21,13,35,13,30,21,20,22,15,6,20,23,4,27,31,35,16,14,16,36,34,1,4,30,26,15,32,11,26,27,14,26,0,4,17,4,29,18,36,6,7,7,18],[22,22,27,26,2,15,14,6,11,29,16,18,1,25,18,0,29,12,11,1,18,30,8,4,20,4,12,11,15,34,13,6,30,9,10,19,23,12,11,29,1,10,17,21,18,19,17,14,32,36,31,10,18,3,34,18,26]];
@@ -511,14 +556,14 @@ var NN_PRE={"n":530,"w":{"W1":[[-0.011,-0.0104,-0.0054,-0.0007,0.003,0.0067,0.00
 function firstCps(nn,label){return [{at:0,w:nn.w,n:nn.n,label:label}];}
 // Running record of each call (0 = hold after a run of hits, 1 bet, 2 double, 3 triple), started from replaying
 // the 436 live spins saved by the previous app (10-16 Oct 2026) through these rules.
-var SEED={0:{h:24.6,n:60},1:{h:28.7,n:60},2:{h:24,n:40},3:{h:7,n:10}};
+var SEED=NEURAL?{}:{0:{h:24.6,n:60},1:{h:28.7,n:60},2:{h:24,n:40},3:{h:7,n:10}};
 var EXAMPLE={spins:[12,0,1,35,9,29,36,21,33,14,22,18,3,15,21,29,20,7,10,23,18,15,21,13,35,13,30,21,20,22,15,6,20,23,4,27,31,35,16,14,16,36,34,1,4,30,26,15,32,11,26,27,14,26,0,4,17,4,29,18,36,6,7,7,18],pre:22};
 function newRun(){return Date.now().toString(36);}
 function exampleState(){var nn={w:NN_PRE.w,n:NN_PRE.n};return {spins:EXAMPLE.spins.map(function(n,i){return {n:n,t:0,pre:i<EXAMPLE.pre};}),record:SEED,run:"example",example:true,archive:[],nn:nn,cps:firstCps(nn,"your October spins")};}
 var state=exampleState();
 
 function load(){
-  try{var raw=localStorage.getItem(KEY),old=false;if(!raw){raw=localStorage.getItem("sectorwatch.v12");old=true;}if(!raw)return;var s=JSON.parse(raw);if(old&&s)s.record=null;
+  try{var raw=localStorage.getItem(KEY),old=false;if(!raw&&!NEURAL){raw=localStorage.getItem("sectorwatch.v12");old=true;}if(!raw)return;var s=JSON.parse(raw);if(old&&s)s.record=null;
     if(s&&Array.isArray(s.spins)){var nn=s.nn&&s.nn.w?s.nn:{w:NN_PRE.w,n:NN_PRE.n};state={spins:s.spins.filter(function(x){return x&&x.n>=0&&x.n<=36;}),record:s.record||SEED,run:s.run||newRun(),example:!!s.example,archive:Array.isArray(s.archive)?s.archive:[],nn:nn,cps:Array.isArray(s.cps)&&s.cps.length?s.cps:firstCps(nn,"your October spins")};}
   }catch(e){}
 }
@@ -532,7 +577,7 @@ function save(){
 var R=null;
 function recompute(){
   var h=state.spins.map(function(s){return s.n;}), live=state.spins.map(function(s){return !s.pre;});
-  R=SW.run(h,{record:state.record,live:live,learn:{cps:state.cps}});
+  R=NEURAL?NN.runNeural(h,{record:state.record,live:live,learn:{cps:state.cps}}):SW.run(h,{record:state.record,live:live});
 }
 
 /* ---------- wheel ---------- */
@@ -589,7 +634,7 @@ var learning=false;
 function liveCount(){return state.spins.filter(function(s){return !s.pre;}).length;}
 function r5(x){return Math.round(x*1e5)/1e5;}
 function maybeLearn(){
-  if(learning||state.example)return;
+  if(!NEURAL||learning||state.example)return;
   var lc=liveCount(),at=state.spins.length;
   if(!lc||lc%25!==0||state.cps.some(function(c){return c.at===at;}))return;
   learning=true;
@@ -613,9 +658,9 @@ function maybeLearn(){
   },60);
 }
 function renderLearn(){
-  if(learning)return;
+  if(!NEURAL||learning)return;
   var cp=state.cps[state.cps.length-1],lc=liveCount(),left=25-(lc%25);
-  $("learnNote").textContent="Learner: trained on "+cp.n+" real spins ("+cp.label+"). It retrains after every 25 spins you tap"+(state.example?"":": next in "+left+" spin"+(left===1?"":"s"))+". It only takes over when it is hitting better than the patterns.";
+  $("learnNote").textContent="Network: trained on "+cp.n+" real spins ("+cp.label+"). It retrains after every 25 spins you tap"+(state.example?"":": next in "+left+" spin"+(left===1?"":"s"))+". Its record at each confidence decides hold, bet or double.";
 }
 
 /* ---------- render ---------- */
@@ -652,7 +697,7 @@ function render(){
   var how=howTo(call,h),hw=$("how");hw.textContent=how.t;hw.dataset.l=String(how.l);
   renderTable(nums,how,call);
   var sm=$("saveMsg");if(state.example)sm.textContent="Example only. Nothing is saved until you tap a number.";else if(/^Example only/.test(sm.textContent))sm.textContent="Saved on this phone.";
-  renderStrip(h);renderPats(call);renderRec();renderLearn();
+  renderStrip(h);if(NEURAL)renderBands();else renderPats(call);renderRec();renderLearn();
 }
 /* Quick betting: most spins change 0-2 of the 16, so say what to do against the bet already on the machine
    (REPEAT / move a few chips / DOUBLE) instead of making the player place 16 chips again. */
@@ -700,7 +745,7 @@ function renderStrip(h){
 }
 function renderPats(call){
   var el=$("pats");el.textContent="";
-  var rows=SW.P.map(function(p,k){var r=R.rec[k]||[];return {k:k,p:p,last:r.slice(-SW.W),hw:r.slice(-SW.W).filter(Boolean).length,all:r.filter(Boolean).length,n:r.length};});
+  var rows=SW.P.map(function(p,k){var r=R.rec[k]||[];return {k:k,p:p,last:r.slice(-SW.W),hw:r.slice(-SW.W).filter(Boolean).length,all:r.filter(Boolean).length,n:r.length};}).filter(function(r){return !r.p.learner;});
   rows.sort(function(a,b){return (b.hw-a.hw)||(b.all-a.all)||(a.k-b.k);});
   if(call){var li=rows.findIndex(function(r){return r.p.id===call.pattern;});if(li>0)rows.unshift(rows.splice(li,1)[0]);}
   rows.forEach(function(r){
@@ -715,6 +760,15 @@ function renderPats(call){
     li.appendChild(nm);li.appendChild(sp);li.appendChild(sc);el.appendChild(li);
   });
 }
+function renderBands(){
+  var el=$("bands");el.textContent="";
+  NN.BANDS.forEach(function(b){
+    var v=R.record[b.id],d=document.createElement("div"),x=document.createElement("b"),s=document.createElement("span");
+    x.className="num";x.textContent=v.n?Math.round(v.h)+" of "+Math.round(v.n):"–";
+    s.textContent=b.name[0].toUpperCase()+b.name.slice(1)+" confidence"+(v.n?" · "+Math.round(100*v.h/v.n)+"%":"");
+    d.appendChild(x);d.appendChild(s);el.appendChild(d);
+  });
+}
 function renderRec(){
   var t=[{h:0,n:0},{h:0,n:0},{h:0,n:0},{h:0,n:0}];
   R.calls.forEach(function(c,i){if(!c||c.hit===undefined||c.at<SW.MIN_SPINS||state.spins[i].pre)return;t[c.level].n++;if(c.hit)t[c.level].h++;});
@@ -725,6 +779,7 @@ function renderRec(){
     d.appendChild(b);d.appendChild(s);el.appendChild(d);
   });
   var r=R.record,pc=SW.pct;
+  if(NEURAL){$("recNote").textContent="Hold spins show how often the network's 16 would have hit. Each confidence level needs 20 calls on record before the network can hold or double there; until then it bets 1 chip.";return;}
   $("recNote").textContent="Hold spins show how often the gold numbers would have hit. Running record (last ~60 of each, started from your October spins): bet "+pc(r[1])+", double after 2 misses "+pc(r[2])+", triple after 3+ misses "+pc(r[3])+", spin after a run of 3 hits "+pc(r[0])+". Double and triple are only called while they beat plain bets, and the hold after a run only while it hits less.";
 }
 
@@ -767,8 +822,9 @@ function cloudPush(){
   if(!cdb||state.example||!state.spins.length)return;
   if(cloudBusy){cloudAgain=true;return;}
   cloudBusy=true;
-  var body={run:state.run,app:"v13.1",spins:state.spins,record:state.record,cps:state.cps,updated:Date.now()};
-  cdb.doc("sessions/v13_"+state.run).set(body).then(function(){
+  var body={run:state.run,app:NEURAL?"neural-watch-1":"v13.2",spins:state.spins,record:state.record,updated:Date.now()};
+  if(NEURAL)body.cps=state.cps;
+  cdb.doc("sessions/"+(NEURAL?"nn_":"v13_")+state.run).set(body).then(function(){
     $("saveMsg").textContent="Saved on this phone and in the cloud at "+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+".";
   },function(e){
     $("saveMsg").textContent=e&&e.code==="quota_exceeded"?"Cloud storage is full. Spins are still saved on this phone.":"No signal for the cloud copy. Spins are safe on this phone and will upload later.";
@@ -777,6 +833,8 @@ function cloudPush(){
 }
 window.addEventListener("online",cloudQueue);
 
+if(NEURAL){$("patsSec").hidden=true;$("netSec").hidden=false;$("patEyebrow").textContent="Picked by";
+  $("exampleBanner").textContent="Example: 65 real spins from a 15 Oct session, read by the network trained on October. Your first tap starts your own session.";}
 load();buildWheel();buildPad();buildTable();update();
 var useDb=window.claude&&typeof window.claude.use==="function"?window.claude.use("db"):Promise.resolve(null);
 useDb.then(function(d){cdb=d;if(d)cloudPush();},function(){});
