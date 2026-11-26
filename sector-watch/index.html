@@ -66,6 +66,28 @@ header .count{font-family:var(--display);color:var(--muted);font-size:16px;lette
 .tbl i.skip{text-decoration:line-through;text-decoration-thickness:2px;color:var(--ink)}
 .tbl.dim i.bet{background:var(--felt-3);color:var(--brass);outline:1px solid var(--brass);outline-offset:-1px}
 .tbllegend{margin:-2px 0 0;font-size:12px;color:var(--muted)}
+.cardbar{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.cardbar .landed{min-width:0}
+.viewtog{display:inline-flex;flex:none;margin-left:auto;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.viewtog button{border:0;background:var(--felt-2);padding:5px 10px;font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.viewtog button[aria-pressed="true"]{background:var(--felt-3);color:var(--brass)}
+#bigwheel{width:100%;max-width:300px;height:auto;align-self:center;display:block}
+#bigwheel .p{stroke:var(--felt-2);stroke-width:1.2;fill:var(--felt-3)}
+#bigwheel .p.b{fill:var(--brass)}
+#bigwheel.dim .p.b{fill:var(--felt-3);stroke:var(--brass);stroke-width:1.6}
+#bigwheel .n{font-family:var(--display);font-weight:700;font-size:16px;fill:var(--muted)}
+#bigwheel .n.b{fill:var(--brass-ink)}
+#bigwheel.dim .n.b{fill:var(--brass)}
+#bigwheel .mk{fill:none;stroke:var(--ink);stroke-width:2.6}
+#bigwheel .mk.rem{stroke-width:2;stroke-dasharray:4 3}
+#bigwheel .strike{stroke:var(--ink);stroke-width:2.6}
+#bigwheel .dot{fill:var(--ink)}
+#bigwheel .act{font-family:var(--display);font-weight:700;font-size:46px;letter-spacing:.03em;fill:var(--muted)}
+#bigwheel .act.l1{fill:var(--brass)} #bigwheel .act.l2{fill:var(--brass-2)} #bigwheel .act.l3{fill:var(--hot)}
+#bigwheel .sub{font-family:var(--display);font-size:16px;fill:var(--ink)}
+#bigwheel .lastl{font-family:var(--display);font-size:13px;letter-spacing:.1em;fill:var(--muted)}
+.reason.under{margin:-4px 0 0}
+.runs{margin:0;font-family:var(--display);font-size:17px;line-height:1.3;letter-spacing:.02em;color:var(--ink)}
 .landed .hit{color:var(--good);font-weight:700}
 .landed .miss{color:var(--bad);font-weight:700}
 
@@ -131,7 +153,8 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
   <p class="banner" id="exampleBanner" hidden>Example: 65 real spins from a 15 Oct session, so you can see how it reads. Your first tap starts your own session.</p>
 
   <section class="call" aria-live="polite">
-    <p class="landed" id="landed" hidden></p>
+    <div class="cardbar"><p class="landed" id="landed" hidden></p>
+      <div class="viewtog" role="group" aria-label="Show bets on"><button type="button" id="vTable" aria-pressed="false">Table</button><button type="button" id="vWheel" aria-pressed="true">Wheel</button></div></div>
     <div class="call-top">
       <div class="call-head">
         <div class="action" id="action" data-l="0">WATCH</div>
@@ -142,7 +165,9 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
     </div>
     <p class="how" id="how" data-l="0"></p>
     <div class="tbl" id="tbl" role="img" aria-label="Betting table"></div>
-    <p class="tbllegend">Machine layout · gold = bet · ringed = put on · dashed = take off · struck = skip</p>
+    <svg id="bigwheel" viewBox="0 0 320 320" role="img" aria-label="Wheel with the bets" hidden></svg>
+    <p class="runs" id="runs" hidden></p>
+    <p class="tbllegend" id="legend">Machine layout · gold = bet · ringed = put on · dashed = take off · struck = skip</p>
     <p class="reason" id="reason"></p>
   </section>
 
@@ -695,7 +720,7 @@ function render(){
   Array.prototype.forEach.call($("pad").querySelectorAll("button[data-n]"),function(b){var n=Number(b.dataset.n);b.classList.toggle("bet",!!set[n]);b.classList.toggle("last",n===last);b.classList.toggle("skip",!!call&&call.dropped===n);});
   drawWheel(nums,h);
   var how=howTo(call,h),hw=$("how");hw.textContent=how.t;hw.dataset.l=String(how.l);
-  renderTable(nums,how,call);
+  renderTable(nums,how,call);renderBig(nums,how,call,h);
   var sm=$("saveMsg");if(state.example)sm.textContent="Example only. Nothing is saved until you tap a number.";else if(/^Example only/.test(sm.textContent))sm.textContent="Saved on this phone.";
   renderStrip(h);if(NEURAL)renderBands();else renderPats(call);renderRec();renderLearn();
 }
@@ -712,10 +737,10 @@ function howTo(call,h){
   var add=cur.filter(function(n){return prev.nums.indexOf(n)<0;}).sort(function(a,b){return a-b;}),rem=prev.nums.filter(function(n){return cur.indexOf(n)<0;}).sort(function(a,b){return a-b;});
   var moves=(rem.length?" take off "+rem.join(" · ")+",":"")+(add.length?" put "+(L===prev.level?word:"1 chip")+" on "+add.join(" · ")+",":"");
   var t;
-  if(add.length>6)t="New 16: clear, then "+word+" on each gold number.";
+  if(add.length>6)return {t:"New 16: clear, then "+word+" on each gold number.",l:L,add:[],rem:[]};
   else if(L===prev.level)t=add.length?"Press REPEAT, then"+moves.replace(/,$/,".") :"Press REPEAT. Same 16, "+word+" each.";
   else if(prev.level===1&&L===2)t="Press REPEAT,"+moves+" then DOUBLE (×2).";
-  else t="Clear, then "+word+" on each gold number.";
+  else return {t:"Clear, then "+word+" on each gold number.",l:L,add:[],rem:[]};
   return {t:t,l:L,add:add,rem:rem};
 }
 var tblCells={};
@@ -725,6 +750,73 @@ function buildTable(){
   mk(0,"1","1 / span 3");
   for(var r=0;r<3;r++)for(var k=0;k<12;k++)mk(k*3+(3-r),String(k+2),String(r+1));
 }
+/* Wheel view: the 37 numbers in wheel order with the call in the middle, for players who bet on a round
+   (wheel-order) layout. The bets are also listed as runs round the wheel so they can be placed in sweeps. */
+var VKEY=KEY+".view",VIEW="wheel";
+try{var v0=localStorage.getItem(VKEY);if(v0==="table"||v0==="wheel")VIEW=v0;}catch(e){}
+var big={};
+function buildBig(){
+  var svg=$("bigwheel"),ns="http://www.w3.org/2000/svg",c=160,ro=157,ri=110,step=2*Math.PI/37;
+  function el(t,a,parent){var e=document.createElementNS(ns,t);for(var k in a)e.setAttribute(k,a[k]);(parent||svg).appendChild(e);return e;}
+  function pt(r,a){return (c+r*Math.cos(a)).toFixed(2)+" "+(c+r*Math.sin(a)).toFixed(2);}
+  big.p=[];big.t=[];big.mk=[];big.st=[];big.dot=[];
+  for(var i=0;i<37;i++){
+    var a=-Math.PI/2+i*step,a0=a-step/2,a1=a+step/2,n=SW.WHEEL[i];
+    var d="M"+pt(ro,a0)+" A"+ro+" "+ro+" 0 0 1 "+pt(ro,a1)+" L"+pt(ri,a1)+" A"+ri+" "+ri+" 0 0 0 "+pt(ri,a0)+"Z";
+    big.p[n]=el("path",{d:d,"class":"p"});
+    var x=c+133.5*Math.cos(a),y=c+133.5*Math.sin(a);
+    big.t[n]=el("text",{x:x.toFixed(1),y:y.toFixed(1),dy:"0.35em","text-anchor":"middle","class":"n num"});big.t[n].textContent=n;
+    big.st[n]=el("line",{x1:(x-10).toFixed(1),y1:y.toFixed(1),x2:(x+10).toFixed(1),y2:y.toFixed(1),"class":"strike"});
+    big.mk[n]=el("path",{d:d,"class":"mk"});
+    big.dot[n]=el("circle",{cx:(c+101*Math.cos(a)).toFixed(1),cy:(c+101*Math.sin(a)).toFixed(1),r:"4.5","class":"dot"});
+  }
+  big.last=el("text",{x:"160",y:"118","text-anchor":"middle","class":"lastl"});
+  big.act=el("text",{x:"160",y:"172","text-anchor":"middle","class":"act"});
+  big.sub=el("text",{x:"160",y:"200","text-anchor":"middle","class":"sub"});
+}
+var SUB=["No bet","1 chip each","2 chips each","3 chips each"];
+function wheelRuns(nums){
+  var on={},runs=[];nums.forEach(function(n){on[n]=1;});
+  if(nums.length>=37)return [];
+  var st=0;while(on[SW.WHEEL[st]])st++; // start just after a gap
+  for(var k=1,cur=null;k<=37;k++){
+    var n=SW.WHEEL[(st+k)%37];
+    if(on[n]){if(!cur){cur={a:n,b:n,len:0};runs.push(cur);}cur.b=n;cur.len++;}else cur=null;
+  }
+  return runs;
+}
+function renderBig(nums,how,call,h){
+  var set={},add={},rem={};nums.forEach(function(n){set[n]=1;});how.add.forEach(function(n){add[n]=1;});how.rem.forEach(function(n){rem[n]=1;});
+  var last=h.length?h[h.length-1]:null,L=call?call.level:0;
+  for(var n=0;n<37;n++){
+    big.p[n].setAttribute("class","p"+(set[n]?" b":""));big.t[n].setAttribute("class","n num"+(set[n]?" b":""));
+    big.mk[n].setAttribute("class","mk"+(rem[n]?" rem":""));big.mk[n].style.display=add[n]||rem[n]?"":"none";
+    big.st[n].style.display=call&&call.dropped===n?"":"none";big.dot[n].style.display=n===last?"":"none";
+  }
+  $("bigwheel").classList.toggle("dim",!call||L===0);
+  big.last.textContent=last===null?"":"LAST "+last;
+  big.act.textContent=call?LEVELS[L]:"WATCH";big.act.setAttribute("class","act l"+(call?L:0));
+  big.sub.textContent=call?SUB[L]:"No bet yet";
+  $("bigwheel").setAttribute("aria-label",(call?LEVELS[L]+". ":"")+(nums.length?(L?"Bet on: ":"Would play: ")+nums.slice().sort(function(a,b){return a-b;}).join(", "):""));
+  var runs=wheelRuns(nums),rt=$("runs");
+  if(!runs.length){rt.textContent="";return;}
+  runs.sort(function(a,b){return b.len-a.len;});
+  rt.textContent=(L?"On the wheel: ":"Would play: ")+runs.map(function(r){return r.len===1?String(r.a):r.a+" → "+r.b+" ("+r.len+(runs.length===1?" in a row":"")+")";}).join(" · ");
+}
+function applyView(){
+  var w=VIEW==="wheel";
+  // SVG elements have no .hidden property in every browser, so use the attribute
+  $("tbl").toggleAttribute("hidden",w);$("bigwheel").toggleAttribute("hidden",!w);$("runs").toggleAttribute("hidden",!w);
+  $("action").hidden=w;$("chips").hidden=w;$("wheel").style.display=w?"none":"";
+  $("vWheel").setAttribute("aria-pressed",String(w));$("vTable").setAttribute("aria-pressed",String(!w));
+  var rs=$("reason");
+  if(w)$("pad").parentNode.insertBefore(rs,$("pad").nextSibling);else $("legend").parentNode.insertBefore(rs,$("legend").nextSibling);
+  rs.classList.toggle("under",w);
+  $("legend").textContent=(w?"Wheel order, 0 at the top":"Machine layout")+" · gold = bet · ringed = put on · dashed = take off · struck = skip";
+}
+function setView(v){VIEW=v;try{localStorage.setItem(VKEY,v);}catch(e){}applyView();}
+$("vTable").addEventListener("click",function(){setView("table");});
+$("vWheel").addEventListener("click",function(){setView("wheel");});
 function renderTable(nums,how,call){
   var set={},add={},rem={};nums.forEach(function(n){set[n]=1;});how.add.forEach(function(n){add[n]=1;});how.rem.forEach(function(n){rem[n]=1;});
   for(var n=0;n<37;n++){var c=tblCells[n];c.className="num"+(set[n]?" bet":"")+(add[n]?" add":"")+(rem[n]?" rem":"")+(call&&call.dropped===n?" skip":"");}
@@ -835,7 +927,7 @@ window.addEventListener("online",cloudQueue);
 
 if(NEURAL){$("patsSec").hidden=true;$("netSec").hidden=false;$("patEyebrow").textContent="Picked by";
   $("exampleBanner").textContent="Example: 65 real spins from a 15 Oct session, read by the network trained on October. Your first tap starts your own session.";}
-load();buildWheel();buildPad();buildTable();update();
+load();buildWheel();buildPad();buildTable();buildBig();applyView();update();
 var useDb=window.claude&&typeof window.claude.use==="function"?window.claude.use("db"):Promise.resolve(null);
 useDb.then(function(d){cdb=d;if(d)cloudPush();},function(){});
 })();
