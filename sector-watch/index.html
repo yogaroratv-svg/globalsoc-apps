@@ -137,7 +137,7 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
   <div class="strip" id="strip" aria-label="Recent spins, newest first"></div>
 
   <section>
-    <h2>Patterns <span>hits in last 12 calls · normal 5.2</span></h2>
+    <h2>Patterns <span id="patHead">hits in last 8 calls · normal 3.5</span></h2>
     <ol class="pats" id="pats"></ol>
   </section>
 
@@ -163,10 +163,9 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
 </main>
 
 <script>
-/* Sector Watch engine v12. Pure functions, no DOM. Same code runs in the app and in the lab runner.
-   Every pattern picks exactly 16 numbers from the spins so far. The pattern that has hit most in its
-   last 10 calls is treated as the one in play. The call (HOLD / BET / x2 / x3) comes from how that
-   pattern is hitting right now. */
+/* Sector Watch engine v13. Pure functions, no DOM. Same code runs in the app and in the lab runner.
+   Four patterns (the player's own: one side hot, even spread, hot numbers, cold side wakes) each pick 16
+   numbers. The one with the most hits in its last 8 calls is in play. The call comes from how it is going. */
 var SW = (function () {
   var WHEEL = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
   var POS = []; WHEEL.forEach(function (n, i) { POS[n] = i; });
@@ -240,16 +239,6 @@ var SW = (function () {
       why: reps.length ? "Repeaters in the last " + w + " spins: " + txt + ". Betting the hot numbers keep coming." : "No number has repeated yet in " + w + " spins; using the latest numbers and their neighbours." };
   } });
 
-  // 3b. Cold numbers: the ones missing longest
-  P.push({ id: "cold", name: "Cold numbers wake", short: "Cold 16", pick: function (h) {
-    var ls = lastIdx(h), last = h[h.length - 1], sc = [], sc2 = [];
-    for (var n = 0; n < 37; n++) { sc[n] = ls[n] < 0 ? 10000 : h.length - 1 - ls[n]; sc2[n] = last === undefined ? 0 : wd(n, last); }
-    var nums = top16(sc, sc2), miss = nums.filter(function (n) { return ls[n] < 0; }).length;
-    var oldest = nums[0], gap = ls[oldest] < 0 ? h.length : h.length - 1 - ls[oldest];
-    return { nums: nums, strength: gap / 37,
-      why: (miss ? plural(miss, "number") + " have not landed at all this session" : oldest + " has been missing for " + gap + " spins") + ". Betting the 16 sleepers wake up." };
-  } });
-
   // 4. The side of the wheel that has gone quiet comes back
   P.push({ id: "coldside", name: "Cold side wakes", short: "Cold side", pick: function (h) {
     var w = Math.min(15, h.length), r = h.slice(-w), a = arcScores(r), bs = 0;
@@ -259,81 +248,39 @@ var SW = (function () {
       why: "Only " + a.hits[bs] + " of the last " + w + " spins landed on the side from " + sideName(bs) + " (normal is about " + f1(exp) + "). Betting it comes back." };
   } });
 
-  // 5. Results land close to the last few numbers on the wheel
-  P.push({ id: "near", name: "Near the last numbers", short: "Neighbours", pick: function (h) {
-    var wts = [3, 2, 1], sc = [], sc2 = [], last3 = h.slice(-3).reverse();
+
+  /* Your hint, confirmed on your October spins: when the last 12 spins were (nearly) all different numbers,
+     the last number did not come straight back (0 times in 86). So in that state the last number is left out
+     of the 16 and the next pocket along takes its place. */
+  function allOver(h) { var r = h.slice(-12); return r.length >= 12 && counts(r).filter(function (x) { return x > 0; }).length >= 11; }
+  function dropLast(nums, last) {
+    var rest = nums.filter(function (n) { return n !== last; }), best = -1, bd = 99, bl = -1;
     for (var n = 0; n < 37; n++) {
-      var t = 0; last3.forEach(function (x, k) { t += wts[k] * Math.max(0, 5 - wd(n, x)); });
-      sc[n] = t; sc2[n] = -wd(n, h[h.length - 1]);
+      if (n === last || rest.indexOf(n) >= 0) continue;
+      var d = 99; rest.forEach(function (m) { d = Math.min(d, wd(n, m)); });
+      var dl = wd(n, last);
+      if (d < bd || (d === bd && dl > bl)) { bd = d; bl = dl; best = n; }
     }
-    var gaps = [], r = h.slice(-10);
-    for (var i = 1; i < r.length; i++) gaps.push(wd(r[i], r[i - 1]));
-    var avg = gaps.length ? gaps.reduce(function (a, b) { return a + b; }, 0) / gaps.length : 9.25;
-    return { nums: top16(sc, sc2), strength: (9.25 - avg) / 2,
-      why: "Betting around " + last3.join(", ") + " with their wheel neighbours. Recent spins moved " + f1(avg) + " pockets on average (a quarter-wheel is about 9)." };
-  } });
+    rest.push(best); return rest;
+  }
 
-  // 6. The machine keeps jumping a similar distance from one result to the next
-  P.push({ id: "jump", name: "Jump pattern", short: "Jumps", pick: function (h) {
-    var jumps = [];
-    for (var i = Math.max(1, h.length - 20); i < h.length; i++) jumps.push((POS[h[i]] - POS[h[i - 1]] + 37) % 37);
-    var hist = []; for (var d = 0; d < 37; d++) hist[d] = 0;
-    jumps.forEach(function (d, k) { hist[d] += Math.pow(0.93, jumps.length - 1 - k); });
-    var sm = []; for (var d2 = 0; d2 < 37; d2++) sm[d2] = hist[d2] + 0.6 * (hist[(d2 + 36) % 37] + hist[(d2 + 1) % 37]) + 0.25 * (hist[(d2 + 35) % 37] + hist[(d2 + 2) % 37]);
-    var last = h[h.length - 1], sc = [], sc2 = [];
-    for (var n = 0; n < 37; n++) { var off = (POS[n] - POS[last] + 37) % 37; sc[n] = sm[off]; sc2[n] = -Math.min(off, 37 - off); }
-    var nums = top16(sc, sc2), peak = 0;
-    for (var d3 = 1; d3 < 37; d3++) if (sm[d3] > sm[peak]) peak = d3;
-    var near = jumps.filter(function (d) { var e = Math.abs(d - peak); return Math.min(e, 37 - e) <= 3; }).length;
-    var pk = peak > 18 ? peak - 37 : peak, txt = pk === 0 ? "0 (a repeat or next-door)" : (pk > 0 ? "+" + pk : "" + pk) + " pockets";
-    return { nums: nums, strength: jumps.length ? near / jumps.length - 7 / 37 : 0,
-      why: "From one result to the next the machine has been moving about " + txt + " round the wheel (" + near + " of the last " + jumps.length + " moves within 3 pockets of that). From " + last + " that points here." };
-  } });
-
-  // 7. Hits cluster on one area of the betting table (dozens / columns)
-  P.push({ id: "table", name: "Table area", short: "Table", pick: function (h) {
-    var w = Math.min(15, h.length), r = h.slice(-w), c = counts(r), ls = lastIdx(h), sc = [], sc2 = [];
-    function nb(n) {
-      if (n === 0) return [1, 2, 3];
-      var o = [], row = (n - 1) % 3, col = Math.floor((n - 1) / 3);
-      if (row > 0) o.push(n - 1); if (row < 2) o.push(n + 1);
-      if (col > 0) o.push(n - 3); if (col < 11) o.push(n + 3);
-      if (col === 0) o.push(0);
-      return o;
-    }
-    for (var n = 0; n < 37; n++) { var t = c[n] * 2; nb(n).forEach(function (m) { t += c[m]; }); sc[n] = t; sc2[n] = ls[n]; }
-    var dz = [0, 0, 0], cl = [0, 0, 0];
-    r.forEach(function (x) { if (x > 0) { dz[Math.floor((x - 1) / 12)]++; cl[(x - 1) % 3]++; } });
-    var bd = dz.indexOf(Math.max.apply(null, dz)), bc = cl.indexOf(Math.max.apply(null, cl)), ord = ["1st", "2nd", "3rd"];
-    return { nums: top16(sc, sc2), strength: (Math.max(dz[bd], cl[bc]) - w / 3) / Math.max(1, Math.sqrt(w * 2 / 9)),
-      why: "Last " + w + " spins: " + dz[bd] + " in the " + ord[bd] + " dozen and " + cl[bc] + " in the " + ord[bc] + " column. Betting the busy part of the table." };
-  } });
-
-
-  // 8. Followers: what came after this number earlier in the session (Codex idea)
-  P.push({ id: "follow", name: "Followers", short: "Followers", pick: function (h) {
-    var last = h[h.length - 1], sc = [], sc2 = [], ls = lastIdx(h), seen = 0;
-    for (var n = 0; n < 37; n++) sc[n] = 0;
-    for (var i = 1; i < h.length; i++) {
-      var d = wd(h[i - 1], last); if (d > 1) continue;
-      var wt = d === 0 ? 1 : 0.4; if (d === 0) seen++;
-      for (var m = 0; m < 37; m++) { var e = wd(m, h[i]); if (e <= 2) sc[m] += wt * (e === 0 ? 1 : e === 1 ? 0.5 : 0.2); }
-    }
-    for (var n2 = 0; n2 < 37; n2++) sc2[n2] = ls[n2];
-    return { nums: top16(sc, sc2), strength: seen,
-      why: seen ? last + " has come up " + plural(seen, "time") + " before this session; betting what followed it and its neighbours." : last + " is new this session; betting what followed its wheel neighbours." };
-  } });
-
-  /* Walk through a session spin by spin. Before each spin every pattern makes its 16 from the spins
-     before it; afterwards we mark whether it hit. The pattern with the most hits in its last 12 calls is
-     the one in play (ties stay with the current one).
-     opts.record: past results of each call size {1:{h,n},2:{h,n},3:{h,n}} from earlier real sessions.
-     opts.live: array of booleans, true where the player was actually at the table (not typed-in history).
-     x2 and x3 must earn their place: they are only called while their own record beats plain BET. */
-  var W = 12, CAP = 60;
-  function copyRec(r) { var o = {}; [1, 2, 3].forEach(function (t) { var x = (r && r[t]) || {}; o[t] = { h: x.h || 0, n: x.n || 0 }; }); return o; }
+  /* Walk through a session spin by spin. Before each spin every pattern makes its 16 from the spins before it;
+     afterwards we mark whether it hit. The pattern with the most hits in its last 8 calls is the one in play
+     (ties stay with the current one).
+     What the calls are built on (your 545 real spins, 10-16 Oct 2026): the machine evens itself out.
+       - the pattern in play came back after missing twice (61%), so 2 misses = double, 3+ misses = triple;
+       - after it hit 3 or more in a row the next spin hit only 40%, so a run of 3 hits = hold.
+     Each of those calls keeps its own running record (record[0] hold-after-run, [1] bet, [2] double, [3] triple),
+     and a call is only made while its record says it is still working: if the machine changes, the app follows.
+     opts.record: that running record carried from earlier sessions. opts.live: true where the player was at the
+     table (not typed-in history); only live spins count in the record. */
+  var W = 8, CAP = 60;
+  function copyRec(r) { var o = {}; [0, 1, 2, 3].forEach(function (t) { var x = (r && r[t]) || {}; o[t] = { h: x.h || 0, n: x.n || 0 }; }); return o; }
   function pct(x) { return x.n ? Math.round(100 * x.h / x.n) + "%" : "–"; }
   function rd(x) { return Math.round(x); }
+  function rate(x) { return x.n ? x.h / x.n : 0; }
+  function of(x) { return rd(x.h) + " of " + rd(x.n) + " (" + pct(x) + ")"; }
+
   function run(h, opts) {
     opts = opts || {};
     var record = copyRec(opts.record), live = opts.live || [];
@@ -341,7 +288,12 @@ var SW = (function () {
     for (var i = 0; i <= h.length; i++) {
       var hist = h.slice(0, i), call = null;
       if (i >= 3) {
-        var picks = P.map(function (p) { return p.pick(hist); });
+        var last = hist[hist.length - 1], spread = allOver(hist);
+        var picks = P.map(function (p) {
+          var pk = p.pick(hist);
+          if (spread && pk.nums.indexOf(last) >= 0) { pk.nums = dropLast(pk.nums, last); pk.dropped = last; }
+          return pk;
+        });
         var forms = P.map(function (p, k) {
           var r = rec[k], lw = r.slice(-W), s = 0;
           for (var j = r.length - 1, st = 0; j >= 0; j--) { if (st === 0) st = r[j] ? 1 : -1; if ((r[j] ? 1 : -1) === st) s += st; else break; }
@@ -355,25 +307,33 @@ var SW = (function () {
         if (leader !== null && forms[leader].hw === forms[best].hw) best = leader;
         var switched = leader !== null && best !== leader ? P[leader].name : null;
         leader = best;
-        var f = forms[best], pk = picks[best], raw = 0, level, reason;
-        var form = P[best].name + " hit " + f.hw + " of its last " + f.nw + " calls (normal is " + f1(f.nw * CH) + ")";
-        var run2 = f.streak >= 2 ? ", the last " + f.streak + " in a row" : f.streak === 1 ? ", including the last spin" : "";
-        if (i < MIN_SPINS) reason = "Reading the table: " + i + " of " + MIN_SPINS + " spins in. Watch, don't bet yet.";
-        else if (f.streak <= -2) reason = P[best].name + " missed the last " + (-f.streak) + " spins, so the pattern may be changing. Hold and let the next one show.";
-        else if (f.hw >= 9 && f.streak >= 2) raw = 3;
-        else if (f.hw >= 8 && f.streak >= 1) raw = 2;
-        else if (f.hw >= 7) raw = 1;
-        else reason = "No pattern is clearly ahead yet. Best is " + P[best].name + " with " + f.hw + " of " + f.nw + " (normal " + f1(f.nw * CH) + "). Waiting for one to reach 7 of 12.";
+        var f = forms[best], pk = picks[best], nm = P[best].name, raw = 1, level, reason, cool = false;
+        var form = nm + " is the pattern in play: " + f.hw + " of its last " + f.nw + " calls hit (normal is " + f1(f.nw * CH) + ")";
+        var base = record[1];
+        if (i < MIN_SPINS) { raw = 0; reason = "Reading the table: " + i + " of " + MIN_SPINS + " spins in. Watch, don't bet yet."; }
+        else if (f.streak <= -3) raw = 3;
+        else if (f.streak === -2) raw = 2;
+        else if (f.streak >= 3) { raw = 0; cool = true; }
         level = raw;
-        if (raw === 1) reason = form + run2 + ". Bet.";
-        if (raw >= 2) {
-          var me = record[raw], base = record[1], word = raw === 3 ? "Triple" : "Double";
-          if (me.n >= 10 && base.n >= 10 && me.h / me.n <= base.h / base.n) {
-            level = raw === 3 && record[2].n >= 10 && record[2].h / record[2].n > base.h / base.n ? 2 : 1;
-            reason = form + run2 + ". " + word + " conditions are met, but " + word.toLowerCase() + " calls have hit " + rd(me.h) + " of " + rd(me.n) + " (" + pct(me) + ") against " + pct(base) + " for single bets, so " + (level === 2 ? "double only." : "single bet only.");
-          } else reason = form + run2 + ". " + (raw === 3 ? "Strongest form: triple." : "Strong and still hitting: double.") + (me.n ? " " + word + " calls so far: " + rd(me.h) + " of " + rd(me.n) + "." : "");
+        if (raw === 1) reason = form + (f.streak === -1 ? ". It missed the last spin" : f.streak === 2 ? ", including the last 2" : f.streak === 1 ? ", including the last spin" : "") + ". Bet.";
+        if (cool) {
+          var me0 = record[0];
+          if (me0.n >= 10 && base.n >= 10 && rate(me0) > rate(base)) {
+            level = 1;
+            reason = nm + " has hit " + f.streak + " in a row. Usually a run like that cools off, but lately the spin after one has hit " + of(me0) + ", better than plain bets (" + pct(base) + "). So bet.";
+          } else reason = nm + " has hit " + f.streak + " in a row. After a run of 3 or more hits the next spin has hit only " + of(me0) + " against " + pct(base) + " for plain bets: the machine evens out and runs cool off. Hold this one.";
         }
-        call = { at: i, pattern: P[best].id, name: P[best].name, nums: pk.nums, why: pk.why, raw: raw, level: level, reason: reason, switched: switched,
+        if (raw >= 2) {
+          var me = record[raw], word = raw === 3 ? "Triple" : "Double";
+          var lead = nm + " is still the pattern in play (" + f.hw + " of its last " + f.nw + ") but missed the last " + (-f.streak) + ". ";
+          if (me.n >= 10 && base.n >= 10 && rate(me) <= rate(base)) {
+            level = raw === 3 && record[2].n >= 10 && rate(record[2]) > rate(base) ? 2 : 1;
+            reason = lead + word + " calls have hit " + of(me) + " lately, no better than plain bets (" + pct(base) + "), so " + (level === 2 ? "double only." : "single bet only.");
+          } else reason = lead + "The machine evens out: after " + (raw === 3 ? "3 or more misses" : "2 misses") + " the pattern in play has come back " + of(me) + ". " + word + ".";
+        }
+        var why = pk.why;
+        if (pk.dropped !== undefined) why += " Numbers are coming from all over the table, so the last number (" + pk.dropped + ") is left out: after a spread like this it did not come straight back.";
+        call = { at: i, pattern: P[best].id, name: nm, nums: pk.nums, why: why, raw: raw, cool: cool, level: level, reason: reason, switched: switched,
           forms: forms, picks: picks, record: copyRec(record) };
       }
       calls.push(call);
@@ -382,9 +342,9 @@ var SW = (function () {
         if (i >= 3) P.forEach(function (p, k) { rec[k].push(calls[i].picks[k].nums.indexOf(x) >= 0); });
         if (call) {
           call.result = x; call.hit = call.nums.indexOf(x) >= 0;
-          if (call.raw > 0 && live[i] !== false) {
+          if ((call.raw > 0 || call.cool) && i >= MIN_SPINS && live[i] !== false) {
             var rr = record[call.raw]; rr.n++; if (call.hit) rr.h++;
-            // keep roughly the last 60 calls of each size, so the record follows the machine as it changes
+            // keep roughly the last 60 calls of each kind, so the record follows the machine as it changes
             if (rr.n > CAP) { rr.h = rr.h * CAP / rr.n; rr.n = CAP; }
           }
         }
@@ -401,17 +361,18 @@ var SW = (function () {
 (function(){
 "use strict";
 var $=function(id){return document.getElementById(id);};
-var KEY="sectorwatch.v12";
+var KEY="sectorwatch.v13";
 var LEVELS=["HOLD","BET","BET ×2","BET ×3"], MARK=["–","B","×2","×3"];
-// Running record of each call size, started from the 545 real spins saved by the previous app (10-16 Oct 2026).
-var SEED={1:{h:31,n:60},2:{h:28.9,n:60},3:{h:16,n:50}};
+// Running record of each call (0 = hold after a run of hits, 1 bet, 2 double, 3 triple), started from replaying
+// the 436 live spins saved by the previous app (10-16 Oct 2026) through these rules.
+var SEED={0:{h:24.6,n:60},1:{h:28.7,n:60},2:{h:24,n:40},3:{h:7,n:10}};
 var EXAMPLE={spins:[12,0,1,35,9,29,36,21,33,14,22,18,3,15,21,29,20,7,10,23,18,15,21,13,35,13,30,21,20,22,15,6,20,23,4,27,31,35,16,14,16,36,34,1,4,30,26,15,32,11,26,27,14,26,0,4,17,4,29,18,36,6,7,7,18],pre:22};
 function newRun(){return Date.now().toString(36);}
 function exampleState(){return {spins:EXAMPLE.spins.map(function(n,i){return {n:n,t:0,pre:i<EXAMPLE.pre};}),record:SEED,run:"example",example:true,archive:[]};}
 var state=exampleState();
 
 function load(){
-  try{var raw=localStorage.getItem(KEY);if(!raw)return;var s=JSON.parse(raw);
+  try{var raw=localStorage.getItem(KEY),old=false;if(!raw){raw=localStorage.getItem("sectorwatch.v12");old=true;}if(!raw)return;var s=JSON.parse(raw);if(old&&s)s.record=null;
     if(s&&Array.isArray(s.spins)){state={spins:s.spins.filter(function(x){return x&&x.n>=0&&x.n<=36;}),record:s.record||SEED,run:s.run||newRun(),example:!!s.example,archive:Array.isArray(s.archive)?s.archive:[]};}
   }catch(e){}
 }
@@ -550,7 +511,7 @@ function renderRec(){
     d.appendChild(b);d.appendChild(s);el.appendChild(d);
   });
   var r=R.record,pc=SW.pct;
-  $("recNote").textContent="Hold spins show how often the gold numbers would have hit. Running record of each call size (last ~60 calls, started from your 545 real spins from October): single "+pc(r[1])+", double "+pc(r[2])+", triple "+pc(r[3])+". Double and triple are only called while they hit more often than single bets.";
+  $("recNote").textContent="Hold spins show how often the gold numbers would have hit. Running record (last ~60 of each, started from your October spins): bet "+pc(r[1])+", double after 2 misses "+pc(r[2])+", triple after 3+ misses "+pc(r[3])+", spin after a run of 3 hits "+pc(r[0])+". Double and triple are only called while they beat plain bets, and the hold after a run only while it hits less.";
 }
 
 /* ---------- tools ---------- */
@@ -592,8 +553,8 @@ function cloudPush(){
   if(!cdb||state.example||!state.spins.length)return;
   if(cloudBusy){cloudAgain=true;return;}
   cloudBusy=true;
-  var body={run:state.run,app:"v12",spins:state.spins,record:state.record,updated:Date.now()};
-  cdb.doc("sessions/v12_"+state.run).set(body).then(function(){
+  var body={run:state.run,app:"v13",spins:state.spins,record:state.record,updated:Date.now()};
+  cdb.doc("sessions/v13_"+state.run).set(body).then(function(){
     $("saveMsg").textContent="Saved on this phone and in the cloud at "+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+".";
   },function(e){
     $("saveMsg").textContent=e&&e.code==="quota_exceeded"?"Cloud storage is full. Spins are still saved on this phone.":"No signal for the cloud copy. Spins are safe on this phone and will upload later.";
