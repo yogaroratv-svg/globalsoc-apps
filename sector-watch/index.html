@@ -67,6 +67,7 @@ header .count{font-family:var(--display);color:var(--muted);font-size:16px;lette
 .pad button.bet{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
 .pad button.last::after{content:"";position:absolute;inset:-4px;border:2px solid var(--ink);border-radius:10px;pointer-events:none}
 .pad button:disabled{opacity:.4;cursor:default}
+.pad button.skip{text-decoration:line-through;text-decoration-thickness:3px;color:var(--muted)}
 .padnote{margin:-4px 0 0;font-size:13px;color:var(--muted)}
 
 /* recent spins */
@@ -132,7 +133,7 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
   </section>
 
   <div class="pad" id="pad"></div>
-  <p class="padnote">Gold = the 16 numbers to bet. Tap the number that lands.</p>
+  <p class="padnote">Gold = the 16 numbers to bet. Struck through = skip it. Tap the number that lands.</p>
 
   <div class="strip" id="strip" aria-label="Recent spins, newest first"></div>
 
@@ -333,7 +334,7 @@ var SW = (function () {
         }
         var why = pk.why;
         if (pk.dropped !== undefined) why += " Numbers are coming from all over the table, so the last number (" + pk.dropped + ") is left out: after a spread like this it did not come straight back.";
-        call = { at: i, pattern: P[best].id, name: nm, nums: pk.nums, why: why, raw: raw, cool: cool, level: level, reason: reason, switched: switched,
+        call = { at: i, pattern: P[best].id, name: nm, nums: pk.nums, dropped: pk.dropped, why: why, raw: raw, cool: cool, level: level, reason: reason, switched: switched,
           forms: forms, picks: picks, record: copyRec(record) };
       }
       calls.push(call);
@@ -467,7 +468,7 @@ function render(){
   }else ld.hidden=true;
   var nums=call?call.nums:[],set={};nums.forEach(function(n){set[n]=1;});
   var last=h.length?h[h.length-1]:null;
-  Array.prototype.forEach.call($("pad").querySelectorAll("button[data-n]"),function(b){var n=Number(b.dataset.n);b.classList.toggle("bet",!!set[n]);b.classList.toggle("last",n===last);});
+  Array.prototype.forEach.call($("pad").querySelectorAll("button[data-n]"),function(b){var n=Number(b.dataset.n);b.classList.toggle("bet",!!set[n]);b.classList.toggle("last",n===last);b.classList.toggle("skip",!!call&&call.dropped===n);});
   drawWheel(nums,h);
   var sm=$("saveMsg");if(state.example)sm.textContent="Example only. Nothing is saved until you tap a number.";else if(/^Example only/.test(sm.textContent))sm.textContent="Saved on this phone.";
   renderStrip(h);renderPats(call);renderRec();
