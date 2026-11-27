@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SSH Tunnel Abuse: How a Honeypot Login Became a Mail-Checking and Ad-Fraud Proxy | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/ssh-tunnel-proxy-abuse-honeypot/">
+<meta name="description" content="A decoy SSH account on our Cisco ASA honeypot was brute-forced, validated, handed to a proxy operator and used for 12 days as a SOCKS exit: 42,239 outbound connections to 33,123 IPs, 15,851 IMAP connections to 13,053 mail servers, SMTP, POP3 and ad exchanges. Full kill chain from Defender for Endpoint telemetry, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/ssh-tunnel-proxy-abuse-honeypot/">
+<meta property="og:title" content="SSH Tunnel Abuse: How a Honeypot Login Became a Mail-Checking and Ad-Fraud Proxy | Global SOC">
+<meta property="og:description" content="A decoy SSH account on our Cisco ASA honeypot was brute-forced, validated, handed to a proxy operator and used for 12 days as a SOCKS exit: 42,239 outbound connections to 33,123 IPs, 15,851 IMAP connections to 13,053 mail servers, SMTP, POP3 and ad exchanges. Full kill chain from Defender for Endpoint telemetry, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SSH Tunnel Abuse: How a Honeypot Login Became a Mail-Checking and Ad-Fraud Proxy | Global SOC">
+<meta name="twitter:description" content="A decoy SSH account on our Cisco ASA honeypot was brute-forced, validated, handed to a proxy operator and used for 12 days as a SOCKS exit: 42,239 outbound connections to 33,123 IPs, 15,851 IMAP connections to 13,053 mail servers, SMTP, POP3 and ad exchanges. Full kill chain from Defender for Endpoint telemetry, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/ssh-tunnel-proxy-abuse-honeypot/#article",
+      "url": "https://globalsoc.com.au/blog/ssh-tunnel-proxy-abuse-honeypot/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/ssh-tunnel-proxy-abuse-honeypot/"
+      },
+      "headline": "42,239 Tunnelled Connections: How One SSH Login Turned Our Honeypot Into a Proxy for Mail Credential Checking and Ad Fraud",
+      "description": "A decoy SSH account on our Cisco ASA honeypot was brute-forced, validated, handed to a proxy operator and used for 12 days as a SOCKS exit: 42,239 outbound connections to 33,123 IPs, 15,851 IMAP connections to 13,053 mail servers, SMTP, POP3 and ad exchanges. Full kill chain from Defender for Endpoint telemetry, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.",
+      "datePublished": "2026-11-27",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "42,239 Tunnelled Connections: How One SSH Login Turned Our Honeypot Into a Proxy for Mail Credential Checking and Ad Fraud",
+          "item": "https://globalsoc.com.au/blog/ssh-tunnel-proxy-abuse-honeypot/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-27">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 27 November 2026</p>
+<h1>42,239 Tunnelled Connections: How One SSH Login Turned Our Honeypot Into a Proxy for Mail Credential Checking and Ad Fraud</h1>
+<p>A decoy SSH account on our Cisco ASA honeypot was brute-forced, validated, handed to a proxy operator and used for 12 days as a SOCKS exit: 42,239 outbound connections to 33,123 IPs, 15,851 IMAP connections to 13,053 mail servers, SMTP, POP3 and ad exchanges. Full kill chain from Defender for Endpoint telemetry, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Happened · The Attack, Step by Step · How We Attributed It · Pyramid of Pain · Detections · When It Fires · Hardening · IOCs</nav>
+<p class="small">Data window: 29 October – 11 November 2026, Cisco ASA/FTD SSL VPN honeypot on an Azure Ubuntu VM (OpenSSH, port 22 open to the internet). Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Microsoft Defender for Endpoint with Microsoft Sentinel. Every Org A query marked <em>Tested</em> ran against this honeypot's real MDE data and the counts are what came back. <span class="org orgB">Org B</span> runs Splunk with CrowdStrike Falcon. Its queries use Falcon Event Search field names and the Splunk Add-on for Unix and Linux; they are written from the same behaviour and were not run against this data.</p>
+
+<h2 id="what">1. What Happened</h2>
+
+<p>The honeypot accepted any password for 40 decoy accounts and dropped every login into a fake Cisco ASA shell. The shell was the trap. What I hadn't blocked properly was SSH itself: an attacker doesn't need a shell to use an SSH server as a proxy. One decoy account, <code>support</code>, became a SOCKS exit node for 12 days.</p>
+
+<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+<tr><td>Outbound connections made by <code>sshd</code> for the <code>support</code> account</td><td>42,239 unique connections (74,314 MDE network events: request, success and failure rows)</td></tr>
+<tr><td>Distinct destination IPs</td><td>33,123</td></tr>
+<tr><td>First / last tunnelled connection (UTC)</td><td>30 Oct 17:36:33 / 11 Nov 22:09:41</td></tr>
+<tr><td>Longest single SSH session</td><td>219.6 hours (9 days 3.6 hours), 34,205 connections</td></tr>
+<tr><td>IMAP connections (143/993)</td><td>15,851 to 13,053 distinct mail servers</td></tr>
+<tr><td>SMTP connections (25/465/587)</td><td>8,236 to 6,628 servers</td></tr>
+<tr><td>POP3 connections (110/995)</td><td>613 to 590 servers</td></tr>
+<tr><td>HTTPS (443) connections</td><td>17,083 to 13,898 servers</td></tr>
+<tr><td>Peak / average MDE network events per hour</td><td>685 / 253 (over 294 hours)</td></tr>
+<tr><td>Other accounts that tunnelled (MDE events)</td><td><code>cisco</code> 1,559, <code>user</code> 309, <code>root</code>* 140, <code>admin</code> 68</td></tr>
+</tbody></table>
+<p class="small">* The <code>root</code> rows are the sshd listener and privilege-separation processes, not a root login. Every root password attempt failed.</p>
+
+<p>The honeypot's own logs never saw any of this. My fake shell logged commands, the PAM module logged passwords, tcpdump captured ports 22/80/443/8443 with the payload encrypted. The tunnel lived entirely inside SSH channel requests that sshd at <code>LogLevel VERBOSE</code> does not log. Defender for Endpoint saw it because it records every outbound connection with its owning process, and the owning process was <code>sshd: support</code>.</p>
+
+<h2 id="steps">2. The Attack, Step by Step</h2>
+
+<h3><span class="kc">Recon</span> Step 1: Port 22 found</h3>
+<p>The VM got its public IP on 29 October. The first SSH password attempts arrived the same evening (T1595.001 Active Scanning: Scanning IP Blocks).</p>
+
+<h3><span class="kc">Credential Access</span> Step 2: A botnet guesses <code>support</code></h3>
+<p>The first successful <code>support</code> login came from <code>109.160.32[.]200</code> at 21:30:10 UTC on 29 October. That <code>/24</code> is the same wordlist-worker botnet I documented on the PHP honeypot in the <a href="/blog/detect-ssh-brute-force/">SSH brute-force post</a>: ten IPs in <code>109.160.32[.]0/24</code> each sent 1,196–1,197 passwords to this honeypot, in lockstep. <code>support</code> / <code>support</code> was the most common pair used for that account (22 times). T1110.001 Password Guessing, T1078.003 Valid Accounts: Local Accounts, T1021.004 Remote Services: SSH.</p>
+
+<h3><span class="kc">Validation</span> Step 3: The access is re-checked by other workers</h3>
+<p>On 30 October the same credential was confirmed again from <code>109.160.32[.]165</code>, <code>109.160.32[.]152</code>, <code>109.160.32[.]35</code> and <code>2.57.122[.]76</code> (<code>2.57.122[.]76</code> alone logged in nine times between 12:59 and 13:08, one a minute: a scripted liveness test), then <code>171.231.190[.]52</code>. Two of them ran exactly one harmless command each and left: <code>109.160.32[.]165</code> ran <code>uname -s -v -n -r -m</code> and <code>uname -m | awk '{printf $1}'</code> 1.2 and 4.3 seconds after logging in at 11:38:48; <code>109.160.32[.]35</code> ran <code>uname -m | awk '{printf $1}'</code> 1.2 seconds after its 14:46:49 login. The rest ran nothing. That is what a credential pipeline looks like: guessers find a login, checkers confirm it still works, and only then does someone use it.</p>
+
+<h3><span class="kc">Hand-over</span> Step 4: A different operator arrives</h3>
+<p><code>193.46.255[.]86</code> logged in as <code>support</code> at 17:10:51. It logged in as <code>support</code> 11 times across the whole 12 days, roughly once a day (31 Oct 17:31, 2 Nov 10:27, 3 Nov 11:02, 4 Nov 12:29, 5 Nov 16:04, 6 Nov 17:04, 8 Nov 04:21, 9 Nov 11:02, 10 Nov 12:30, 11 Nov 20:29 UTC), and never tunnelled anything itself: a monitor keeping an eye on an asset it was renting out (my inference from the pattern; I can't see who controls it). Twenty-six minutes after its first login, the proxy traffic started.</p>
+
+<h3><span class="kc">Command and Control</span> Step 5: SSH dynamic port forwarding</h3>
+<p>At 17:36:13 <code>208.69.78[.]9</code> logged in as <code>support</code> and, twenty seconds later, the <code>sshd: support</code> process started opening outbound TCP connections to the internet. An SSH client does this with <code>ssh -D</code> (a local SOCKS listener) or by sending raw <code>direct-tcpip</code> channel-open requests: the server makes the TCP connection and relays the bytes (T1090 Proxy, T1572 Protocol Tunneling). No shell or command is involved, so the ForceCommand trap never mattered.</p>
+
+<p>Three operator IPs ran the tunnel in sequence. Each session started minutes after the previous one ended:</p>
+<table><thead><tr><th>Operator IP</th><th>SSH logon (UTC)</th><th>Tunnel window</th><th>Session length</th><th>Unique connections (MDE events)</th><th>Distinct IPs</th></tr></thead><tbody>
+<tr><td><code>208.69.78[.]9</code></td><td>30 Oct 17:36:13</td><td>30 Oct 17:36 – 31 Oct 13:02</td><td>19.4 h</td><td>4,113 (4,114)</td><td>4,038</td></tr>
+<tr><td><code>66.163.116[.]25</code></td><td>31 Oct 13:38:19</td><td>31 Oct 13:38 – 2 Nov 17:40</td><td>52.0 h</td><td>3,417 (4,282)</td><td>3,315</td></tr>
+<tr><td><code>208.69.78[.]179</code></td><td>2 Nov 18:34:30</td><td>2 Nov 18:34 – 11 Nov 22:09</td><td>219.6 h</td><td>34,205 (65,414)</td><td>31,132</td></tr>
+<tr><td><code>212.87.213[.]69</code></td><td>22 logons (21 with tunnel traffic), 1 – 11 Nov</td><td>short sessions</td><td>up to 12.7 h</td><td>499 (499)</td><td>431</td></tr>
+</tbody></table>
+<p>The hand-off from <code>208.69.78[.]9</code> to <code>66.163.116[.]25</code> took 36 minutes; from <code>66.163.116[.]25</code> to <code>208.69.78[.]179</code>, 54 minutes. Different networks, one rotation schedule: this is one proxy service re-pointing its customers at a fresh session.</p>
+
+<h3><span class="kc">Actions on Objectives</span> Step 6: What went through the tunnel</h3>
+<p>MDE resolves many destinations to the hostname the client asked for, which shows what the proxy was sold for:</p>
+<ul>
+<li><strong>Mail credential checking (T1110.004 Credential Stuffing against third parties):</strong> 15,851 IMAP connections to 13,053 distinct mail servers and 613 POP3 connections to 590. Large providers (<code>imap.comcast.net</code> 865, <code>outlook.office365.com</code> 454, <code>login.live.com</code> 210, <code>imap.gmail.com</code>) and thousands of small business and ISP mail hosts, a large share of them Australian <code>.com.au</code> and <code>.org.au</code> domains. One or two connections per server, spread across the list: a combo-list checker testing <code>email:password</code> pairs against each address's own mail server. I am not publishing the small-business hostnames; they are victims.</li>
+<li><strong>SMTP:</strong> 8,236 connections to 6,628 servers on 25/465/587, including <code>smtp.office365.com</code> (104). Consistent with validating SMTP AUTH or sending through compromised mailboxes. The payloads were inside the encrypted SSH channel, so I can't tell which.</li>
+<li><strong>Ad and analytics traffic:</strong> real-time bidding and sync endpoints (<code>ib.adnxs.com</code> 299, <code>exchange.kueezrtb.com</code> 171, <code>s.amazon-adsystem.com</code> 153, <code>eb2.3lift.com</code>, <code>cm.adform.net</code>, <code>user-sync.fwmrm.net</code>, <code>dt.adsafeprotected.com</code>, <code>ad.doubleclick.net</code>, <code>id5-sync.com</code>), plus property and news sites. Browser-shaped traffic from a datacentre IP to ad exchanges is how residential/datacentre proxy pools are monetised for ad fraud and traffic resale.</li>
+<li><strong>Proxy self-checks:</strong> my packet capture (which only covered 80/443) caught the clear-text checks a proxy customer runs before using an exit: <code>GET /json/?fields=status,message,country,countryCode,query,isp</code> to <code>ip-api.com</code>, <code>GET /ip.shtml</code>, and <code>GET /internals/api/ip?&lt;nonce&gt;</code> to <code>37.27.142.x</code>.</li>
+</ul>
+
+<h3><span class="kc">Impact</span> What it means for the owner</h3>
+<p>For 12 days my Azure IP was the visible source of credential-checking traffic against more than thirteen thousand mail servers and of ad-exchange traffic. Any of those operators can file an abuse report against the IP, and the mail checking will be in their logs as <em>my</em> address. Proxy abuse costs the victim almost nothing in CPU, which is exactly why it goes unnoticed: the B-series VM's bill did not move.</p>
+<p>Reputation feeds didn't notice either. On 27 November, two weeks after the last tunnelled connection, the honeypot's public IP <code>20.5.248[.]133</code> had no detections on VirusTotal, Malwarebytes returned "unknown" (no threat intelligence), and DNS lookups at 13:41 AEDT found it on none of SpamCop, Barracuda, SORBS, CBL, PSBL, UCEPROTECT levels 1 and 2, blocklist.de or s5h. Twelve days of IMAP/SMTP checking against more than thirteen thousand mail servers left almost no reputation trace, because the traffic was spread thinly: one or two connections per server. Don't treat a clean reputation for your own egress IP as evidence that nothing is wrong; the detections in section 5 are on your side of the wire for a reason.</p>
+
+<h2 id="attribution">3. How We Attributed It (MDE)</h2>
+<p>Linux sshd forks one process per connection: a privileged monitor (<code>sshd: support [priv]</code>), and a child that runs as the user (<code>sshd: support</code>). The tunnel connections belong to the child. MDE's <code>DeviceLogonEvents</code> row for the same login carries a <code>LogonId</code> equal to the monitor's PID, which is the child's parent PID. So:</p>
+<pre><code>DeviceNetworkEvents.InitiatingProcessParentId  ==  DeviceLogonEvents.LogonId</code></pre>
+<p>That one join gives you, for every tunnelled connection, the account, the source IP of the SSH login, and when the login happened. It is query A2 below. Without it you only know "sshd talked to 33,000 IPs".</p>
+<p>Two counting notes for anyone reproducing this. MDE writes separate <code>ConnectionRequest</code>, <code>ConnectionSuccess</code> and <code>ConnectionFailed</code> rows for one TCP connection, so count unique <code>(InitiatingProcessId, LocalPort, RemoteIP, RemotePort)</code> tuples, not rows. And KQL <code>dcount()</code> is an estimate (HyperLogLog, about 1–2% off at these sizes): the <em>Tested</em> figures below are what the queries returned; the tables above are exact counts from the exported raw rows.</p>
+
+<h2 id="pyramid">4. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>What to do with it</th></tr></thead><tbody>
+<tr><td>Hash values</td><td>None. No file was dropped.</td><td>Nothing to block. This is why a hash-driven programme never sees proxy abuse.</td></tr>
+<tr><td>IP addresses</td><td>Operators <code>208.69.78[.]9</code>, <code>208.69.78[.]179</code>, <code>66.163.116[.]25</code>, <code>212.87.213[.]69</code>; monitor <code>193.46.255[.]86</code>; guessers <code>109.160.32[.]0/24</code></td><td>Useful for retro-hunting your own SSH logs this month. Rotated within hours.</td></tr>
+<tr><td>Domain names</td><td>Destinations (<code>imap.comcast.net</code>, ad exchanges)</td><td>They are legitimate services. Never block them; use them as context.</td></tr>
+<tr><td>Network artefacts</td><td>A server speaking IMAP/POP3/SMTP to hundreds of servers per hour; one SSH session open for days</td><td>Cheap, stable detections (A3, A5, B2, B3).</td></tr>
+<tr><td>Host artefacts</td><td><code>sshd: &lt;user&gt;</code> as the initiating process of internet connections</td><td>The highest-value signal here (A1, B1). The attacker cannot hide it without abandoning SSH.</td></tr>
+<tr><td>Tools</td><td>OpenSSH <code>-D</code> / raw <code>direct-tcpip</code>; combo-list mail checker</td><td>Hard to fingerprint from the server; detect the behaviour instead.</td></tr>
+<tr><td>TTPs</td><td>Guess &rarr; validate &rarr; hand over &rarr; long-lived proxy session</td><td>The chain itself (A2, A5) survives every IP rotation.</td></tr>
+</tbody></table>
+
+<h2 id="detect">5. Detections</h2>
+
+<h3>D1. sshd is the process talking to the internet (T1090, T1572)</h3>
+<p><span class="org orgA">Org A</span> Tested: 12 tunnel sessions returned. The top one was <code>support</code>, 65,414 events (<code>Conns</code>) to 31,171 IPs (<code>dcount</code>) on ports 993, 143, 443, 465, 587, 25, 110, 995, 80, 853, 5228 and 3629.</p>
+<pre><code>// A1: sshd itself opening outbound connections to the internet = SSH port forwarding (direct-tcpip)
+DeviceNetworkEvents
+| where Timestamp &gt; ago(30d)
+| where InitiatingProcessFileName == "sshd"
+| where InitiatingProcessCommandLine startswith "\"sshd: "   // per-user session process, not the listener
+| where RemoteIPType == "Public"
+| summarize Conns = count(), Dsts = dcount(RemoteIP), Ports = make_set(RemotePort, 20),
+            First = min(Timestamp), Last = max(Timestamp)
+          by DeviceName, Account = InitiatingProcessAccountName,
+             SessionPid = InitiatingProcessId, LogonId = tostring(InitiatingProcessParentId)
+| where Dsts &gt;= 20</code></pre>
+<p><span class="org orgB">Org B</span> Falcon records <code>NetworkConnectIP4</code> with the owning process in <code>ContextProcessId</code>. Join it to the <code>ProcessRollup2</code> of <code>sshd</code>:</p>
+<pre><code>`comment("B1: Falcon - outbound connections whose owning process is sshd")`
+event_simpleName=NetworkConnectIP4
+| where NOT (cidrmatch("10.0.0.0/8", RemoteAddressIP4) OR cidrmatch("172.16.0.0/12", RemoteAddressIP4) OR cidrmatch("192.168.0.0/16", RemoteAddressIP4) OR cidrmatch("127.0.0.0/8", RemoteAddressIP4))
+| join type=inner aid ContextProcessId_decimal
+    [ search event_simpleName=ProcessRollup2 FileName=sshd
+      | rename TargetProcessId_decimal as ContextProcessId_decimal
+      | fields aid ContextProcessId_decimal UserName CommandLine ParentProcessId_decimal ]
+| stats count as conns dc(RemoteAddressIP4) as dsts values(RemotePort_decimal) as ports
+        min(_time) as first max(_time) as last by aid ComputerName UserName ContextProcessId_decimal ParentProcessId_decimal
+| where dsts&gt;=20
+| convert ctime(first) ctime(last)</code></pre>
+<p>Legitimate SSH servers make almost no outbound connections from the per-user <code>sshd</code>: bastion hosts that people use with <code>-L</code>/<code>-D</code> are the exception, and you can list them. Tune with an allow-list of jump hosts and keep <code>Dsts &gt;= 20</code>.</p>
+
+<h3>D2. Attribute each tunnel to the login that opened it</h3>
+<p><span class="org orgA">Org A</span> Tested: 286 attributed sessions; the top four rows are exactly the operator table in section 2 (<code>208.69.78[.]179</code> 219.6 h, <code>66.163.116[.]25</code> 52.0 h, <code>208.69.78[.]9</code> 19.4 h, <code>212.87.213[.]69</code> 9.6 h).</p>
+<pre><code>// A2: attribute every tunnel to the SSH logon that opened it (LogonId == parent pid of the session sshd)
+let Tunnels = DeviceNetworkEvents
+    | where Timestamp &gt; ago(30d) and InitiatingProcessFileName == "sshd" and RemoteIPType == "Public"
+    | where InitiatingProcessCommandLine startswith "\"sshd: "
+    | summarize Conns = count(), Dsts = dcount(RemoteIP), Ports = make_set(RemotePort, 15),
+                First = min(Timestamp), Last = max(Timestamp)
+              by DeviceId, LogonId = tostring(InitiatingProcessParentId), Account = InitiatingProcessAccountName;
+DeviceLogonEvents
+| where Timestamp &gt; ago(30d) and ActionType == "LogonSuccess" and LogonType == "Network"
+| project DeviceId, DeviceName, LogonId = tostring(LogonId), RemoteIP, LogonTime = Timestamp
+| join kind=inner Tunnels on DeviceId, LogonId
+| project LogonTime, DeviceName, Account, RemoteIP, Conns, Dsts, Ports, First, Last,
+          SessionHours = round((Last - First) / 1h, 1)
+| order by Conns desc</code></pre>
+<p><span class="org orgB">Org B</span> In Falcon the SSH login is a <code>UserLogon</code> event whose <code>ContextProcessId</code> is the sshd monitor. The B1 search already carries <code>ParentProcessId_decimal</code>; join it to <code>UserLogon</code> on that ID to get <code>RemoteAddressIP4</code> of the login.</p>
+
+<h3>D3. Mail-protocol fan-out from a server (T1110.004 against third parties)</h3>
+<p><span class="org orgA">Org A</span> Tested (30-day window): 253 hours in which the honeypot spoke IMAP/POP3/SMTP to 50 or more mail servers. In all 253, <code>sshd</code> was the only initiating process.</p>
+<pre><code>// A3: a server that suddenly talks IMAP/POP3/SMTP to hundreds of mail servers
+DeviceNetworkEvents
+| where Timestamp &gt; ago(1d)
+| where RemotePort in (25, 465, 587, 110, 995, 143, 993) and RemoteIPType == "Public"
+| summarize MailServers = dcount(RemoteIP), Conns = count(),
+            Procs = make_set(InitiatingProcessFileName, 5), Samples = make_set(RemoteUrl, 10)
+          by DeviceName, bin(Timestamp, 1h)
+| where MailServers &gt;= 50</code></pre>
+<p><span class="org orgA">Org A</span> Without MDE on the VM, Sentinel's Traffic Analytics table gives the same signal per source IP (not run here: flow logs only covered a different lab VNet):</p>
+<pre><code>// A4 (Sentinel): the same idea from Azure network flow data when there is no EDR on the box
+NTANetAnalytics
+| where TimeGenerated &gt; ago(1d)
+| where SubType == "FlowLog" and FlowDirection in ("O", "Outbound") and DestPort in (25, 465, 587, 110, 995, 143, 993)
+| mv-expand DestIp = split(DestPublicIps, " ")          // external destinations live in DestPublicIps, not DestIp
+| extend DestIp = tostring(split(DestIp, "|")[0])
+| where isnotempty(DestIp)
+| summarize MailServers = dcount(DestIp), Flows = count() by SrcIp, bin(TimeGenerated, 1h)
+| where MailServers &gt;= 50</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B2: Falcon - server suddenly speaking IMAP/POP3/SMTP to many mail servers")`
+event_simpleName=NetworkConnectIP4 RemotePort_decimal IN (25,465,587,110,995,143,993)
+| bin _time span=1h
+| stats dc(RemoteAddressIP4) as mail_servers count as conns values(ContextBaseFileName) as procs by _time aid ComputerName
+| where mail_servers&gt;=50</code></pre>
+<pre><code>`comment("B3: Splunk + Zeek / firewall - same thing without EDR")`
+index=network (sourcetype=zeek:conn OR sourcetype=pan:traffic) dest_port IN (25,465,587,110,995,143,993)
+| where (cidrmatch("10.0.0.0/8", src_ip) OR cidrmatch("172.16.0.0/12", src_ip) OR cidrmatch("192.168.0.0/16", src_ip))
+    AND NOT (cidrmatch("10.0.0.0/8", dest_ip) OR cidrmatch("172.16.0.0/12", dest_ip) OR cidrmatch("192.168.0.0/16", dest_ip))
+| bin _time span=1h
+| stats dc(dest_ip) as mail_servers count as conns by _time src_ip
+| where mail_servers&gt;=50</code></pre>
+<p>Servers that legitimately do this are your mail relays and mail-archiving appliances. Everything else, especially a Linux VM in a cloud subnet, should never open 50 IMAP sessions an hour.</p>
+
+<h3>D4. One SSH session that lasts for days</h3>
+<p><span class="org orgA">Org A</span> Tested: 6 sessions of 12 hours or more, all <code>support</code>; the longest was 219.6 hours.</p>
+<pre><code>// A5: one SSH logon that lasts for days (a proxy session, not an admin)
+DeviceLogonEvents
+| where Timestamp &gt; ago(30d) and ActionType == "LogonSuccess" and LogonType == "Network"
+| project DeviceId, DeviceName, LogonId = tostring(LogonId), AccountName, RemoteIP, LogonTime = Timestamp
+| join kind=inner (
+    DeviceNetworkEvents
+    | where Timestamp &gt; ago(30d) and InitiatingProcessFileName == "sshd"
+    | summarize LastSeen = max(Timestamp), Conns = count() by DeviceId, LogonId = tostring(InitiatingProcessParentId)
+  ) on DeviceId, LogonId
+| extend Hours = round((LastSeen - LogonTime) / 1h, 1)
+| where Hours &gt;= 12
+| project DeviceName, AccountName, RemoteIP, LogonTime, LastSeen, Hours, Conns</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B5: Splunk linux_secure - session that stays open for 12h+ (Accepted ... -&gt; Disconnected/closed)")`
+index=linux sourcetype=linux_secure process=sshd ("Accepted" OR "session closed")
+| rex "sshd\[(?&lt;pid&gt;\d+)\]"
+| rex "Accepted \S+ for (?&lt;user&gt;\S+) from (?&lt;src&gt;\S+)"
+| stats min(_time) as start max(_time) as end values(user) as user values(src) as src by host pid
+| eval hours=round((end-start)/3600,1)
+| where hours&gt;=12</code></pre>
+
+<h3>D5. Make sshd log the forwarding itself</h3>
+<p>At <code>LogLevel VERBOSE</code> OpenSSH logs logins, keys and disconnects, but not channel requests. At <code>LogLevel DEBUG1</code> every <code>direct-tcpip</code> request is logged as <code>server_request_direct_tcpip: originator &lt;ip&gt; port &lt;port&gt;, target &lt;host&gt; port &lt;port&gt;</code>. DEBUG1 is chatty, so turn it on for exposed hosts only, or use EDR network telemetry instead.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>// A6 (Sentinel, Syslog): sshd only logs forwarding at LogLevel DEBUG1 - "server_request_direct_tcpip"
+Syslog
+| where ProcessName == "sshd" and SyslogMessage has "server_request_direct_tcpip"
+// OpenSSH serverloop.c: "server_request_direct_tcpip: originator &lt;ip&gt; port &lt;p&gt;, target &lt;host&gt; port &lt;p&gt;"
+| extend Target = extract(@"target ([^ ]+) port (\d+)", 1, SyslogMessage),
+         TPort = toint(extract(@"target [^ ]+ port (\d+)", 1, SyslogMessage))
+| summarize Requests = count(), Targets = dcount(Target), Ports = make_set(TPort, 20) by Computer, bin(TimeGenerated, 1h)
+| where Targets &gt;= 20</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B4: Splunk linux_secure - sshd forwarding requests (needs LogLevel DEBUG1) and long sessions")`
+index=linux sourcetype=linux_secure process=sshd "server_request_direct_tcpip"
+| rex "target (?&lt;target&gt;\S+) port (?&lt;tport&gt;\d+)"
+| bin _time span=1h
+| stats count as requests dc(target) as targets values(tport) as ports by _time host
+| where targets&gt;=20</code></pre>
+
+<h2 id="respond">6. When It Fires</h2>
+<ul>
+<li><strong>Kill the session first, then the account.</strong> <span class="org orgA">Org A</span> Isolate the device from the MDE device page, or run <code>pkill -KILL -u &lt;user&gt; sshd</code> through Live Response. <span class="org orgB">Org B</span> Network-contain the host in Falcon, or <code>kill</code> the sshd PID from Real Time Response.</li>
+<li><strong>Find every account it used.</strong> Run D2 for the last 30 days. Each attributed row is a separate login; rotate or lock each account, not just the one that alerted.</li>
+<li><strong>Work out the blast radius for others.</strong> The destinations in D1 are other people's servers. If mail ports are in the list, expect abuse reports, and check whether your egress IP is now on mail blocklists.</li>
+<li><strong>Look for the shell side too.</strong> On a real server the same login also gets a real shell. Check the session's process tree (<code>DeviceProcessEvents</code> / <code>ProcessRollup2</code> with the same parent) for persistence: <code>authorized_keys</code> writes, cron, new users.</li>
+</ul>
+
+<h2 id="harden">7. Hardening</h2>
+<ul>
+<li><strong>The root cause here:</strong> my config said <code>Match User !labadmin,!root</code> followed by <code>ForceCommand</code> and <code>AllowTcpForwarding no</code>. In OpenSSH patterns a negated entry can only <em>exclude</em>; a list made only of negations never matches anyone (<code>ssh_config(5)</code>, PATTERNS). So the whole block, forwarding restriction and ForceCommand included, applied to nobody, and OpenSSH's default <code>AllowTcpForwarding yes</code> stayed in force. MDE agrees: the ForceCommand target ran 0 times while the decoy login shell ran 2,479 times. The correct line is <code>Match User *,!labadmin,!root</code>.</li>
+<li>Better still, set <code>AllowTcpForwarding no</code>, <code>AllowStreamLocalForwarding no</code>, <code>PermitTunnel no</code> and <code>PermitOpen none</code> in the <strong>global</strong> section, and re-enable per jump host with a positive <code>Match</code>. Verify the effective value per user with <code>sshd -T -C user=support,host=x,addr=192.0.2.1 | grep -i forward</code>. Test what sshd enforces, not the file you edited.</li>
+<li>Egress filtering: a Linux server has no business opening IMAP, POP3 or SMTP to the internet. Deny 25/110/143/465/587/993/995 outbound at the NSG/firewall for everything except mail relays.</li>
+<li>No password authentication on internet-facing SSH. The whole chain started with a guessed password.</li>
+<li>Session limits: <code>ClientAliveInterval</code> plus a maximum session age enforced by your PAM/session tooling, so a stolen login can't live for nine days.</li>
+</ul>
+
+<h2 id="iocs">8. IOCs</h2>
+<p>Low durability (see section 4). Published for retro-hunting and threat-intel correlation.</p>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>IP</td><td><code>208.69.78[.]179</code></td><td>Tunnel operator, one 219.6 h session, 34,205 connections to 31,132 IPs</td></tr>
+<tr><td>IP</td><td><code>208.69.78[.]9</code></td><td>Tunnel operator, 30–31 Oct, 4,113 connections</td></tr>
+<tr><td>IP</td><td><code>66.163.116[.]25</code></td><td>Tunnel operator, 31 Oct – 2 Nov, 3,417 connections</td></tr>
+<tr><td>IP</td><td><code>212.87.213[.]69</code></td><td>22 logons, 21 short tunnel sessions, 499 connections to 431 IPs</td></tr>
+<tr><td>IP</td><td><code>193.46.255[.]86</code></td><td>Daily access monitor for the <code>support</code> login, no tunnelling</td></tr>
+<tr><td>IP</td><td><code>179.43.133[.]154</code></td><td>44 tunnel sessions as <code>cisco</code>, 1,136 HTTP/HTTPS network events</td></tr>
+<tr><td>Network</td><td><code>109.160.32[.]0/24</code></td><td>Wordlist workers; first guessed the <code>support</code> login (<code>109.160.32[.]200</code>, 29 Oct 21:30 UTC)</td></tr>
+<tr><td>IP</td><td><code>2.57.122[.]76</code>, <code>171.231.190[.]52</code></td><td>Credential re-validation logins, 30 Oct</td></tr>
+<tr><td>Credential</td><td><code>support</code> / <code>support</code></td><td>Most-tried pair for the abused account</td></tr>
+<tr><td>Proxy check URLs</td><td><code>ip-api.com/json/?fields=status,message,country,countryCode,query,isp</code>, <code>/ip.shtml</code>, <code>/internals/api/ip?&lt;nonce&gt;</code> on <code>37.27.142.x</code></td><td>Exit-node checks seen in clear text</td></tr>
+<tr><td>ATT&amp;CK</td><td colspan="2">T1595.001, T1110.001, T1078.003, T1021.004, T1090, T1572, T1110.004 (against third parties)</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
