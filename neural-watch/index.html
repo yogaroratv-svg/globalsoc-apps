@@ -103,6 +103,14 @@ header .count{font-family:var(--display);color:var(--muted);font-size:16px;lette
 .pad button.skip{text-decoration:line-through;text-decoration-thickness:3px;color:var(--muted)}
 .padnote{margin:-4px 0 0;font-size:13px;color:var(--muted)}
 
+/* player's choices: which pattern to play, and when to stop after misses */
+.picks{display:flex;flex-direction:column;gap:6px}
+.pickrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pickrow .lbl{font-family:var(--display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-width:84px}
+.seg{display:flex;flex-wrap:wrap;gap:4px;flex:1;min-width:0}
+.seg button{border:1px solid var(--line);background:var(--felt-2);border-radius:7px;padding:6px 9px;font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.04em;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:var(--brass-ink)}
+
 /* recent spins */
 .strip{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .chip{flex:none;width:34px;display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -170,6 +178,11 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
     <p class="tbllegend" id="legend">Machine layout · gold = bet · ringed = put on · dashed = take off · struck = skip</p>
     <p class="reason" id="reason"></p>
   </section>
+
+  <div class="picks" id="picks">
+    <div class="pickrow"><span class="lbl">Play</span><div class="seg" id="segPat" role="group" aria-label="Pattern to play"></div></div>
+    <div class="pickrow"><span class="lbl">Hold after</span><div class="seg" id="segStop" role="group" aria-label="Hold after this many misses in a row"></div></div>
+  </div>
 
   <div class="pad" id="pad"></div>
   <p class="padnote">Tap the number that lands. Gold = the 16 to bet, struck through = skip.</p>
@@ -337,9 +350,11 @@ var SW = (function () {
   function run(h, opts) {
     opts = opts || {};
     var record = copyRec(opts.record), live = opts.live || [];
-    var rec = P.map(function () { return []; }), calls = [], leader = null;
+    var rec = P.map(function () { return []; }), calls = [], leader = null, missRun = 0;
     for (var i = 0; i <= h.length; i++) {
       var hist = h.slice(0, i), call = null;
+      // the player's settings when this call was shown (opts.at[i], saved with each spin), else the current ones
+      var oi = (opts.at && i < h.length && opts.at[i]) || { fixed: opts.fixed, stop: opts.stopAfter };
       if (i >= 3) {
         var last = hist[hist.length - 1], spread = allOver(hist);
         var picks = P.map(function (p) {
@@ -368,10 +383,13 @@ var SW = (function () {
           if (a.hw > b.hw || (a.hw === b.hw && a.all > b.all)) best = k;
         }
         if (leader !== null && forms[leader].hw === forms[best].hw) best = leader;
-        var switched = leader !== null && best !== leader ? P[leader].name : null;
+        // the player's own choice of pattern overrides the leaderboard
+        var fixedK = oi.fixed ? P.findIndex(function (p) { return p.id === oi.fixed; }) : -1;
+        if (fixedK >= 0 && !picks[fixedK].off) best = fixedK;
+        var switched = fixedK < 0 && leader !== null && best !== leader ? P[leader].name : null;
         leader = best;
-        var f = forms[best], pk = picks[best], nm = P[best].name, raw = 1, level, reason, cool = false;
-        var form = nm + " is the pattern in play: " + f.hw + " of its last " + f.nw + " calls hit (normal is " + f1(f.nw * CH) + ")";
+        var f = forms[best], pk = picks[best], nm = P[best].name, raw = 1, level, reason, cool = false, stopped = false;
+        var form = (fixedK >= 0 ? "You picked " + nm + ": " : nm + " is the pattern in play: ") + f.hw + " of its last " + f.nw + " calls hit (normal is " + f1(f.nw * CH) + ")";
         var base = record[1];
         if (i < MIN_SPINS) { raw = 0; reason = "Reading the table: " + i + " of " + MIN_SPINS + " spins in. Watch, don't bet yet."; }
         else if (f.streak <= -3) raw = 3;
@@ -394,9 +412,16 @@ var SW = (function () {
             reason = lead + word + " calls have hit " + of(me) + " lately, no better than plain bets (" + pct(base) + "), so " + (level === 2 ? "double only." : "single bet only.");
           } else reason = lead + "The machine evens out: after " + (raw === 3 ? "3 or more misses" : "2 misses") + " the pattern in play has come back " + of(me) + ". " + word + ".";
         }
+        // the player's stop rule: after the gold numbers missed this many spins in a row (whatever pattern
+        // picked them), hold until the gold numbers hit again
+        var stopAt = oi.stop || 0;
+        if (stopAt && i >= MIN_SPINS && missRun >= stopAt) {
+          level = 0; stopped = true;
+          reason = "The gold numbers have missed " + missRun + " spins in a row. Your stop rule is " + stopAt + " misses: hold and keep tapping numbers. Betting starts again after the gold numbers hit.";
+        }
         var why = pk.why;
         if (pk.dropped !== undefined) why += " Numbers are coming from all over the table, so the last number (" + pk.dropped + ") is left out: after a spread like this it did not come straight back.";
-        call = { at: i, pattern: P[best].id, name: nm, nums: pk.nums, dropped: pk.dropped, why: why, raw: raw, cool: cool, level: level, reason: reason, switched: switched,
+        call = { at: i, pattern: P[best].id, name: nm, nums: pk.nums, dropped: pk.dropped, why: why, raw: raw, cool: cool, level: level, reason: reason, switched: switched, fixed: fixedK >= 0, stopped: stopped,
           forms: forms, picks: picks, record: copyRec(record) };
       }
       calls.push(call);
@@ -405,6 +430,7 @@ var SW = (function () {
         if (i >= 3) P.forEach(function (p, k) { if (!calls[i].picks[k].off) rec[k].push(calls[i].picks[k].nums.indexOf(x) >= 0); });
         if (call) {
           call.result = x; call.hit = call.nums.indexOf(x) >= 0;
+          if (i >= MIN_SPINS) missRun = call.hit ? 0 : missRun + 1;
           if ((call.raw > 0 || call.cool) && i >= MIN_SPINS && live[i] !== false) {
             var rr = record[call.raw]; rr.n++; if (call.hit) rr.h++;
             // keep roughly the last 60 calls of each kind, so the record follows the machine as it changes
@@ -602,7 +628,24 @@ function save(){
 var R=null;
 function recompute(){
   var h=state.spins.map(function(s){return s.n;}), live=state.spins.map(function(s){return !s.pre;});
-  R=NEURAL?NN.runNeural(h,{record:state.record,live:live,learn:{cps:state.cps}}):SW.run(h,{record:state.record,live:live});
+  R=NEURAL?NN.runNeural(h,{record:state.record,live:live,learn:{cps:state.cps}}):SW.run(h,{record:state.record,live:live,fixed:OPT.fixed,stopAfter:OPT.stop,
+    // each spin keeps the settings that were on when it was tapped; older spins (before v13.4) had Auto, no stop
+    at:state.spins.map(function(s){return s.o?{fixed:s.o.f||null,stop:s.o.s||0}:{fixed:null,stop:0};})});
+}
+
+/* ---------- player's choices (kept on this phone) ---------- */
+var OKEY=KEY+".opts",OPT={fixed:null,stop:4};
+try{var o0=JSON.parse(localStorage.getItem(OKEY)||"null");if(o0){if(o0.fixed===null||SW.P.some(function(p){return p.id===o0.fixed&&!p.learner;}))OPT.fixed=o0.fixed;if([0,3,4,5,6].indexOf(o0.stop)>=0)OPT.stop=o0.stop;}}catch(e){}
+function buildPicks(){
+  if(NEURAL){$("picks").hidden=true;return;}
+  var pats=[{id:null,label:"Auto"}].concat(SW.P.filter(function(p){return !p.learner;}).map(function(p){return {id:p.id,label:p.short};}));
+  function seg(el,items,get,set){
+    items.forEach(function(it){var b=document.createElement("button");b.type="button";b.textContent=it.label;b.addEventListener("click",function(){set(it.v);try{localStorage.setItem(OKEY,JSON.stringify(OPT));}catch(e){}paint();update();cloudQueue();});el.appendChild(b);it.b=b;});
+    function paint(){items.forEach(function(it){it.b.setAttribute("aria-pressed",String(get()===it.v));});}
+    paint();
+  }
+  seg($("segPat"),pats.map(function(p){return {v:p.id,label:p.label};}),function(){return OPT.fixed;},function(v){OPT.fixed=v;});
+  seg($("segStop"),[{v:0,label:"Off"},{v:3,label:"3 misses"},{v:4,label:"4"},{v:5,label:"5"},{v:6,label:"6"}],function(){return OPT.stop;},function(v){OPT.stop=v;});
 }
 
 /* ---------- wheel ---------- */
@@ -650,7 +693,7 @@ function buildPad(){
 function startOwn(){var nn={w:NN_PRE.w,n:NN_PRE.n};state={spins:[],record:SEED,run:newRun(),example:false,archive:[],nn:nn,cps:firstCps(nn,"your October spins")};}
 function addSpin(n){
   if(state.example)startOwn();
-  state.spins.push({n:n,t:Date.now(),pre:false});
+  state.spins.push(NEURAL?{n:n,t:Date.now(),pre:false}:{n:n,t:Date.now(),pre:false,o:{f:OPT.fixed,s:OPT.stop}});
   requestWake();save();update();maybeLearn();
 }
 
@@ -702,7 +745,7 @@ function render(){
     $("why").textContent="Have the machine's history? Use Add past numbers below to start straight away.";
   }else{
     act.textContent=LEVELS[call.level];act.dataset.l=String(call.level);$("chips").textContent=CHIPS[call.level];
-    $("patName").textContent=call.name;
+    $("patName").textContent=call.name;$("patEyebrow").textContent=NEURAL?"Picked by":call.fixed?"Your pick":"Pattern in play";
     $("switchNote").hidden=!call.switched;$("switchNote").textContent=call.switched?"Switched from "+call.switched:"";
     $("reason").textContent=call.reason;
     $("why").textContent=call.why+(call.level===0&&h.length>=SW.MIN_SPINS?" Gold shows what it would play.":"");
@@ -843,7 +886,7 @@ function renderPats(call){
   rows.forEach(function(r){
     var li=document.createElement("li");if(call&&r.p.id===call.pattern)li.className="lead";
     var nm=document.createElement("span");nm.className="nm";nm.textContent=r.p.name;
-    if(call&&r.p.id===call.pattern){var t=document.createElement("span");t.className="tag";t.textContent="in play";nm.appendChild(t);}
+    if(call&&r.p.id===call.pattern){var t=document.createElement("span");t.className="tag";t.textContent=call.fixed?"your pick":"in play";nm.appendChild(t);}
     var sp=document.createElement("span");sp.className="spark";
     for(var i=0;i<SW.W;i++){var x=document.createElement("i");var v=r.last[i-(SW.W-r.last.length)];if(v)x.className="h";sp.appendChild(x);}
     sp.setAttribute("aria-label",r.hw+" hits in the last "+r.last.length);
@@ -914,7 +957,8 @@ function cloudPush(){
   if(!cdb||state.example||!state.spins.length)return;
   if(cloudBusy){cloudAgain=true;return;}
   cloudBusy=true;
-  var body={run:state.run,app:NEURAL?"neural-watch-1":"v13.2",spins:state.spins,record:state.record,updated:Date.now()};
+  var body={run:state.run,app:NEURAL?"neural-watch-1":"v13.4",spins:state.spins,record:state.record,updated:Date.now()};
+  if(!NEURAL)body.opts={fixed:OPT.fixed,stop:OPT.stop};
   if(NEURAL)body.cps=state.cps;
   cdb.doc("sessions/"+(NEURAL?"nn_":"v13_")+state.run).set(body).then(function(){
     $("saveMsg").textContent="Saved on this phone and in the cloud at "+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+".";
@@ -927,7 +971,7 @@ window.addEventListener("online",cloudQueue);
 
 if(NEURAL){$("patsSec").hidden=true;$("netSec").hidden=false;$("patEyebrow").textContent="Picked by";
   $("exampleBanner").textContent="Example: 65 real spins from a 15 Oct session, read by the network trained on October. Your first tap starts your own session.";}
-load();buildWheel();buildPad();buildTable();buildBig();applyView();update();
+load();buildWheel();buildPad();buildTable();buildBig();buildPicks();applyView();update();
 var useDb=window.claude&&typeof window.claude.use==="function"?window.claude.use("db"):Promise.resolve(null);
 useDb.then(function(d){cdb=d;if(d)cloudPush();},function(){});
 })();
