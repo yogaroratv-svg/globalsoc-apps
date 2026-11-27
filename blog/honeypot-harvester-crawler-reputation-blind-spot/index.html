@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Our Honeypot Became a Web Crawler, and the Reputation Feeds Never Noticed | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/honeypot-harvester-crawler-reputation-blind-spot/">
+<meta name="description" content="A &quot;safe&quot; payload harvester on our Cisco ASA honeypot fetched every URL it saw, including the info URLs scanners put in their User-Agent, then recursed into every page it downloaded. It logged 7,065,375 fetch events and filled a 30 GB disk in four days, while the same IP was relaying mail-credential checks for someone else. Then we checked our IP on VirusTotal, AbuseIPDB and ten blocklists. Full numbers, root causes, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/honeypot-harvester-crawler-reputation-blind-spot/">
+<meta property="og:title" content="Our Honeypot Became a Web Crawler, and the Reputation Feeds Never Noticed | Global SOC">
+<meta property="og:description" content="A &quot;safe&quot; payload harvester on our Cisco ASA honeypot fetched every URL it saw, including the info URLs scanners put in their User-Agent, then recursed into every page it downloaded. It logged 7,065,375 fetch events and filled a 30 GB disk in four days, while the same IP was relaying mail-credential checks for someone else. Then we checked our IP on VirusTotal, AbuseIPDB and ten blocklists. Full numbers, root causes, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Our Honeypot Became a Web Crawler, and the Reputation Feeds Never Noticed | Global SOC">
+<meta name="twitter:description" content="A &quot;safe&quot; payload harvester on our Cisco ASA honeypot fetched every URL it saw, including the info URLs scanners put in their User-Agent, then recursed into every page it downloaded. It logged 7,065,375 fetch events and filled a 30 GB disk in four days, while the same IP was relaying mail-credential checks for someone else. Then we checked our IP on VirusTotal, AbuseIPDB and ten blocklists. Full numbers, root causes, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/honeypot-harvester-crawler-reputation-blind-spot/#article",
+      "url": "https://globalsoc.com.au/blog/honeypot-harvester-crawler-reputation-blind-spot/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/honeypot-harvester-crawler-reputation-blind-spot/"
+      },
+      "headline": "7 Million Fetches, 24 GB and 60,000+ HTTP 403s: How Our Honeypot's Payload Harvester Became a Web Crawler, and Why VirusTotal and AbuseIPDB Missed It",
+      "description": "A \"safe\" payload harvester on our Cisco ASA honeypot fetched every URL it saw, including the info URLs scanners put in their User-Agent, then recursed into every page it downloaded. It logged 7,065,375 fetch events and filled a 30 GB disk in four days, while the same IP was relaying mail-credential checks for someone else. Then we checked our IP on VirusTotal, AbuseIPDB and ten blocklists. Full numbers, root causes, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.",
+      "datePublished": "2026-11-27",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "7 Million Fetches, 24 GB and 60,000+ HTTP 403s: How Our Honeypot's Payload Harvester Became a Web Crawler, and Why VirusTotal and AbuseIPDB Missed It",
+          "item": "https://globalsoc.com.au/blog/honeypot-harvester-crawler-reputation-blind-spot/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-27">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 27 November 2026</p>
+<h1>7 Million Fetches, 24 GB and 60,000+ HTTP 403s: How Our Honeypot&#x27;s Payload Harvester Became a Web Crawler, and Why VirusTotal and AbuseIPDB Missed It</h1>
+<p>A &quot;safe&quot; payload harvester on our Cisco ASA honeypot fetched every URL it saw, including the info URLs scanners put in their User-Agent, then recursed into every page it downloaded. It logged 7,065,375 fetch events and filled a 30 GB disk in four days, while the same IP was relaying mail-credential checks for someone else. Then we checked our IP on VirusTotal, AbuseIPDB and ten blocklists. Full numbers, root causes, and tested detections for MDE + Sentinel and Splunk + CrowdStrike.</p>
+<nav class="toc"><strong>Key Sections:</strong> What Happened · How a Harvester Becomes a Crawler · What It Did to Other People · What the Reputation Feeds Said · Why Reputation Misses This · Detections · Lessons for Honeypot Builders · Evidence</nav>
+<p class="small">Data: Cisco ASA/FTD honeypot on Azure, 29 October – 11 November 2026 (the same VM as the <a href="/blog/ssh-tunnel-proxy-abuse-honeypot/">SSH tunnel</a>, <a href="/blog/ssh-bots-after-login-fingerprinting/">after-login</a> and <a href="/blog/ssh-passwords-linux-vs-windows-logons/">SSH password</a> posts). Reputation lookups were made live on 27 November 2026, 13:41–15:10 AEDT. Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Microsoft Defender for Endpoint with Microsoft Sentinel; queries marked <em>Tested</em> ran against this honeypot's MDE data. <span class="org orgB">Org B</span> runs Splunk with CrowdStrike Falcon; its queries were not run against this data.</p>
+
+<h2 id="what">1. What Happened</h2>
+<p>This one is about my own mistake. The honeypot had a "loot harvester": whenever an attacker's request contained a URL (a dropper link in a command injection, a <code>wget</code> in an SSH command), it downloaded that URL into quarantine so I could analyse the payload without running it. Sensible idea. Then it did this:</p>
+<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+<tr><td>Harvester fetch events logged</td><td>7,065,375</td></tr>
+<tr><td>Started by something an attacker or scanner sent</td><td>306 (266 GET, 39 POST, 1 HEAD)</td></tr>
+<tr><td>Started by the harvester itself (URLs found inside pages it had downloaded)</td><td>7,065,069</td></tr>
+<tr><td>Died with Python <code>RecursionError</code> before or while fetching</td><td>6,662,049</td></tr>
+<tr><td>Fetches that reached the network</td><td>~403,000: 161,806 completed downloads + 241,520 other failures</td></tr>
+<tr><td>Data written to disk</td><td>24,097,709,628 bytes (24.1 GB, 22.4 GiB) in 161,806 files; the 29 GB root filesystem hit 100% (<code>df</code>: 29G size, 29G used)</td></tr>
+<tr><td>HTTP 403 / 429 / 404 returned to us</td><td>at least 60,341 / 14,687 / 15,123 (the standard reason phrases plus custom ones such as "rate limit exceeded" and "Please set a proper user-agent")</td></tr>
+<tr><td>Fetch events per day</td><td>29 Oct 94,770 · 30 Oct 2,565,107 · 31 Oct 1,840,856 · 1 Nov 2,137,724 · 2 Nov 426,511 · 3 Nov 247 (disk full) · 6–8 Nov 159 · 27 Nov 1</td></tr>
+<tr><td>Top destinations</td><td><code>github.githubassets.com</code> 1,540,059 · <code>www.atlassian.com</code> 912,610 · <code>site-assets.fontawesome.com</code> 814,828 · <code>github.com</code> 602,045 · <code>github.blog</code> 361,792 · <code>fontawesome.com</code> 251,371 · <code>rdfs.org</code> 166,188 · <code>en.wikipedia.org</code> 151,233 · <code>www.w3.org</code> 120,515</td></tr>
+</tbody></table>
+<p>The disk filling up is how I found out: on 17 November the Azure agent couldn't write its status file (<code>[Errno 28] No space left on device</code>), Run Command stopped working, and the VM became unmanageable until I snapshotted the disk and analysed a copy on a separate forensic VM.</p>
+
+<h2 id="how">2. How a Harvester Becomes a Crawler</h2>
+<h3><span class="kc">Flaw 1</span> It looked for URLs everywhere</h3>
+<p>For every HTTP request the honeypot concatenated the path, <strong>every header</strong> and the body, and extracted anything matching <code>(https?|ftp|tftp)://…</code>. Headers are where internet scanners announce themselves: <code>User-Agent: Mozilla/5.0 (compatible; Infrawatch/1.0; +https://infrawat.ch/)</code>. So every scanner visit handed the harvester a URL to fetch. The 306 root fetches break down like this:</p>
+<table><thead><tr><th>Root URL (from the request)</th><th>Times</th><th>Where it came from</th></tr></thead><tbody>
+<tr><td><code>infrawat.ch</code></td><td>82</td><td>Infrawatch scanner User-Agent</td></tr>
+<tr><td>The honeypot's own IP (ports 80/443/8443)</td><td>130</td><td>Mostly <code>Referer</code> headers after the honeypot's own 302 redirect to <code>/+CSCOE+/logon.html</code> (113), plus <code>Origin</code> headers and absolute request URIs. The regex needs a scheme, so a bare <code>Host:</code> header never matched</td></tr>
+<tr><td><code>www.nokia.com</code></td><td>16</td><td>Nokia GenomeCrawler User-Agent</td></tr>
+<tr><td><code>217.60.102[.]5</code></td><td>14</td><td>A real payload: the RedTail <code>sh</code> dropper, exactly what the harvester was built for</td></tr>
+<tr><td><code>forestengine.net/#opt-out</code> (12) and <code>forestengine.net/</code> (1)</td><td>13</td><td>Scanner opt-out URL in the User-Agent</td></tr>
+<tr><td><code>scout.cyberconvoy.co</code></td><td>11</td><td>CyberConvoyScout User-Agent</td></tr>
+<tr><td><code>modat.io</code>, <code>internet-measurement.com</code> and others</td><td>40</td><td>Mostly research-scanner User-Agents, SOAP XML namespaces and proxy-check URLs (<code>httpbin.org</code>, <code>azenv.net</code>), plus four more real payloads: <code>134.209.89[.]212/r</code> (a dropper that led the harvester to a 179,632-byte x86-64 ELF at <code>/x86_64</code>), <code>138.124.36[.]220/bxe</code> (from a <code>/PBX.php?cmd=curl…</code> request) and two Mozi URLs</td></tr>
+</tbody></table>
+<h3><span class="kc">Flaw 2</span> It recursed into everything it downloaded</h3>
+<p>To follow two-stage droppers (a shell script that downloads an ELF), the harvester re-scanned any downloaded file that was text, a script, <em>or smaller than 64 KB</em>, and fetched every URL inside it. There was no depth limit, no visited-URL set (only "don't refetch the URL you came from"), and no domain restriction. A scanner's homepage links to GitHub; GitHub pages link to more GitHub, Atlassian, Font Awesome, Wikipedia. The crawl only stopped each time Python hit its recursion limit (1,000 frames), and restarted with the next scanner visit.</p>
+<p>The largest crawls, by the scanner whose User-Agent seeded them (fetch events, root plus follow-on):</p>
+<table><thead><tr><th>Scanner source IP</th><th>Seed URL</th><th>Fetch events</th></tr></thead><tbody>
+<tr><td><code>212.73.148[.]44</code> (Modat; three <code>GET /</code> visits on 30 Oct)</td><td><code>https://modat.io/</code></td><td>960,664</td></tr>
+<tr><td><code>134.209.204[.]172</code></td><td><code>https://forestengine.net/#opt-out</code></td><td>582,895</td></tr>
+<tr><td><code>178.62.194[.]196</code></td><td><code>https://forestengine.net/#opt-out</code></td><td>499,495</td></tr>
+<tr><td><code>45.133.173[.]125</code> (Infrawatch)</td><td><code>https://infrawat.ch/</code></td><td>439,744</td></tr>
+<tr><td><code>200.138.46[.]71</code></td><td><code>https://infrawat.ch/</code></td><td>307,333</td></tr>
+<tr><td>5 more IPs (<code>188.166.33[.]215</code>, <code>209.38.42[.]204</code>, <code>104.248.95[.]116</code>, <code>164.92.215[.]223</code>, <code>188.166.126[.]49</code>)</td><td><code>https://forestengine.net/#opt-out</code></td><td>299,084 – 398,692 each</td></tr>
+</tbody></table>
+<p>None of these scanners did anything malicious to me. They sent a polite <code>GET /</code> with an honest User-Agent, and my code turned their courtesy link into a four-day crawl.</p>
+<h3><span class="kc">Flaw 3</span> Everything else that made it worse</h3>
+<ul>
+<li><strong>TLS verification off</strong> (<code>ssl.CERT_NONE</code>), so nothing failed safe.</li>
+<li><strong>Runs as root</strong>, writing to the root filesystem, with no quota and no free-space check.</li>
+<li><strong>25 MB read cap per file</strong>: a 25 MB Apache snapshot ZIP from <code>ci-builds.apache.org</code> (<code>asterix-server-…-binary-assembly.zip</code>) was downloaded four times, and the 25.3 MB Noto Color Emoji font from <code>fonts.gstatic.com</code> sat in quarantine alongside it.</li>
+<li><strong>Same egress IP as the honeypot</strong>, so every fetch was attributable to the same address the SSH tunnel was abusing.</li>
+</ul>
+
+<h2 id="impact">3. What It Did to Other People</h2>
+<p>Up to about 403,000 fetch attempts got past the recursion bug and went out to third-party sites over four days (some of those failed at DNS and never connected), from one Azure IP, with a <code>Wget/1.21.2 (linux-gnu)</code> User-Agent. The sites noticed even if the reputation feeds didn't: at least 60,341 requests were refused with HTTP 403 and at least 14,687 were rate-limited with HTTP 429. 226 fetches hit the honeypot itself, which then logged them as "attacks" from its own IP. From the outside this is indistinguishable from an aggressive scraper, and it ran in parallel with the SSH tunnel in the <a href="/blog/ssh-tunnel-proxy-abuse-honeypot/">tunnel post</a>, which relayed 42,239 connections, mostly mail-credential checks, through the same IP.</p>
+<p>MDE saw it too, but summarised: it recorded 7,705 outbound network events from the honeypot process between 29 October and 4 November (7,163 unique connections, at most 3,428 events a day, peaking at 527 distinct hosts in one hour), against 161,806 completed downloads in the harvester's own log. My reading is that the sensor aggregates repeated connections from a very chatty process; either way, the pattern was there to alert on.</p>
+
+<h2 id="reputation">4. What the Reputation Feeds Said</h2>
+<p>For twelve days this IP was a working proxy for mail-credential checking (15,851 IMAP connections to 13,053 mail servers, 8,236 SMTP connections) and for four of those days an aggressive crawler. On 27 November I looked it up:</p>
+<table><thead><tr><th>Service</th><th>Result for 20.5.248[.]133 (our honeypot)</th></tr></thead><tbody>
+<tr><td>VirusTotal</td><td><strong>0 / 92</strong>: "No security vendor flagged this IP address as malicious"; last analysis about 1 November, mid-abuse</td></tr>
+<tr><td>AbuseIPDB</td><td>Abuse Confidence Score <strong>2%</strong>: 1 report from 1 reporter (8 Nov 00:38 UTC, Australia, "Hacking, Web App Attack")</td></tr>
+<tr><td>Malwarebytes reputation</td><td>"unknown" (no threat intelligence)</td></tr>
+<tr><td>Spamhaus</td><td><strong>Listed</strong>: CSS blocklist ("Email Spam IPs"), the only feed that caught it</td></tr>
+<tr><td>SpamCop, Barracuda, SORBS, CBL, PSBL, UCEPROTECT L1/L2, blocklist.de, s5h</td><td>Not listed (DNS lookups, 13:41 AEDT)</td></tr>
+</tbody></table>
+<p>And here are the IPs that actually did things on the honeypot, on AbuseIPDB the same afternoon:</p>
+<table><thead><tr><th>IP</th><th>What it did here</th><th>AbuseIPDB</th></tr></thead><tbody>
+<tr><td><code>208.69.78[.]179</code></td><td>Ran the SSH tunnel for 9 days: 34,205 connections to 31,132 IPs</td><td><strong>0%</strong> (5 reports, latest 6 months ago)</td></tr>
+<tr><td><code>208.69.78[.]9</code></td><td>Tunnel operator, 30–31 Oct</td><td><strong>0%</strong> (8 reports, latest 4 months ago)</td></tr>
+<tr><td><code>66.163.116[.]25</code></td><td>Tunnel operator, 31 Oct – 2 Nov</td><td><strong>0%</strong> (9 reports, latest 6 months ago)</td></tr>
+<tr><td><code>212.87.213[.]69</code></td><td>21 short tunnel sessions</td><td><strong>0%</strong> (56 reports, latest 6 months ago)</td></tr>
+<tr><td><code>193.46.255[.]86</code></td><td>Logged in daily to check the stolen login still worked</td><td>100% (235,829 reports)</td></tr>
+<tr><td><code>109.160.32[.]200</code></td><td>Brute-forced the login in the first place</td><td>100% (7,891 reports)</td></tr>
+<tr><td><code>195.178.110[.]228</code></td><td>Anti-honeypot shell checks</td><td>100% (90,963 reports)</td></tr>
+<tr><td><code>212.73.148[.]44</code></td><td>Modat research scanner (three polite <code>GET /</code> requests)</td><td>100% (393 reports)</td></tr>
+<tr><td><code>134.209.204[.]172</code></td><td>Research scanner (polite <code>GET /</code>)</td><td>0% (391 reports)</td></tr>
+</tbody></table>
+
+<h2 id="why">5. Why Reputation Misses This</h2>
+<ul>
+<li><strong>Reputation is built from victims' sensors.</strong> AbuseIPDB scores rise when many people's fail2ban, honeypots and WAFs report an IP. Noisy behaviour (SSH guessing, port scanning) hits thousands of sensors a day, so <code>193.46.255[.]86</code> sits at 235,829 reports. The tunnel operators connected to exactly one SSH server, mine. Nobody else saw them, so nobody reported them.</li>
+<li><strong>The abuse was spread thin.</strong> The relayed mail checks touched each of 13,053 mail servers once or twice. No single mail admin sees a pattern; most never file a report. The one feed built for mail behaviour, Spamhaus CSS, is the one that listed us.</li>
+<li><strong>The victims of the crawl don't report to these feeds.</strong> GitHub, Atlassian and Font Awesome answered with 403s and 429s at their CDN edge and moved on. Rate limiting is their defence, not crowd-sourced reporting.</li>
+<li><strong>Cloud IPs are shared and recycled.</strong> An Azure address with a 2% score today may have been someone else's last month and will be someone else's next month. Feeds deliberately decay old reports, and VirusTotal's last analysis of my IP was a month old.</li>
+<li><strong>Scores track noise, not intent.</strong> A research scanner that sent me three honest <code>GET /</code> requests scores 100%. The operator that relayed 34,205 connections scores 0%. If you block on score, you block the census and admit the operator.</li>
+</ul>
+<p>Reputation feeds are useful for one thing here: confirming that a noisy brute-forcer is noisy. They are the wrong tool for "is my own server being abused?" and for spotting the operator behind an access-broker chain. That question has to be answered from your own telemetry.</p>
+
+<h2 id="detect">6. Detections</h2>
+<h3>D1. A server-side script suddenly talks to hundreds of hosts</h3>
+<p><span class="org orgA">Org A</span> Tested: 31 hours by KQL's <code>dcount()</code> estimate (30 by exact count), 29 October 22:00 – 2 November, peaking at 527 distinct hosts in one hour, all from <code>/usr/bin/python3 /opt/cisco-honeypot/cisco_asa_honeypot.py</code>. It also fired once on 18 November for <code>mitmdump</code> on another of my lab VMs: a legitimate proxy, which is exactly the kind of thing to allow-list.</p>
+<pre><code>// A1 (MDE): a server-side script/service suddenly talking to hundreds of distinct internet hosts
+DeviceNetworkEvents
+| where Timestamp &gt; ago(30d)
+| where RemoteIPType == "Public"
+| where ActionType in ("ConnectionRequest", "ConnectionSuccess", "ConnectionFailed")   // outbound only; excludes InboundConnectionAccepted
+| where InitiatingProcessFileName matches regex @"^(python|node|java|php|ruby|perl|curl|wget)"   // has_any would miss "python3.10"
+| where InitiatingProcessCommandLine !has "WALinuxAgent"          // Azure agent; add your own known updaters
+| summarize Conns = count(), Hosts = dcount(RemoteIP), Domains = dcount(RemoteUrl), Ports = make_set(RemotePort, 10)
+          by DeviceName, InitiatingProcessFileName, InitiatingProcessCommandLine, bin(Timestamp, 1h)
+| where Hosts &gt;= 100
+| order by Hosts desc</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B1: Falcon - one process opening connections to 100+ distinct internet hosts per hour")`
+event_simpleName=NetworkConnectIP4 event_platform=Lin
+| where NOT (cidrmatch("10.0.0.0/8", RemoteAddressIP4) OR cidrmatch("172.16.0.0/12", RemoteAddressIP4) OR cidrmatch("192.168.0.0/16", RemoteAddressIP4) OR cidrmatch("127.0.0.0/8", RemoteAddressIP4))
+| bin _time span=1h
+| stats count as conns dc(RemoteAddressIP4) as hosts values(RemotePort_decimal) as ports by _time aid ComputerName ContextProcessId_decimal
+| where hosts&gt;=100
+| join type=left aid ContextProcessId_decimal
+    [ search event_simpleName=ProcessRollup2 event_platform=Lin | rename TargetProcessId_decimal as ContextProcessId_decimal | fields aid ContextProcessId_decimal FileName CommandLine UserName ]
+| table _time ComputerName FileName CommandLine UserName conns hosts ports</code></pre>
+<pre><code>`comment("B2: Falcon DNS - distinct domains resolved per process per hour (crawler shape)")`
+event_simpleName=DnsRequest event_platform=Lin
+| bin _time span=1h
+| stats dc(DomainName) as domains count as lookups by _time aid ComputerName ContextProcessId_decimal
+| where domains&gt;=200</code></pre>
+
+<h3>D2. An internal source collecting 403s and 429s from many sites</h3>
+<p>Other people's rate limiters are a free sensor. If your egress goes through a proxy or next-gen firewall that logs HTTP status codes, a source that suddenly collects hundreds of 403/429 responses across hundreds of sites is crawling or being used.</p>
+<p><span class="org orgA">Org A</span> (Sentinel, CEF from a proxy/firewall; parse-tested on my workspace, no matching traffic there)</p>
+<pre><code>// A2 (Sentinel, firewall/proxy CEF): one internal source collecting 403/429 answers from many sites = crawler/abuse
+CommonSecurityLog
+| where TimeGenerated &gt; ago(1d)
+| where isnotempty(RequestURL) and DeviceAction !in~ ("deny", "block")
+| extend Status = coalesce(toint(column_ifexists("EventOutcome", "")),                       // some vendors put the HTTP code here
+                         toint(extract(@"(?:^|;|\s)(?:status|cs\d|httpStatus)=(\d{3})\b", 1, AdditionalExtensions)))  // CEF key=value; adjust key to your vendor
+| summarize Requests = count(), Sites = dcount(DestinationHostName),
+            Http403 = countif(Status == 403), Http429 = countif(Status == 429)
+          by SourceIP, bin(TimeGenerated, 1h)
+| where Sites &gt;= 200 or Http429 &gt;= 50</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B3: Splunk proxy / Zeek http - an internal host collecting 403/429 from many sites")`
+index=network (sourcetype=zeek:http OR sourcetype=bluecoat:proxysg:access:syslog)
+| eval status=coalesce(status_code, status, http_status), site=coalesce(url_domain, dest_host, cs_host)
+| bin _time span=1h
+| stats count as requests dc(site) as sites sum(eval(if(status=403,1,0))) as http403 sum(eval(if(status=429,1,0))) as http429 by _time src_ip
+| where sites&gt;=200 OR http403&gt;=200 OR http429&gt;=50</code></pre>
+
+<h3>D3. Your own egress IPs in the feeds you already ingest</h3>
+<p>Reputation is a lagging, partial signal, but it is cheap to watch for your own addresses. Spamhaus CSS was the one listing this incident produced.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>// A3 (Sentinel): your own egress IPs in the threat-intel feeds you already ingest (reputation as a lagging signal)
+let MyEgress = dynamic(["192.0.2.1", "192.0.2.2"]);   // your public egress IPs (RFC 5737 examples)
+ThreatIntelIndicators
+| where TimeGenerated &gt; ago(30d)
+| extend Ip = tostring(ObservableValue)
+| where Ip in (MyEgress)
+| project TimeGenerated, Ip, SourceSystem, Confidence, Tags</code></pre>
+<p><span class="org orgB">Org B</span> Run a scheduled search of your egress IPs against your threat-intel lookup (for example the <code>ip_intel</code> KV store in Splunk ES), and add a daily DNSBL check of your mail-capable egress IPs.</p>
+
+<h2 id="lessons">7. Lessons for Honeypot Builders</h2>
+<ul>
+<li><strong>Extract URLs from the attack surface only</strong>: command arguments, request bodies, query strings. Never from <code>User-Agent</code>, <code>Referer</code> or <code>Host</code>.</li>
+<li><strong>Depth 1 by default, depth 2 only for scripts</strong>, with a visited set, a per-root fetch budget (for example 20) and a per-domain rate limit.</li>
+<li><strong>Never fetch your own IPs, private ranges or the cloud metadata address</strong>, and allow-list known scanner domains as "never fetch".</li>
+<li><strong>Quarantine to a separate disk with a quota</strong>, and stop harvesting below a free-space floor.</li>
+<li><strong>Fetch from a different egress</strong> (a NAT gateway or a separate harvesting VM) so that your harvesting and your honeypot don't share an IP, and so you can rate-limit egress at the network layer.</li>
+<li><strong>Alert on your own honeypot's outbound traffic.</strong> D1 would have caught this on the first evening.</li>
+</ul>
+
+<h2 id="evidence">8. Evidence</h2>
+<table><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody>
+<tr><td>Harvester log</td><td><code>/var/log/cisco-honeypot/loot_harvester.jsonl</code>, 3,173,397,232 bytes, 7,065,375 lines, 29 Oct 21:35 – 27 Nov 01:04 UTC</td></tr>
+<tr><td>Quarantine directory</td><td><code>/var/log/cisco-lab-loot/</code>, 161,806 files, 23G on disk (<code>du</code>)</td></tr>
+<tr><td>Harvester User-Agent</td><td><code>Wget/1.21.2 (linux-gnu)</code></td></tr>
+<tr><td>Real payload it was built for</td><td>RedTail dropper from <code>217.60.102[.]5/sh</code> (see the <a href="/blog/detect-redtail-cryptominer/">RedTail post</a>)</td></tr>
+<tr><td>Method</td><td>Disk snapshot, copy mounted read-only on a separate forensic VM; MDE advanced hunting for process-level network events; findings independently re-computed by a second AI before publication</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
