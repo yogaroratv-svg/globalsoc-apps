@@ -158,6 +158,7 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
     <span class="count num" id="count">Spin 0</span>
   </header>
 
+  <p class="banner" id="endBanner" hidden></p>
   <p class="banner" id="exampleBanner" hidden>Example: 65 real spins from a 15 Oct session, so you can see how it reads. Your first tap starts your own session.</p>
 
   <section class="call" aria-live="polite">
@@ -211,6 +212,7 @@ section h2 span{font-family:var(--body);text-transform:none;letter-spacing:0;fon
     <div class="tools">
       <button class="btn" id="manyBtn" type="button">Add past numbers</button>
       <button class="btn" id="copyBtn" type="button">Copy spins</button>
+      <button class="btn on" id="endBtn" type="button">End session</button>
       <button class="btn warn" id="newBtn" type="button">New session</button>
     </div>
     <div class="many" id="manyBox" hidden>
@@ -615,7 +617,7 @@ var state=exampleState();
 
 function load(){
   try{var raw=localStorage.getItem(KEY),old=false;if(!raw&&!NEURAL){raw=localStorage.getItem("sectorwatch.v12");old=true;}if(!raw)return;var s=JSON.parse(raw);if(old&&s)s.record=null;
-    if(s&&Array.isArray(s.spins)){var nn=s.nn&&s.nn.w?s.nn:{w:NN_PRE.w,n:NN_PRE.n};state={spins:s.spins.filter(function(x){return x&&x.n>=0&&x.n<=36;}),record:s.record||SEED,run:s.run||newRun(),example:!!s.example,archive:Array.isArray(s.archive)?s.archive:[],nn:nn,cps:Array.isArray(s.cps)&&s.cps.length?s.cps:firstCps(nn,"your October spins")};}
+    if(s&&Array.isArray(s.spins)){var nn=s.nn&&s.nn.w?s.nn:{w:NN_PRE.w,n:NN_PRE.n};state={spins:s.spins.filter(function(x){return x&&x.n>=0&&x.n<=36;}),record:s.record||SEED,run:s.run||newRun(),example:!!s.example,archive:Array.isArray(s.archive)?s.archive:[],nn:nn,cps:Array.isArray(s.cps)&&s.cps.length?s.cps:firstCps(nn,"your October spins"),lastEnd:s.lastEnd&&s.lastEnd.summary?s.lastEnd:null,endQueue:Array.isArray(s.endQueue)?s.endQueue:[]};}
   }catch(e){}
 }
 function save(){
@@ -765,7 +767,7 @@ function render(){
   var how=howTo(call,h),hw=$("how");hw.textContent=how.t;hw.dataset.l=String(how.l);
   renderTable(nums,how,call);renderBig(nums,how,call,h);
   var sm=$("saveMsg");if(state.example)sm.textContent="Example only. Nothing is saved until you tap a number.";else if(/^Example only/.test(sm.textContent))sm.textContent="Saved on this phone.";
-  renderStrip(h);if(NEURAL)renderBands();else renderPats(call);renderRec();renderLearn();
+  renderStrip(h);if(NEURAL)renderBands();else renderPats(call);renderRec();renderLearn();renderEnd();
 }
 /* Quick betting: most spins change 0-2 of the 16, so say what to do against the bet already on the machine
    (REPEAT / move a few chips / DOUBLE) instead of making the player place 16 chips again. */
@@ -941,6 +943,52 @@ $("newBtn").addEventListener("click",function(){
   }
   state.spins=[];state.run=newRun();state.cps=firstCps(state.nn,"carried from your last session");save();update();
 });
+/* End session: tap twice. Saves a final summary to the cloud copy marked ended (so Claude knows the session is
+   finished and can review it), shows the summary here, then starts a fresh session. */
+function summarise(){
+  var g={h:0,n:0},b={h:0,n:0},hold={h:0,n:0},net=0;
+  R.calls.forEach(function(c,i){if(!c||c.hit===undefined||c.at<SW.MIN_SPINS||state.spins[i].pre)return;
+    g.n++;if(c.hit)g.h++;
+    if(c.level){b.n++;if(c.hit)b.h++;net+=(c.hit?36*c.level:0)-16*c.level;}else{hold.n++;if(c.hit)hold.h++;}});
+  return {spins:state.spins.length,gold:g,bets:b,holds:hold,net:net};
+}
+function endText(e){
+  var s=e.summary,p=function(x){return x.n?x.h+"/"+x.n+" ("+Math.round(100*x.h/x.n)+"%)":"–";};
+  return "Session ended "+new Date(e.at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+": "+s.spins+" spins · gold 16 hit "+p(s.gold)+" · bets won "+p(s.bets)+" · held "+s.holds.n+" (would have hit "+s.holds.h+") · "+(s.net>=0?"+":"")+s.net+" chips at 1 chip a number. "+(e.sent?"Sent for Claude to review.":cdb?"Saved on this phone; it goes to Claude once there's a signal.":"Saved on this phone only: this copy of the app has no cloud link, so open the Claude version for Claude to see it.");
+}
+// ended sessions waiting to reach the cloud, oldest first; each is retried until it lands
+var endTimer=null,endBusy=false;
+function pushEnd(){
+  clearTimeout(endTimer);endTimer=null;
+  var q=state.endQueue||[];if(!cdb||!q.length||endBusy)return;
+  // let an upload already on its way finish first, so it cannot overwrite the ended copy
+  if(cloudBusy){endTimer=setTimeout(pushEnd,1000);return;}
+  var e=q[0];endBusy=true;
+  cdb.doc("sessions/"+(NEURAL?"nn_":"v13_")+e.run).set(e.body).then(function(){
+    endBusy=false;state.endQueue=(state.endQueue||[]).filter(function(x){return x.run!==e.run;});
+    if(state.lastEnd&&state.lastEnd.run===e.run)state.lastEnd.sent=true;
+    save();renderEnd();if(state.endQueue.length)pushEnd();
+  },function(){endBusy=false;endTimer=setTimeout(pushEnd,30000);});
+}
+function renderEnd(){var b=$("endBanner"),e=state.lastEnd;b.hidden=!(e&&!state.spins.length);if(!b.hidden)b.textContent=endText(e);}
+var endArm=null;
+$("endBtn").addEventListener("click",function(){
+  var b=$("endBtn");
+  if(state.example||!state.spins.length){$("saveMsg").textContent="Nothing to end: no spins yet.";return;}
+  if(!endArm){b.textContent="Tap again to end";endArm=setTimeout(function(){endArm=null;b.textContent="End session";},4000);return;}
+  clearTimeout(endArm);endArm=null;b.textContent="End session";
+  var sum=summarise(),now=Date.now();
+  var body={run:state.run,app:NEURAL?"neural-watch-1":"v13.5",spins:state.spins,record:R.record,updated:now,ended:now,summary:sum};
+  if(NEURAL)body.cps=state.cps;else body.opts={fixed:OPT.fixed,stop:OPT.stop};
+  state.lastEnd={run:state.run,at:now,summary:sum,sent:false};
+  state.endQueue=(state.endQueue||[]).concat([{run:state.run,body:body}]).slice(-10);
+  state.record=R.record;
+  state.archive.push({run:state.run,start:state.spins[0].t,nums:state.spins.map(function(s){return (s.pre?"s":"")+s.n;}).join(" ")});
+  state.archive=state.archive.slice(-10);
+  clearTimeout(cloudTimer);
+  state.spins=[];state.run=newRun();state.cps=firstCps(state.nn,"carried from your last session");
+  save();update();pushEnd();
+});
 $("copyBtn").addEventListener("click",function(){
   var txt=state.spins.map(function(s){return s.n;}).join(" "),msg=$("saveMsg");
   function fallback(){$("manyBox").hidden=false;$("manyIn").value=txt;$("manyIn").select();msg.textContent="Select and copy the numbers above.";}
@@ -957,7 +1005,7 @@ function cloudPush(){
   if(!cdb||state.example||!state.spins.length)return;
   if(cloudBusy){cloudAgain=true;return;}
   cloudBusy=true;
-  var body={run:state.run,app:NEURAL?"neural-watch-1":"v13.4",spins:state.spins,record:state.record,updated:Date.now()};
+  var body={run:state.run,app:NEURAL?"neural-watch-1":"v13.5",spins:state.spins,record:state.record,updated:Date.now()};
   if(!NEURAL)body.opts={fixed:OPT.fixed,stop:OPT.stop};
   if(NEURAL)body.cps=state.cps;
   cdb.doc("sessions/"+(NEURAL?"nn_":"v13_")+state.run).set(body).then(function(){
@@ -967,13 +1015,13 @@ function cloudPush(){
     clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,30000);
   }).then(function(){cloudBusy=false;if(cloudAgain){cloudAgain=false;cloudQueue();}});
 }
-window.addEventListener("online",cloudQueue);
+window.addEventListener("online",function(){cloudQueue();pushEnd();});
 
 if(NEURAL){$("patsSec").hidden=true;$("netSec").hidden=false;$("patEyebrow").textContent="Picked by";
   $("exampleBanner").textContent="Example: 65 real spins from a 15 Oct session, read by the network trained on October. Your first tap starts your own session.";}
 load();buildWheel();buildPad();buildTable();buildBig();buildPicks();applyView();update();
 var useDb=window.claude&&typeof window.claude.use==="function"?window.claude.use("db"):Promise.resolve(null);
-useDb.then(function(d){cdb=d;if(d)cloudPush();},function(){});
+useDb.then(function(d){cdb=d;if(d){cloudPush();pushEnd();}},function(){});
 })();
 </script>
 <script src="https://globalsoc.com.au/v.js" defer></script>
