@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>11,397 Real SSH Passwords, and Why Linux Logon Telemetry Is Not Windows Logon Telemetry | Global SOC</title>
+<link rel="canonical" href="https://globalsoc.com.au/blog/ssh-passwords-linux-vs-windows-logons/">
+<meta name="description" content="We let PAM accept any password for 40 decoy accounts and logged every password typed: 11,397 real passwords, 2,391 unique, from 151 IPs, including the same 416-username botnet seen on our PHP honeypot. Then we compared what auth.log, MDE DeviceLogonEvents and Falcon record on Linux with what Windows 4624/4625 give you, and where each one goes blind.">
+<meta property="og:site_name" content="Global SOC">
+<meta property="og:locale" content="en_AU">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://globalsoc.com.au/blog/ssh-passwords-linux-vs-windows-logons/">
+<meta property="og:title" content="11,397 Real SSH Passwords, and Why Linux Logon Telemetry Is Not Windows Logon Telemetry | Global SOC">
+<meta property="og:description" content="We let PAM accept any password for 40 decoy accounts and logged every password typed: 11,397 real passwords, 2,391 unique, from 151 IPs, including the same 416-username botnet seen on our PHP honeypot. Then we compared what auth.log, MDE DeviceLogonEvents and Falcon record on Linux with what Windows 4624/4625 give you, and where each one goes blind.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="11,397 Real SSH Passwords, and Why Linux Logon Telemetry Is Not Windows Logon Telemetry | Global SOC">
+<meta name="twitter:description" content="We let PAM accept any password for 40 decoy accounts and logged every password typed: 11,397 real passwords, 2,391 unique, from 151 IPs, including the same 416-username botnet seen on our PHP honeypot. Then we compared what auth.log, MDE DeviceLogonEvents and Falcon record on Linux with what Windows 4624/4625 give you, and where each one goes blind.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "@id": "https://globalsoc.com.au/blog/ssh-passwords-linux-vs-windows-logons/#article",
+      "url": "https://globalsoc.com.au/blog/ssh-passwords-linux-vs-windows-logons/",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://globalsoc.com.au/blog/ssh-passwords-linux-vs-windows-logons/"
+      },
+      "headline": "11,397 Real SSH Passwords From a Honeypot That Said Yes, and How Linux Logon Telemetry Differs From Windows",
+      "description": "We let PAM accept any password for 40 decoy accounts and logged every password typed: 11,397 real passwords, 2,391 unique, from 151 IPs, including the same 416-username botnet seen on our PHP honeypot. Then we compared what auth.log, MDE DeviceLogonEvents and Falcon record on Linux with what Windows 4624/4625 give you, and where each one goes blind.",
+      "datePublished": "2026-11-27",
+      "author": {
+        "@type": "Person",
+        "name": "Yogesh"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://globalsoc.com.au/#organization",
+        "name": "Global SOC",
+        "legalName": "Global SOC Pty Ltd",
+        "url": "https://globalsoc.com.au/"
+      },
+      "isPartOf": {
+        "@id": "https://globalsoc.com.au/blog/#blog"
+      },
+      "inLanguage": "en-AU"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://globalsoc.com.au/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://globalsoc.com.au/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "11,397 Real SSH Passwords From a Honeypot That Said Yes, and How Linux Logon Telemetry Differs From Windows",
+          "item": "https://globalsoc.com.au/blog/ssh-passwords-linux-vs-windows-logons/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<meta property="article:published_time" content="2026-11-27">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="author" content="Yogesh">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7fa;color:#142333;font:17px/1.75 system-ui,sans-serif}
+header{background:#0b2436;color:white;padding:25px max(24px,calc((100vw - 1000px)/2))}
+header a{color:#a6e3ff;text-decoration:none}
+header a:hover{text-decoration:underline}
+main{max-width:1000px;margin:auto;padding:40px 24px 80px}
+h1{font-size:clamp(34px,5vw,52px);line-height:1.15;letter-spacing:-.035em;margin:16px 0 20px}
+h2{margin-top:52px;line-height:1.3;font-size:28px;border-bottom:1px solid #d6e1e9;padding-bottom:8px}
+h3{margin-top:32px;font-size:20px}
+p{max-width:82ch;margin:16px 0}
+pre{background:#10283a;color:#e3f2fc;padding:20px;border-radius:10px;overflow:auto;font:13.5px/1.65 Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+code{font-family:Consolas,monospace;background:#e9f0f5;color:#0b2436;padding:2px 6px;border-radius:4px;font-size:0.9em}
+pre code{background:transparent;color:inherit;padding:0}
+a{color:#076383}
+nav.toc{background:#e6f0f5;border-left:4px solid #087da4;padding:16px 22px;margin:24px 0}
+.meta{color:#47687c;font-size:14px;font-weight:600;letter-spacing:0.04em}
+table{width:100%;border-collapse:collapse;background:white;font-size:15px;margin:20px 0}
+td,th{padding:12px;border:1px solid #d6e1e9;text-align:left}
+th{background:#edf3f7}
+td code{overflow-wrap:anywhere}
+.alert-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:16px 20px;border-radius:4px;margin:20px 0}
+.warn-box{background:#fef2f2;border-left:4px solid #dc2626;padding:16px 20px;border-radius:4px;margin:20px 0}
+@media(max-width:640px){table{font-size:12px}td,th{padding:6px}}
+.bar{fill:#087da4}.small{font-size:14px;color:#47687c}
+.org{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:6px;letter-spacing:.03em;vertical-align:1px}
+.orgA{background:#fde7d9;color:#7a2e0b}.orgB{background:#dbeafe;color:#1e3a8a}
+.kc{display:inline-block;font:700 12px/1.6 system-ui,sans-serif;padding:1px 8px;border-radius:4px;margin-right:8px;background:#0b2436;color:#a6e3ff;vertical-align:3px;letter-spacing:.03em}
+ul,ol{max-width:82ch}li{margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><a href="/">Global SOC</a> / <a href="/blog/">Blog</a></div>
+    <div><a href="/dnsaudit/">DNS Audit</a></div>
+  </div>
+</header>
+<main>
+<p class="meta">THREAT RESEARCH &amp; LABS · Yogesh · 27 November 2026</p>
+<h1>11,397 Real SSH Passwords From a Honeypot That Said Yes, and How Linux Logon Telemetry Differs From Windows</h1>
+<p>We let PAM accept any password for 40 decoy accounts and logged every password typed: 11,397 real passwords, 2,391 unique, from 151 IPs, including the same 416-username botnet seen on our PHP honeypot. Then we compared what auth.log, MDE DeviceLogonEvents and Falcon record on Linux with what Windows 4624/4625 give you, and where each one goes blind.</p>
+<nav class="toc"><strong>Key Sections:</strong> How the Passwords Were Captured · The Numbers · The Botnet With a 416-Name List · Linux vs Windows Logons · What MDE Misses on Linux · Pyramid of Pain · Detections · When It Fires · IOCs</nav>
+<p class="small">Data window: 29 October – 11 November 2026 (on-host logs effectively end on 2 November when the disk filled; MDE covers the full window), the Cisco ASA honeypot from the <a href="/blog/ssh-tunnel-proxy-abuse-honeypot/">SSH tunnel</a> and <a href="/blog/ssh-bots-after-login-fingerprinting/">after-login</a> posts. Part of my <a href="/blog/honeypot-detection-playbook/">honeypot detection series</a>. <span class="org orgA">Org A</span> runs Microsoft Defender for Endpoint with Microsoft Sentinel; queries marked <em>Tested</em> ran against this honeypot's MDE data. <span class="org orgB">Org B</span> runs Splunk with CrowdStrike Falcon; its queries were not run against this data. The Windows columns in section 4 describe documented Windows and MDE behaviour for comparison; this honeypot was Linux only.</p>
+
+<h2 id="capture">1. How the Passwords Were Captured</h2>
+<p>sshd never logs passwords. To see them, the honeypot put a PAM module in front of the real authentication:</p>
+<pre><code># /etc/pam.d/sshd (top of file)
+auth optional   pam_exec.so expose_authtok /usr/local/bin/log-ssh-password.sh
+auth requisite  pam_succeed_if.so user notin root:labadmin
+auth sufficient pam_permit.so
+@include common-auth</code></pre>
+<p><code>pam_exec ... expose_authtok</code> hands the typed password to a script on stdin, which wrote <code>timestamp | IP | user | RawHex | Str</code> to a log. <code>pam_succeed_if user notin root:labadmin</code> stops the stack for the two real accounts (they fall through to normal <code>pam_unix</code>, so <code>root</code> could never be guessed). For everyone else <code>pam_permit</code> says yes: any password works for the 40 decoy accounts created for the honeypot (UIDs 1001–1040 in <code>/etc/passwd</code>), and, as the logs showed, for built-in system accounts too: <code>backup</code>, <code>bin</code>, <code>sshd</code>, <code>sync</code> and <code>www-data</code> all accepted logins, because <code>pam_permit</code> doesn't care what the account is for.</p>
+<p>One OpenSSH detail decides how you read the log. When a client names a user that doesn't exist, sshd still runs PAM so the timing doesn't leak which usernames are valid, but it replaces the password with a fixed decoy, <code>\b\n\r\177INCORRECT</code>, repeated or cut to the length the client typed (<code>fake_password()</code> in <code>auth-pam.c</code>). So for invalid users you learn the <em>length</em> of the password and nothing else. 8,353 of the 19,750 captured entries were that decoy. Count them as real and you inflate the password list with strings like <code>\b\n\r\177IN</code>; check for the decoy at every length, not just 13 bytes (my first pass only checked prefixes of the 13-byte string and over-counted by 79).</p>
+
+<h2 id="numbers">2. The Numbers</h2>
+<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+<tr><td>PAM password events (external IPs)</td><td>19,750</td></tr>
+<tr><td>Real passwords (valid decoy accounts + <code>root</code>)</td><td>11,397</td></tr>
+<tr><td>OpenSSH decoy (invalid username: length only)</td><td>8,353</td></tr>
+<tr><td>Unique real passwords</td><td>2,391</td></tr>
+<tr><td>Usernames tried / source IPs</td><td>895 / 151</td></tr>
+<tr><td>Digits-only passwords</td><td>2,710 (23.8%)</td></tr>
+<tr><td>Most common length</td><td>8 characters (3,030), then 9 (1,641) and 6 (1,624)</td></tr>
+<tr><td>sshd <code>Accepted</code> (external)</td><td>3,412 from 113 IPs into 38 accounts (3,402 <code>password</code>, 10 <code>keyboard-interactive/pam</code>)</td></tr>
+<tr><td>sshd <code>Failed password</code> (external)</td><td>16,152 from 106 IPs; 8,275 for invalid users; 7,867 for <code>root</code></td></tr>
+</tbody></table>
+<p>Top passwords: <code>123456</code> 275, <code>root</code> 160, <code>1234</code> 158, <code>123</code> 149, <code>password</code> 147, <code>123456789</code> 128, <code>admin</code> 123, <code>12345</code> 109, <code>1</code> 105, <code>12345678</code> 105, <code>AGE12345</code> 99, <code>admin123</code> 88, <code>qwerty</code> 77, <code>123123</code> 74, <code>P@ssw0rd</code> 72, <code>111111</code> 67, <code>1qaz@WSX</code> 60, <code>toor</code> 58, <code>passw0rd</code> 53, <code>cisco123</code> 50.</p>
+<p>Top pairs: <code>user</code>/<code>AGE12345</code> 99 (one tool, one pair, every session), <code>root</code>/<code>root</code> 81, <code>root</code>/<code>123456</code> 56, <code>root</code>/<code>admin</code> 53, <code>cisco</code>/<code>cisco123</code> 50 (device-themed lists find the Cisco banner), <code>admin</code>/<code>admin123</code> 48, <code>root</code>/<code>password</code> 48, <code>support</code>/<code>support</code> 22 (the pair behind the tunnel in the first post).</p>
+<p>Usernames that say what attackers expect on a cloud VM in late 2026: distro and cloud defaults (<code>ubuntu</code> 587, <code>debian</code> 120, <code>pi</code> 86, <code>azureuser</code>, <code>ec2-user</code>), service accounts (<code>postgres</code> 121, <code>oracle</code> 79, <code>mysql</code> 73, <code>git</code> 87, <code>deploy</code> 276, <code>jenkins</code>), game servers (<code>minecraft</code> 109, <code>steam</code> 67, <code>ts3</code>), embedded boards (<code>Tronlong</code> 89), and AI-agent accounts: <code>claude</code> 129, <code>openclaw</code> 71, <code>ai</code> 29, <code>codex</code> 25, <code>cursor</code> 10, <code>agent</code> 10.</p>
+
+<h2 id="botnet">3. The Botnet With a 416-Name List</h2>
+<p>Ten IPs in <code>109.160.32[.]0/24</code> each sent 1,196 or 1,197 passwords and each tried exactly 416 usernames (one tried 415). That is the same 416-username list I found on the PHP honeypot in October (<a href="/blog/detect-ssh-brute-force/">SSH brute-force post</a>), from the same <code>/24</code>, against a different VM on a different public IP. On the PHP box I could only see the usernames. Here PAM shows the passwords that go with them, and because the decoy accounts said yes, MDE shows what each worker did with a success: <code>109.160.32[.]200</code> logged into 29 different accounts with 297 successful logons; <code>.179</code>, <code>.160</code> and <code>.105</code> did the same. A worker run typically lasted one to two hours; then the next worker in the pool started.</p>
+<table><thead><tr><th>Network</th><th>Workers that logged in (MDE)</th><th>Passwords per worker (PAM)</th><th>Usernames per worker</th></tr></thead><tbody>
+<tr><td><code>109.160.32[.]0/24</code></td><td>28</td><td>1,196–1,197</td><td>415–416</td></tr>
+<tr><td><code>77.239.124[.]0/24</code></td><td>34</td><td>409–499 (top 7)</td><td>211 and 201 (top 2)</td></tr>
+<tr><td><code>45.148.10[.]0/24</code></td><td>(failed only)</td><td>185–235</td><td></td></tr>
+<tr><td><code>2.57.122[.]0/24</code></td><td>5</td><td>up to 297</td><td></td></tr>
+</tbody></table>
+<p>After a success the worker ran one command, <code>uname -s -v -n -r -m</code> or <code>uname -m | awk '{printf $1}'</code>, and disconnected (see the after-login post). The success is reported upstream; someone else comes back to use it. In this dataset that someone ran an SSH tunnel for 12 days.</p>
+
+<h2 id="compare">4. Linux vs Windows Logons, Field by Field</h2>
+<p>This is the comparison detection engineers ask for. The left column is what this honeypot actually produced. The right column is the documented Windows behaviour for the same attacker action.</p>
+<table><thead><tr><th>Question</th><th>Linux SSH (observed here)</th><th>Windows RDP/SMB (documented)</th></tr></thead><tbody>
+<tr><td>Where the evidence is</td><td><code>auth.log</code>/journald lines from sshd and PAM; <code>wtmp</code>/<code>btmp</code>/<code>lastlog</code> binary files</td><td>Security log: 4624 success, 4625 failure, 4648 explicit creds, 4776 NTLM validation (on the DC for domain accounts), 4771/4768 Kerberos, 4740 lockout</td></tr>
+<tr><td>Is the logon type recorded?</td><td>No. sshd logs the method (<code>password</code>, <code>publickey</code>, <code>keyboard-interactive/pam</code>). MDE maps every SSH login to <code>Network</code> and adds a second <code>Local</code> row for the PAM session ~30 ms later (7,892 Network + 7,795 Local here)</td><td>Yes: <code>LogonType</code> 3 Network (SMB, and RDP failures under NLA), 10 RemoteInteractive (RDP success), 2 Interactive, 5 Service</td></tr>
+<tr><td>Bad password vs no such user</td><td>Different log lines: <code>Failed password for root</code> vs <code>Failed password for invalid user X</code> + <code>Invalid user X from ...</code>. PAM receives a decoy password for invalid users</td><td>One event ID, reason in <code>SubStatus</code>: <code>0xC000006A</code> bad password, <code>0xC0000064</code> user does not exist; for locked (<code>0xC0000234</code>) and disabled (<code>0xC0000072</code>) accounts the code often appears in <code>Status</code> with <code>SubStatus</code> <code>0x0</code>, so check both</td></tr>
+<tr><td>Client identity</td><td>Source IP and port only. The client software version (<code>SSH-2.0-Go</code>, <code>libssh</code>) is only logged at <code>LogLevel DEBUG</code></td><td><code>WorkstationName</code> is the attacker's machine name (often <code>kali</code>, random <code>WIN-xxxx</code> or blank), a useful pivot</td></tr>
+<tr><td>Auth protocol</td><td>Not applicable; MDE <code>Protocol</code> field empty</td><td><code>AuthenticationPackageName</code> NTLM/Kerberos/Negotiate, <code>LmPackageName</code> NTLM V1/V2 (NTLM V1 alone is worth an alert)</td></tr>
+<tr><td>Lockout</td><td>None by default. Bots hammer <code>root</code> (7,867 failures, never locked) because nothing stops them. <code>pam_faillock</code> is opt-in</td><td>Account lockout policy (event 4740) is common, so Windows attackers spray: one password across many accounts per window, and stay under the threshold</td></tr>
+<tr><td>Who is targeted</td><td><code>root</code>, distro/cloud defaults, service accounts, AI-agent names; passwords are default-credential lists</td><td><code>administrator</code>, <code>admin</code>, <code>user</code>, <code>guest</code>, domain accounts; passwords are season+year and company-name patterns</td></tr>
+<tr><td>After a success</td><td>One exec channel per command (no interactive shell needed), <code>authorized_keys</code> for persistence, SSH port forwarding as a proxy</td><td>Interactive RDP desktop, or SMB + service creation (7045) / scheduled task / WinRM; new local admin (4720 + 4732) for persistence</td></tr>
+<tr><td>Identity fields in MDE <code>DeviceLogonEvents</code></td><td><code>AccountSid</code> empty, <code>IsLocalAdmin</code> empty, <code>FailureReason</code> empty, <code>Protocol</code> empty; Linux detail sits in <code>AdditionalFields</code>: <code>{"Terminal":"ssh","PosixUserId":1001,"PosixPrimaryGroupName":"cisco",...}</code></td><td><code>AccountSid</code>, <code>IsLocalAdmin</code>, <code>FailureReason</code> (for example <code>InvalidUserNameOrPassword</code>), <code>Protocol</code>, <code>RemoteDeviceName</code> all populated</td></tr>
+<tr><td>Session end</td><td><code>pam_unix(sshd:session): session closed</code> and the <code>wtmp</code> logout record; MDE has no logoff event</td><td>4634/4647 logoff with the same <code>TargetLogonId</code> as the 4624</td></tr>
+</tbody></table>
+<p>The practical consequence: Windows logon detections lean on <em>fields</em> (logon type, SubStatus, workstation, package). Linux SSH detections have to lean on <em>sequences and shapes</em> (failures then success from one IP, one IP succeeding on many accounts, many IPs from one <code>/24</code> sharing a list, sessions that last seconds or days), because the fields aren't there.</p>
+
+<h2 id="mdegap">5. What MDE Misses on Linux</h2>
+<p>The two sources don't cover the same period. The honeypot's disk filled up around 2–3 November, so <code>auth.log</code> and the PAM password log effectively stop there (PAM entries per day: 5,110 on 1 Nov, 615 on 2 Nov, then about 40 a day). MDE streams off the box and kept recording until 11 November. Comparing totals across the whole fortnight is therefore meaningless; here is the like-for-like window, 29 October – 1 November, plus what MDE alone saw afterwards:</p>
+<table><thead><tr><th>Event (external sources)</th><th><code>auth.log</code> 29 Oct – 1 Nov</th><th>MDE <code>DeviceLogonEvents</code> 29 Oct – 1 Nov</th><th>MDE 2 – 11 Nov</th></tr></thead><tbody>
+<tr><td>Successful SSH logins</td><td>~3,400 <code>Accepted</code></td><td>1,991 Network rows (one per <code>LogonId</code>; each also gets a separate <code>Local</code> row for the PAM session)</td><td>5,860</td></tr>
+<tr><td>Failed passwords for <code>root</code></td><td>~7,800</td><td>391 (~5%)</td><td>exactly 100 per day, 1 – 9 Nov</td></tr>
+<tr><td>Failed passwords for invalid users</td><td>~8,200</td><td>0</td><td>0</td></tr>
+<tr><td>Failed passwords for existing non-root accounts</td><td>10 (before PAM accepted any password)</td><td>4 (<code>deploy</code>, <code>debian</code>, <code>ubuntu</code>, <code>vpn</code> from <code>109.160.32[.]200</code>, 29 Oct 21:17–21:18, two minutes before the decoy PAM stack went live)</td><td>0</td></tr>
+</tbody></table>
+<p>On this sensor, MDE recorded fewer successful logins than sshd, a small sample of failures for accounts that exist, none for usernames that don't, and a flat 100 <code>root</code> failures per day on every day after 1 November, which looks like per-device throttling (my inference from the shape; I have not found it documented). If your SSH brute-force detection runs only on <code>DeviceLogonEvents</code>, you are looking at a sample of the guessing and none of the username enumeration. Forward <code>auth.log</code> to the SIEM as well (Syslog via AMA for Org A, the Unix and Linux add-on for Org B) and build the volume and shape rules there.</p>
+
+<h2 id="pyramid">6. Pyramid of Pain</h2>
+<table><thead><tr><th>Level</th><th>Indicator</th><th>Use</th></tr></thead><tbody>
+<tr><td>IP addresses</td><td>151 sources; the <code>/24</code> worker pools</td><td>Retro-hunting only. Rotated per campaign.</td></tr>
+<tr><td>Host artefacts</td><td>Username list (416 names), distinctive pairs (<code>user</code>/<code>AGE12345</code>, <code>cisco</code>/<code>cisco123</code>)</td><td>Audit your own hosts: does any of these accounts exist with a password? That is the finding that matters.</td></tr>
+<tr><td>Tools</td><td>Distributed wordlist workers; one-command success confirmation</td><td>Detect the worker-pool shape (A2, A5, B2).</td></tr>
+<tr><td>TTPs</td><td>Guess &rarr; confirm with <code>uname</code> &rarr; report &rarr; second actor uses the access</td><td>Success-on-many-accounts (A1, B1) and failure-then-success (A3/A4, B3) survive IP rotation.</td></tr>
+</tbody></table>
+
+<h2 id="detect">7. Detections</h2>
+
+<h3>D1. One source succeeds on three or more local accounts (T1110.001, T1078.003)</h3>
+<p><span class="org orgA">Org A</span> Tested: 83 source IPs. The top five each logged into 29 accounts: <code>109.160.32[.]200</code> (297 logons), <code>109.160.32[.]179</code>, <code>77.239.124[.]156</code>, <code>109.160.32[.]160</code>, <code>109.160.32[.]105</code>.</p>
+<pre><code>// A1 (MDE): one source IP succeeds on several different local accounts (password reuse / default creds / honeypot-style acceptance)
+DeviceLogonEvents
+| where Timestamp &gt; ago(30d)
+| where ActionType == "LogonSuccess" and LogonType == "Network" and RemoteIPType == "Public"
+| summarize Accounts = dcount(AccountName), AccountList = make_set(AccountName, 20), Logons = count(),
+            First = min(Timestamp), Last = max(Timestamp) by DeviceName, RemoteIP
+| where Accounts &gt;= 3
+| order by Accounts desc</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B1: linux_secure - one source succeeds on 3+ local accounts")`
+index=linux sourcetype=linux_secure process=sshd "Accepted"
+| rex "Accepted (?&lt;method&gt;\S+) for (?&lt;user&gt;\S+) from (?&lt;src&gt;\d+\.\d+\.\d+\.\d+)"
+| stats dc(user) as accounts values(user) as account_list count as logons min(_time) as first max(_time) as last by host src
+| where accounts&gt;=3
+| convert ctime(first) ctime(last)</code></pre>
+<p>On a normal server one IP logs into one account. Three distinct local accounts from one internet IP in a month is either a jump host you know about or a password list that worked more than once.</p>
+
+<h3>D2. A /24 of workers on one host</h3>
+<p><span class="org orgA">Org A</span> Tested: 2 networks: <code>77.239.124[.]0/24</code> (34 workers, 1,941 logons) and <code>109.160.32[.]0/24</code> (28 workers, 3,783 logons).</p>
+<pre><code>// A2 (MDE): a /24 of workers all logging into the same host
+DeviceLogonEvents
+| where Timestamp &gt; ago(30d) and ActionType == "LogonSuccess" and LogonType == "Network" and RemoteIPType == "Public"
+| summarize Accounts = dcount(AccountName), Logons = count() by DeviceName, RemoteIP
+| extend Net24 = strcat(tostring(split(RemoteIP, ".")[0]), ".", tostring(split(RemoteIP, ".")[1]), ".", tostring(split(RemoteIP, ".")[2]), ".0/24")
+| summarize Workers = dcount(RemoteIP), AccMin = min(Accounts), AccMax = max(Accounts), Logons = sum(Logons) by DeviceName, Net24
+| where Workers &gt;= 10 and AccMax &gt;= 10</code></pre>
+<p><span class="org orgA">Org A</span> Sentinel Syslog version on failures (sees the invalid-user guesses MDE drops):</p>
+<pre><code>// A5 (Sentinel Syslog): same username list split across a /24 (wordlist workers)
+Syslog
+| where ProcessName == "sshd" and SyslogMessage startswith "Failed password"
+| extend SrcIp = extract(@"from (\d+\.\d+\.\d+\.\d+)", 1, SyslogMessage),
+         User = extract(@"for (?:invalid user )?(\S+) from", 1, SyslogMessage)
+| summarize Users = dcount(User), Attempts = count() by SrcIp
+| extend Net24 = strcat(tostring(split(SrcIp, ".")[0]), ".", tostring(split(SrcIp, ".")[1]), ".", tostring(split(SrcIp, ".")[2]))
+| summarize Workers = dcount(SrcIp), UsersMin = min(Users), UsersMax = max(Users), AttemptsMin = min(Attempts), AttemptsMax = max(Attempts) by Net24
+| where Workers &gt;= 5 and UsersMax - UsersMin &lt;= 5</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("B2: linux_secure - wordlist workers: one /24, identical username counts")`
+index=linux sourcetype=linux_secure process=sshd "Failed password"
+| rex "for (?:invalid user )?(?&lt;user&gt;\S+) from (?&lt;src&gt;\d+\.\d+\.\d+\.\d+)"
+| stats dc(user) as users count as attempts by src
+| rex field=src "^(?&lt;net24&gt;\d+\.\d+\.\d+)\."
+| stats dc(src) as workers min(users) as users_min max(users) as users_max min(attempts) as att_min max(attempts) as att_max by net24
+| where workers&gt;=5 AND users_max-users_min&lt;=5</code></pre>
+
+<h3>D3. Failures, then success, from the same source (T1110 &rarr; T1078)</h3>
+<p><span class="org orgA">Org A</span> Tested on MDE: 0 rows. Not because it didn't happen, but because of section 5: MDE logged failures mostly for <code>root</code>, which never succeeded, and the only other accounts with recorded failures had one each (below the rule's threshold of 3). On Linux, run this rule on sshd syslog:</p>
+<pre><code>// A3 (MDE, Linux caveat): failures MDE CAN see - existing accounts only - followed by a success from the same IP
+DeviceLogonEvents
+| where Timestamp &gt; ago(30d) and LogonType == "Network"
+| summarize Fails = countif(ActionType == "LogonFailed"), Succ = countif(ActionType == "LogonSuccess"),
+            FirstFail = minif(Timestamp, ActionType == "LogonFailed"), FirstSucc = minif(Timestamp, ActionType == "LogonSuccess")
+          by DeviceName, RemoteIP, AccountName
+| where Fails &gt;= 3 and Succ &gt; 0 and FirstSucc &gt; FirstFail</code></pre>
+<pre><code>// A4 (Sentinel Syslog): the full picture MDE misses on Linux - invalid users and every failure
+let Ssh = Syslog
+| where ProcessName == "sshd"
+| extend Outcome = case(SyslogMessage startswith "Failed password", "Failed", SyslogMessage startswith "Accepted", "Accepted", "")
+| where isnotempty(Outcome)
+| extend SrcIp = extract(@"from (\d+\.\d+\.\d+\.\d+)", 1, SyslogMessage),
+         User = extract(@"for (?:invalid user )?(\S+) from", 1, SyslogMessage),
+         Invalid = SyslogMessage has "invalid user";
+Ssh
+| summarize Failed = countif(Outcome == "Failed"), InvalidUserFails = countif(Invalid), Accepted = countif(Outcome == "Accepted"),
+            Users = dcount(User), AcceptedUsers = make_set_if(User, Outcome == "Accepted", 20)
+          by Computer, SrcIp, bin(TimeGenerated, 1d)
+| where Accepted &gt; 0 and Failed &gt;= 10</code></pre>
+<p><span class="org orgB">Org B</span> Falcon (event names for Linux logon telemetry vary by sensor version; confirm <code>UserLogon</code>/<code>UserLogonFailed2</code> exist for Linux hosts in your tenant before relying on it). The <code>linux_secure</code> version of the same rule is L3 in the <a href="/blog/detect-ssh-brute-force/">SSH brute-force post</a>.</p>
+<pre><code>`comment("B3: Falcon - Linux SSH logons by source (UserLogon / UserLogonFailed2; check event names in your tenant)")`
+event_platform=Lin event_simpleName IN (UserLogon, UserLogonFailed2)
+| stats count(eval(event_simpleName="UserLogon")) as success count(eval(event_simpleName="UserLogonFailed2")) as failed
+        dc(UserName) as accounts values(UserName) as users by aid ComputerName RemoteAddressIP4
+| where success&gt;0 AND (failed&gt;=3 OR accounts&gt;=3)</code></pre>
+
+<h3>D4. For contrast: the Windows rule you already have</h3>
+<p>The same intent on Windows is one event ID with the reason in a field. This is what the Linux rules above have to reconstruct from text.</p>
+<p><span class="org orgA">Org A</span></p>
+<pre><code>// Windows equivalent for contrast (Org A, Sentinel SecurityEvent): failures split by reason
+SecurityEvent
+| where EventID == 4625
+| extend Code = tolower(iff(SubStatus in~ ("0x0", ""), Status, SubStatus))   // locked/disabled often only in Status
+| extend Reason = case(Code == "0xc0000064", "no such user", Code == "0xc000006a", "bad password",
+                       Code == "0xc0000234", "locked out", Code == "0xc0000072", "disabled", Code)
+| summarize Fails = count(), Users = dcount(TargetUserName), Workstations = make_set(WorkstationName, 10)
+          by IpAddress, LogonType, AuthenticationPackageName, Reason, bin(TimeGenerated, 1h)</code></pre>
+<p><span class="org orgB">Org B</span></p>
+<pre><code>`comment("Windows equivalent for contrast (Org B, Splunk WinEventLog)")`
+index=wineventlog EventCode=4625
+| eval code=lower(if(Sub_Status="0x0" OR isnull(Sub_Status), Status, Sub_Status))
+| eval target_user=mvindex(Account_Name, 1)
+| eval reason=case(code="0xc0000064","no such user", code="0xc000006a","bad password",
+                   code="0xc0000234","locked out", code="0xc0000072","disabled", true(), code)
+| bin _time span=1h
+| stats count dc(target_user) as users values(Workstation_Name) as workstations by _time Source_Network_Address Logon_Type Authentication_Package reason</code></pre>
+
+<h2 id="respond">8. When It Fires</h2>
+<ul>
+<li><strong>D1 or D3 on a real server</strong>: the password worked. Lock the account, kill its sessions (<span class="org orgA">Org A</span> Live Response, <span class="org orgB">Org B</span> RTR), then pull the session's commands and network connections: the <a href="/blog/ssh-bots-after-login-fingerprinting/">after-login</a> and <a href="/blog/ssh-tunnel-proxy-abuse-honeypot/">tunnel</a> posts show what to look for.</li>
+<li><strong>D2</strong>: no single IP is interesting; the list is. Take the usernames the pool tried (Syslog/<code>linux_secure</code>) and check every Linux host for those accounts with password authentication enabled.</li>
+<li>Check the account names in section 2 against your estate, especially <code>claude</code>, <code>openclaw</code>, <code>codex</code> and <code>agent</code> users created so an AI agent can SSH in. They are on the lists now.</li>
+<li>Turn off <code>PasswordAuthentication</code> on internet-facing SSH. Every login in this dataset was a password.</li>
+</ul>
+
+<h2 id="iocs">9. IOCs</h2>
+<table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>
+<tr><td>Network</td><td><code>109.160.32[.]0/24</code></td><td>416-username list, 1,196–1,197 passwords per worker; also seen on our PHP honeypot in October</td></tr>
+<tr><td>Network</td><td><code>77.239.124[.]0/24</code></td><td>34 workers logged in; the top two tried 211 and 201 usernames</td></tr>
+<tr><td>Network</td><td><code>45.148.10[.]0/24</code>, <code>2.57.122[.]0/24</code></td><td>Worker pools</td></tr>
+<tr><td>Credential pairs</td><td><code>user</code>/<code>AGE12345</code>, <code>cisco</code>/<code>cisco123</code>, <code>support</code>/<code>support</code>, <code>root</code>/<code>root</code>, <code>admin</code>/<code>admin123</code></td><td>Most frequent pairs</td></tr>
+<tr><td>Usernames (AI)</td><td><code>claude</code>, <code>openclaw</code>, <code>ai</code>, <code>codex</code>, <code>cursor</code>, <code>agent</code></td><td>AI-agent accounts on the guess lists</td></tr>
+<tr><td>ATT&amp;CK</td><td colspan="2">T1110.001, T1110.003 (where one password is tried across many accounts), T1078.003, T1021.004</td></tr>
+</tbody></table>
+<aside aria-label="Work with Global SOC" style="margin:40px 0 20px;padding:24px;border:1px solid #c8dce7;border-radius:12px;background:#e6f0f5;color:#142333"><h2 style="margin:0 0 12px">Have a project or security question?</h2><p>Talk to our Glen Waverley, Melbourne team about secure apps, DNS or email security.</p><a href="/#contact">Discuss your project with Global SOC &rarr;</a></aside></main>
+<footer>
+  <div style="max-width:1000px;margin:auto;padding:20px 24px;border-top:1px solid #d6e1e9;font-size:14px;color:#47687c;">
+    © 2026 Global SOC Pty Ltd · <a href="/privacy.html">Privacy Policy</a>
+  </div>
+</footer>
+<script src="https://globalsoc.com.au/v.js" defer></script>
+</body>
+</html>
